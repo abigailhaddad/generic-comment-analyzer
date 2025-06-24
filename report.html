@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comment Analysis Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            line-height: 1.5;
+            background: #f8f9fa;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            font-size: 2em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .section {
+            background: white;
+            margin: 30px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h2 {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+        }
+        
+        .filters-container {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .filters-header {
+            font-weight: 600;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+        
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .filter-label {
+            font-weight: 500;
+            color: #333;
+            font-size: 0.9em;
+        }
+        
+        .filter-input {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .filter-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+        }
+        
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9em;
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            margin: 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        th {
+            background: #e9ecef;
+            padding: 12px 8px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #dee2e6;
+            position: sticky;
+            top: 0;
+        }
+        
+        td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: top;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        tr:hover {
+            background-color: #e3f2fd;
+        }
+        
+        .stance-for {
+            background: #28a745;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .stance-against {
+            background: #dc3545;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .stance-neutral {
+            background: #ffc107;
+            color: #212529;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .stance-unknown {
+            background: #6c757d;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .themes-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            max-width: 300px;
+        }
+        
+        .theme-tag {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+            border: 1px solid #bbdefb;
+        }
+        
+        .text-preview {
+            max-width: 300px;
+            max-height: 100px;
+            overflow: hidden;
+            font-size: 12px;
+        }
+        
+        .comment-id {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        
+        .date-cell {
+            white-space: nowrap;
+            font-size: 12px;
+        }
+        
+        .attachment-indicator {
+            font-size: 16px;
+            color: #28a745;
+        }
+        
+        .meta-info {
+            background: #343a40;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+        
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .meta-label {
+            font-size: 0.8em;
+            opacity: 0.8;
+        }
+        
+        .meta-value {
+            font-weight: 600;
+        }
+        
+        .themes-list {
+            list-style: none;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 10px;
+        }
+        
+        .themes-list li {
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 4px;
+            border-left: 3px solid #007bff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .theme-name {
+            font-weight: 500;
+        }
+        
+        .theme-count {
+            background: #007bff;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .clear-filters {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .clear-filters:hover {
+            background: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Comment Analysis Report</h1>
+            <div class="subtitle">Analysis of public comments with interactive filtering</div>
+        </div>
+        
+        <!-- Summary Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">25</div>
+                <div class="stat-label">Total Comments</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">0</div>
+                <div class="stat-label">With Attachments</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">1,271</div>
+                <div class="stat-label">Avg. Characters</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">2025-04-25 to 2025-06-11</div>
+                <div class="stat-label">Date Range</div>
+            </div>
+        </div>
+
+        <!-- Stance Breakdown -->
+        <div class="section">
+            <h2>📈 Stance Distribution</h2>
+            <div class="stats-grid">
+                
+                <div class="stat-card">
+                    <div class="stat-number">24</div>
+                    <div class="stat-label">Against</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-number">1</div>
+                    <div class="stat-label">For</div>
+                </div>
+                
+            </div>
+        </div>
+
+        <!-- Top Themes -->
+        <div class="section">
+            <h2>🏷️ Top Themes</h2>
+            <ul class="themes-list">
+                <li>
+                    <span class="theme-name">Politicization concerns</span>
+                    <span class="theme-count">23</span>
+                </li><li>
+                    <span class="theme-name">Merit-based system concerns</span>
+                    <span class="theme-count">20</span>
+                </li><li>
+                    <span class="theme-name">Due process/employee rights</span>
+                    <span class="theme-count">16</span>
+                </li><li>
+                    <span class="theme-name">Institutional knowledge loss</span>
+                    <span class="theme-count">9</span>
+                </li><li>
+                    <span class="theme-name">Scientific integrity</span>
+                    <span class="theme-count">2</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Comments Table -->
+        <div class="section">
+            <h2>Comments</h2>
+            <div class="filters-container">
+                <div class="filters-header">Filter Comments</div>
+                <div class="filters-grid">
+                    <div class="filter-group">
+                        <div class="filter-label">Comment ID</div>
+                        <input type="text" class="filter-input" data-column="0" placeholder="Filter by ID..." onkeyup="filterTable()">
+                    </div>
+                    <div class="filter-group">
+                        <div class="filter-label">Date</div>
+                        <input type="text" class="filter-input" data-column="1" placeholder="Filter by date..." onkeyup="filterTable()">
+                    </div>
+                    <div class="filter-group">
+                        <div class="filter-label">Stance</div>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="stance-against" data-filter="stance" value="Against" onchange="filterTable()">
+                                <label for="stance-against">Against</label>
+                            </div><div class="checkbox-item">
+                                <input type="checkbox" id="stance-for" data-filter="stance" value="For" onchange="filterTable()">
+                                <label for="stance-for">For</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <div class="filter-label">Themes</div>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="theme-0" data-filter="themes" value="Due process/employee rights" onchange="filterTable()">
+                                <label for="theme-0">Due process/employee rights</label>
+                            </div><div class="checkbox-item">
+                                <input type="checkbox" id="theme-1" data-filter="themes" value="Institutional knowledge loss" onchange="filterTable()">
+                                <label for="theme-1">Institutional knowledge loss</label>
+                            </div><div class="checkbox-item">
+                                <input type="checkbox" id="theme-2" data-filter="themes" value="Merit-based system concerns" onchange="filterTable()">
+                                <label for="theme-2">Merit-based system concerns</label>
+                            </div><div class="checkbox-item">
+                                <input type="checkbox" id="theme-3" data-filter="themes" value="Politicization concerns" onchange="filterTable()">
+                                <label for="theme-3">Politicization concerns</label>
+                            </div><div class="checkbox-item">
+                                <input type="checkbox" id="theme-4" data-filter="themes" value="Scientific integrity" onchange="filterTable()">
+                                <label for="theme-4">Scientific integrity</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <div class="filter-label">Has Attachments</div>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="has-attachments" data-filter="attachments" value="yes" onchange="filterTable()">
+                                <label for="has-attachments">Yes</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="no-attachments" data-filter="attachments" value="no" onchange="filterTable()">
+                                <label for="no-attachments">No</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <div class="filter-label">Key Quote</div>
+                        <input type="text" class="filter-input" data-column="4" placeholder="Search quotes..." onkeyup="filterTable()">
+                    </div>
+                    <div class="filter-group">
+                        <div class="filter-label">Text Content</div>
+                        <input type="text" class="filter-input" data-column="5" placeholder="Search text..." onkeyup="filterTable()">
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <button class="clear-filters" onclick="clearAllFilters()">Clear All Filters</button>
+                </div>
+            </div>
+                
+                <div style="overflow-x: auto;">
+                    <table id="commentsTable">
+                        <thead>
+                            <tr>
+                                <th>Comment ID</th>
+                                <th>Date</th>
+                                <th>Stance</th>
+                                <th>Themes</th>
+                                <th>Key Quote</th>
+                                <th>Text Preview</th>
+                                <th>📎</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-13993</span></td>
+                                <td class="date-cell">2025-05-20</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Merit-based system concerns</span> <span class="theme-tag">Due process/employee rights</span> <span class="theme-tag">Politicization concerns</span> <span class="theme-tag">Institutional knowledge loss</span></div></td>
+                                <td>Preserving an apolitical civil service, built on merit, expertise, and a commitment to serving the nation as a whole, is not merely a matter of good governance; it is a cornerstone of a healthy and fu...</td>
+                                <td class="text-preview">The Schedule Policy/Career (P/C) policy poses a serious threat to the integrity and effectiveness of the federal government. Preserving an apolitical civil service, built on merit, expertise, and a commitment to serving the nation as a whole, is not merely a matter of good governance; it is a corner...</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-10349</span></td>
+                                <td class="date-cell">2025-05-15</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Merit-based system concerns</span> <span class="theme-tag">Due process/employee rights</span> <span class="theme-tag">Politicization concerns</span> <span class="theme-tag">Institutional knowledge loss</span></div></td>
+                                <td>It is critical they continue as career employees relatively immune from the whims of political intervention.</td>
+                                <td class="text-preview">I vehemently oppose the reclassification of civil servants to be political appointees. Trump (though I doubt he came up with anything original on his own) and co-conspirators of 2025 must be held in check! The entire bedrock of career, non-partisan civil servants running the day-to-day operations of...</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-13984</span></td>
+                                <td class="date-cell">2025-05-20</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Merit-based system concerns</span> <span class="theme-tag">Due process/employee rights</span> <span class="theme-tag">Politicization concerns</span> <span class="theme-tag">Institutional knowledge loss</span></div></td>
+                                <td>Making so many government positions subject to change every four years enables blatant political bias, favoritism, bribery, and grift.</td>
+                                <td class="text-preview">To Whom It May Concern,
+
+The proposed reclassification of the Civil Service system is a step in the wrong direction for this country. Please do not pass the proposed rules.
+
+Most government workers are dedicated to serve the American people, irrespective of political, religious, or other potentially...</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-34857</span></td>
+                                <td class="date-cell">2025-06-11</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Merit-based system concerns</span> <span class="theme-tag">Politicization concerns</span> <span class="theme-tag">Institutional knowledge loss</span></div></td>
+                                <td>The Federal Civil Service is the crown jewel of American democracy. We need experts, not ideologues managing our government.</td>
+                                <td class="text-preview">The Federal Civil Service is the crown jewel of American democracy.  We need experts, not ideologues  managing our government. They allow continuity from on administration to another. Say no to Schedule F</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-1308</span></td>
+                                <td class="date-cell">2025-04-25</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Merit-based system concerns</span> <span class="theme-tag">Due process/employee rights</span> <span class="theme-tag">Politicization concerns</span></div></td>
+                                <td>This proposed rule is not only insulting to those like my father, but it strips the federal workforce of its nonpartisan neutrality and opens the door to political sychophants who are driven not by a ...</td>
+                                <td class="text-preview">Re: (Docket ID: OPM-2025-0004, RIN 3206-AO80)  My father was an American diplomat for over 30 years.  He was a lifelong Republican but he faithfully served his country and carried out his duties under the administrations of both political parties.  The vast majority of career civil service employees...</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-2235</span></td>
+                                <td class="date-cell">2025-04-30</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Politicization concerns</span></div></td>
+                                <td>We need fewer political appointees in federal government, not more.</td>
+                                <td class="text-preview">We need fewer political appointees in federal government, not more. Please do not reclassify career civil servant roles to political ones.</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-29116</span></td>
+                                <td class="date-cell">2025-06-03</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Merit-based system concerns</span> <span class="theme-tag">Due process/employee rights</span> <span class="theme-tag">Politicization concerns</span></div></td>
+                                <td>I urge OPM to withdraw the proposal that deletes all Diversity, Equity, and Inclusion (DEI) language from 5 C.F.R. Part 430 and allows forced distribution of Senior Executive Service (SES) performance...</td>
+                                <td class="text-preview">I urge OPM to withdraw the proposal that deletes all Diversity, Equity, and Inclusion (DEI) language from 5 C.F.R. Part 430 and allows forced distribution of Senior Executive Service (SES) performance ratings.
+
+Merit-system law
+5 U.S.C. § 2301(b)(1) requires the federal workforce to be “representati...</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-18971</span></td>
+                                <td class="date-cell">2025-05-22</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Merit-based system concerns</span> <span class="theme-tag">Due process/employee rights</span> <span class="theme-tag">Politicization concerns</span> <span class="theme-tag">Institutional knowledge loss</span></div></td>
+                                <td>This proposal is not about improving accountability or enhancing performance. It is a deliberate attempt to dismantle the integrity and independence of the career civil service.</td>
+                                <td class="text-preview">I strongly oppose the proposed rule that would reintroduce a version of the former “Schedule F,” now labeled “Schedule Policy/Career.” This proposal is not about improving accountability or enhancing performance. It is a deliberate attempt to dismantle the integrity and independence of the career ci...</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-35247</span></td>
+                                <td class="date-cell">2025-06-11</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Merit-based system concerns</span> <span class="theme-tag">Due process/employee rights</span> <span class="theme-tag">Politicization concerns</span> <span class="theme-tag">Institutional knowledge loss</span></div></td>
+                                <td>Rank and file civil service employees should be immune from politically motivated decisions to terminate them.</td>
+                                <td class="text-preview">I am against the proposed rule by the OPM. These positions  need to remain as they are under the rules in place. Rank and file civil service employees should be immune from politically motivated decisions to terminate them. We need our civil service to be nonpartisan as their careers may extend thro...</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-12322</span></td>
+                                <td class="date-cell">2025-05-16</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"></div></td>
+                                <td>Strongly oppose. Please stop attacking federal employees.</td>
+                                <td class="text-preview">Strongly oppose. Please stop attacking federal employees.</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-12095</span></td>
+                                <td class="date-cell">2025-05-16</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Merit-based system concerns</span> <span class="theme-tag">Due process/employee rights</span> <span class="theme-tag">Politicization concerns</span> <span class="theme-tag">Institutional knowledge loss</span></div></td>
+                                <td>Reinstating Schedule F would mark a regression to partisan patronage, destabilize the professional capacity of government, and erode the foundational principle that government should serve the people,...</td>
+                                <td class="text-preview">Schedule F proposal is detrimental to American democracy.
+
+The idea of reinstating Schedule F represents one of the most dangerous threats to the integrity of the United States federal government in modern times. At its core, Schedule F would politicize vast swaths of the career civil service, strip...</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-2676</span></td>
+                                <td class="date-cell">2025-05-02</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Merit-based system concerns</span> <span class="theme-tag">Due process/employee rights</span> <span class="theme-tag">Politicization concerns</span></div></td>
+                                <td>The proposed reclassification of policy-related positions into a new excepted service category effectively strips thousands of federal employees of long-standing civil service protections.</td>
+                                <td class="text-preview">I respectfully submit this comment in strong opposition to the proposed rule titled “Improving Performance, Accountability and Responsiveness in the Civil Service.”
+
+While I support efforts to improve accountability and performance in government, this proposed rule threatens to undermine the foundat...</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-24186</span></td>
+                                <td class="date-cell">2025-05-27</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Politicization concerns</span> <span class="theme-tag">Scientific integrity</span></div></td>
+                                <td>Political interference with grants assessment will drastically undermine the scientific integrity of federal grants and will destroy the scientific stature of the world's largest biomedical research i...</td>
+                                <td class="text-preview">This comment pertains to the paragraph in section B2 if the Supplemental Information, found here: https://www.federalregister.gov/d/2025-06904/p-158. 
+
+I am concerned about the inclusion of employees with "substantive participation and discretionary authority in agency grantmaking" in the Schedule P...</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-16751</span></td>
+                                <td class="date-cell">2025-05-21</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Merit-based system concerns</span> <span class="theme-tag">Due process/employee rights</span> <span class="theme-tag">Politicization concerns</span></div></td>
+                                <td>These rules are in place to ensure that federal jobs are awarded based on merit, not political or ideological loyalty.</td>
+                                <td class="text-preview">As a concerned citizen, I strongly oppose the proposed changes that would weaken the competitive hiring rules for career federal employees. These rules are in place to ensure that federal jobs are awarded based on merit, not political or ideological loyalty. Undermining this system could open the do...</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-28960</span></td>
+                                <td class="date-cell">2025-06-03</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Merit-based system concerns</span> <span class="theme-tag">Due process/employee rights</span> <span class="theme-tag">Politicization concerns</span></div></td>
+                                <td>Schedule F is not a narrow reform. It is a dangerous power grab that would enable the replacement of neutral civil servants with loyalists, undermining the rule of law and the effective functioning of...</td>
+                                <td class="text-preview">Federal Register Comment Opposing Schedule F: Evidence from the May 29, 2025 Merit Hiring Plan
+
+I write in strong opposition to any rulemaking or executive action that would reinstate Schedule F or create a similar category of at-will federal employees exempt from civil service protections.
+
+The cle...</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-26170</span></td>
+                                <td class="date-cell">2025-05-29</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Merit-based system concerns</span> <span class="theme-tag">Politicization concerns</span> <span class="theme-tag">Institutional knowledge loss</span></div></td>
+                                <td>It would therefore be an enormous mistake for agency leadership to be subjected to political oversight -- it is crucial for agencies to be led by experts who are chosen based on their experience (and ...</td>
+                                <td class="text-preview">I am a biologist at a major research university, and my research has been supported by NSF and NIH funding for more than 30 years.  In my experience with federal agencies that fund scientific research, it has been clear that agency leadership requires specific scientific expertise, coupled with long...</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-9768</span></td>
+                                <td class="date-cell">2025-05-14</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Merit-based system concerns</span> <span class="theme-tag">Due process/employee rights</span> <span class="theme-tag">Politicization concerns</span></div></td>
+                                <td>The proposed rule allows any given Administration to replace the nation's professional cadre of policy experts who serve the Constitution across Administrations with individuals who subordinate their ...</td>
+                                <td class="text-preview">. I oppose this proposed rule in its entirety, and every section of the proposed rule, as it allows for the reintroduction of a "spoils" system to the federal civil service. The proposed rule allows any given Administration to replace the nation's professional cadre of policy experts who serve the C...</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-22005</span></td>
+                                <td class="date-cell">2025-05-27</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Merit-based system concerns</span> <span class="theme-tag">Due process/employee rights</span> <span class="theme-tag">Politicization concerns</span></div></td>
+                                <td>The proposed rule allows any given Administration to replace the nation's professional cadre of policy experts who serve the Constitution across Administrations with individuals who subordinate their ...</td>
+                                <td class="text-preview">1. I oppose this proposed rule in its entirety, and every section of the proposed rule, as it allows for the reintroduction of a "spoils" system to the federal civil service. The proposed rule allows any given Administration to replace the nation's professional cadre of policy experts who serve the ...</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-6328</span></td>
+                                <td class="date-cell">2025-05-12</td>
+                                <td><span class="stance-for">For</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Merit-based system concerns</span></div></td>
+                                <td>I support President Trump’s efforts to bring accountability to the federal bureaucracy.</td>
+                                <td class="text-preview">I support President Trump’s efforts to bring accountability to the federal bureaucracy. 
+
+
+For too long, unelected career bureaucrats in the federal government have stifled efficiency by undermining the plans and policies of the Chief Executive.
+
+OPM’s new rule cuts red tape and allows career bureau...</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-16545</span></td>
+                                <td class="date-cell">2025-05-21</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Merit-based system concerns</span> <span class="theme-tag">Due process/employee rights</span> <span class="theme-tag">Politicization concerns</span></div></td>
+                                <td>Our government workers do not deserve the way they are being treated.</td>
+                                <td class="text-preview">Our government workers do not deserve the way they are being treated  . I stand with  in these times of chaos as an outraged citizen.</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-26849</span></td>
+                                <td class="date-cell">2025-05-29</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Politicization concerns</span> <span class="theme-tag">Scientific integrity</span></div></td>
+                                <td>This policy would inject political interference into research funding, thereby devastating the scientific integrity of federal grant awards and hindering biomedical discoveries.</td>
+                                <td class="text-preview">This reclassification would politicize NIH's research funding decisions. This could lead to all NIH Institute and Center Directors, and potentially division directors, becoming political appointees, potentially undermining scientific expertise with political agendas and increasing turnover.
+
+This po...</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-9553</span></td>
+                                <td class="date-cell">2025-05-14</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Merit-based system concerns</span> <span class="theme-tag">Politicization concerns</span></div></td>
+                                <td>A non-partisan, highly-skilled civil service has been a backbone of America's greatness since the Pendleton Civil Service Act of 1883.</td>
+                                <td class="text-preview">I strongly urge the Office of Personnel Management to drop its proposed enactment of Schedule F. A non-partisan, highly-skilled civil service has been a backbone of America's greatness since the Pendleton Civil Service Act of 1883. For more than a century, Presidents have been able to rely on the kn...</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-15242</span></td>
+                                <td class="date-cell">2025-05-21</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Merit-based system concerns</span> <span class="theme-tag">Due process/employee rights</span> <span class="theme-tag">Politicization concerns</span> <span class="theme-tag">Institutional knowledge loss</span></div></td>
+                                <td>These rules are in place to ensure that federal jobs are awarded based on merit, not political or ideological loyalty.</td>
+                                <td class="text-preview">As a concerned citizen, I strongly oppose the proposed changes that would weaken the competitive hiring rules for career federal employees. These rules are in place to ensure that federal jobs are awarded based on merit, not political or ideological loyalty. Undermining this system could open the do...</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-34887</span></td>
+                                <td class="date-cell">2025-06-11</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Politicization concerns</span></div></td>
+                                <td>The short term political points from this don’t outweigh the long term decline in function.</td>
+                                <td class="text-preview">The short term political points from this don’t outweigh the long term decline in function. It’s self defeating.</td>
+                                <td></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">OPM-2025-0004-18764</span></td>
+                                <td class="date-cell">2025-05-22</td>
+                                <td><span class="stance-against">Against</span></td>
+                                <td><div class="themes-container"><span class="theme-tag">Merit-based system concerns</span> <span class="theme-tag">Due process/employee rights</span> <span class="theme-tag">Politicization concerns</span></div></td>
+                                <td>Punishing the people holding this mess together will not fix it; it will make it worse.</td>
+                                <td class="text-preview">"intentionally subverting Presidential directives" translates to "those who do not allow 1/3 of the entire governing power in the US to enforce a dictatorship" May I remind the Department of Regulations that Congress is the boss of federal employees, not the president, and furthermore, the difficult...</td>
+                                <td></td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Meta Information -->
+        <div class="meta-info">
+            <h3 style="color: white; margin-bottom: 20px;">📋 Report Details</h3>
+            <div class="meta-grid">
+                <div class="meta-item">
+                    <div class="meta-label">Generated</div>
+                    <div class="meta-value">2025-06-24 19:40:05</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Model Used</div>
+                    <div class="meta-value">gpt-4o-mini</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Total Comments</div>
+                    <div class="meta-value">25</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">With Attachments</div>
+                    <div class="meta-value">0</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Average Length</div>
+                    <div class="meta-value">1,271 chars</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Date Range</div>
+                    <div class="meta-value">2025-04-25 to 2025-06-11</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function filterTable() {
+            const table = document.getElementById('commentsTable');
+            const rows = table.getElementsByTagName('tr');
+            
+            // Get text input filters
+            const textFilters = document.querySelectorAll('.filter-input');
+            const textFilterValues = Array.from(textFilters).map(filter => {
+                return {
+                    column: parseInt(filter.getAttribute('data-column')),
+                    value: filter.value.toLowerCase()
+                };
+            });
+            
+            // Get checkbox filters
+            const stanceCheckboxes = document.querySelectorAll('input[data-filter="stance"]:checked');
+            const themeCheckboxes = document.querySelectorAll('input[data-filter="themes"]:checked');
+            const attachmentCheckboxes = document.querySelectorAll('input[data-filter="attachments"]:checked');
+            
+            const selectedStances = Array.from(stanceCheckboxes).map(cb => cb.value.toLowerCase());
+            const selectedThemes = Array.from(themeCheckboxes).map(cb => cb.value.toLowerCase());
+            const selectedAttachments = Array.from(attachmentCheckboxes).map(cb => cb.value);
+
+            // Filter each row
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                const cells = row.getElementsByTagName('td');
+                let showRow = true;
+
+                // Check text filters
+                for (const filter of textFilterValues) {
+                    if (filter.value && filter.column < cells.length) {
+                        const cellText = cells[filter.column].textContent.toLowerCase();
+                        if (!cellText.includes(filter.value)) {
+                            showRow = false;
+                            break;
+                        }
+                    }
+                }
+                
+                // Check stance filter (column 2)
+                if (showRow && selectedStances.length > 0) {
+                    const stanceText = cells[2].textContent.toLowerCase();
+                    if (!selectedStances.some(stance => stanceText.includes(stance))) {
+                        showRow = false;
+                    }
+                }
+                
+                // Check themes filter (column 3)
+                if (showRow && selectedThemes.length > 0) {
+                    const themesText = cells[3].textContent.toLowerCase();
+                    if (!selectedThemes.some(theme => themesText.includes(theme.toLowerCase()))) {
+                        showRow = false;
+                    }
+                }
+                
+                // Check attachments filter (column 6)
+                if (showRow && selectedAttachments.length > 0) {
+                    const attachmentCell = cells[6];
+                    const hasAttachment = attachmentCell.textContent.trim() !== '';
+                    
+                    let attachmentMatch = false;
+                    for (const filter of selectedAttachments) {
+                        if (filter === 'yes' && hasAttachment) {
+                            attachmentMatch = true;
+                            break;
+                        }
+                        if (filter === 'no' && !hasAttachment) {
+                            attachmentMatch = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!attachmentMatch) {
+                        showRow = false;
+                    }
+                }
+
+                row.style.display = showRow ? '' : 'none';
+            }
+        }
+        
+        function clearAllFilters() {
+            const textFilters = document.querySelectorAll('.filter-input');
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            
+            textFilters.forEach(filter => filter.value = '');
+            checkboxes.forEach(checkbox => checkbox.checked = false);
+            
+            filterTable();
+        }
+    </script>
+</body>
+</html>

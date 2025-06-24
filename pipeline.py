@@ -234,9 +234,11 @@ def read_comments_from_csv(csv_file: str, limit: Optional[int] = None, sample_si
     logger.info(f"Loaded {len(comments)} comments")
     return comments
 
-def analyze_comments(comments: List[Dict[str, Any]], model: str = "gpt-4o-mini") -> List[Dict[str, Any]]:
+def analyze_comments(comments: List[Dict[str, Any]], model: str = "gpt-4o-mini", truncate_chars: Optional[int] = None) -> List[Dict[str, Any]]:
     """Analyze comments using the LLM."""
     logger.info(f"Analyzing {len(comments)} comments with {model}")
+    if truncate_chars:
+        logger.info(f"Truncating text to {truncate_chars} characters for LLM analysis")
     
     # Initialize analyzer (TODO: make this configurable per regulation)
     analyzer = create_schedule_f_analyzer(model=model)
@@ -246,7 +248,13 @@ def analyze_comments(comments: List[Dict[str, Any]], model: str = "gpt-4o-mini")
         logger.info(f"Analyzing comment {i+1}/{len(comments)}: {comment['id']}")
         
         try:
-            analysis_result = analyzer.analyze(comment['text'], comment_id=comment['id'])
+            # Prepare text for analysis (truncate if requested)
+            analysis_text = comment['text']
+            if truncate_chars and len(analysis_text) > truncate_chars:
+                analysis_text = analysis_text[:truncate_chars]
+                logger.info(f"  Truncated text from {len(comment['text'])} to {len(analysis_text)} characters")
+            
+            analysis_result = analyzer.analyze(analysis_text, comment_id=comment['id'])
             
             analyzed_comment = {
                 **comment,
@@ -430,6 +438,7 @@ def main():
     parser.add_argument('--output', type=str, default='analyzed_comments.json', help='Output JSON file')
     parser.add_argument('--sample', type=int, help='Process only N random comments for testing')
     parser.add_argument('--model', type=str, default='gpt-4o-mini', help='LLM model to use')
+    parser.add_argument('--truncate', type=int, help='Truncate comment text to N characters before LLM analysis (saves costs)')
     parser.add_argument('--to-database', action='store_true', help='Store results in PostgreSQL database (requires DATABASE_URL in .env)')
     
     args = parser.parse_args()
@@ -448,7 +457,7 @@ def main():
         
         # Step 2: Analyze comments
         logger.info("=== STEP 2: Analyzing Comments ===")
-        analyzed_comments = analyze_comments(comments, args.model)
+        analyzed_comments = analyze_comments(comments, args.model, args.truncate)
         
         # Step 3: Save results locally
         logger.info("=== STEP 3: Saving Results ===")
@@ -462,10 +471,32 @@ def main():
             logger.info("=== STEP 4: Skipping Database Storage ===")
             logger.info("Use --to-database flag to store in PostgreSQL")
         
+        # Generate HTML report
+        logger.info("=== STEP 5: Generating HTML Report ===")
+        try:
+            from generate_report import load_results, calculate_stats, generate_html
+            
+            html_output = "report.html"
+            logger.info(f"Loading results from {args.output}...")
+            comments = load_results(args.output)
+            
+            logger.info("Calculating statistics...")
+            stats = calculate_stats(comments)
+            
+            logger.info(f"Generating HTML report: {html_output}")
+            generate_html(comments, stats, html_output)
+            
+            logger.info(f"✅ HTML report generated: {html_output}")
+            
+        except Exception as e:
+            logger.error(f"HTML report generation failed: {e}")
+            logger.info("Pipeline completed but without HTML report")
+        
         # Summary
         logger.info("=== PIPELINE COMPLETE ===")
         logger.info(f"Processed {len(analyzed_comments)} comments")
         logger.info(f"Results saved to: {args.output}")
+        logger.info(f"HTML report: report.html")
         
     except Exception as e:
         logger.error(f"Pipeline failed: {e}")

@@ -7,6 +7,7 @@ set -e  # Exit on any error
 CSV_FILE=""
 SAMPLE=""
 MODEL="gpt-4o-mini"
+TRUNCATE=""
 TO_DATABASE=false
 OUTPUT="analyzed_comments.json"
 
@@ -20,14 +21,15 @@ usage() {
     echo "Options:"
     echo "  --sample <N>              Process only N random comments (default: all)"
     echo "  --model <model>           LLM model to use (default: gpt-4o-mini)"
+    echo "  --truncate <N>            Truncate comment text to N characters for LLM analysis"
     echo "  --output <file>           Output JSON file (default: analyzed_comments.json)"
     echo "  --to-database             Store results in PostgreSQL database"
     echo "  --help                    Show this help"
     echo ""
     echo "Examples:"
     echo "  $0 --csv comments.csv --sample 100"
-    echo "  $0 --csv comments.csv --to-database"
-    echo "  $0 --csv comments.csv --sample 50 --to-database"
+    echo "  $0 --csv comments.csv --truncate 5000 --to-database"
+    echo "  $0 --csv comments.csv --sample 50 --truncate 3000"
 }
 
 # Parse command line arguments
@@ -43,6 +45,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --model)
             MODEL="$2"
+            shift 2
+            ;;
+        --truncate)
+            TRUNCATE="$2"
             shift 2
             ;;
         --output)
@@ -84,6 +90,10 @@ if [[ -n "$SAMPLE" ]]; then
     PIPELINE_ARGS="$PIPELINE_ARGS --sample $SAMPLE"
 fi
 
+if [[ -n "$TRUNCATE" ]]; then
+    PIPELINE_ARGS="$PIPELINE_ARGS --truncate $TRUNCATE"
+fi
+
 if [[ "$TO_DATABASE" == true ]]; then
     PIPELINE_ARGS="$PIPELINE_ARGS --to-database"
 fi
@@ -97,6 +107,11 @@ else
     echo "🎯 Processing: ALL comments"
 fi
 echo "🤖 Model: $MODEL"
+if [[ -n "$TRUNCATE" ]]; then
+    echo "✂️  Truncate: $TRUNCATE characters"
+else
+    echo "✂️  Truncate: Disabled"
+fi
 echo "💾 Output: $OUTPUT"
 if [[ "$TO_DATABASE" == true ]]; then
     echo "🗄️  Database: PostgreSQL (enabled)"

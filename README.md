@@ -23,8 +23,8 @@ A simple, flexible system for analyzing public comments on federal regulations u
    # Test with sample
    ./run_pipeline.sh --csv comments.csv --sample 100
 
-   # Full run with database storage
-   ./run_pipeline.sh --csv comments.csv --to-database
+   # Full run with database storage and text truncation
+   ./run_pipeline.sh --csv comments.csv --truncate 5000 --to-database
    ```
 
 ## What It Does
@@ -35,6 +35,7 @@ The pipeline processes regulation comments through these steps:
 2. **Downloads attachments** (PDFs, DOCX, images) and extracts text
 3. **Analyzes each comment** individually with LLM for stance and themes
 4. **Saves results** to JSON file and/or PostgreSQL database
+5. **Automatically generates interactive HTML report** (`report.html`) with filtering and statistics
 
 ## For Different Regulations
 
@@ -53,6 +54,7 @@ That's it! The pipeline handles everything else automatically.
 - **`pipeline.py`** - Main processing script
 - **`comment_analyzer.py`** - Regulation-specific LLM configuration
 - **`run_pipeline.sh`** - Convenience script with sleep prevention
+- **`generate_report.py`** - HTML report generator (runs automatically)
 - **`schema.sql`** - PostgreSQL database schema
 - **`requirements.txt`** - Python dependencies
 
@@ -63,10 +65,19 @@ That's it! The pipeline handles everything else automatically.
 
 Options:
   --sample N          Process only N random comments (for testing)
+  --truncate N        Truncate comment text to N characters for LLM analysis (saves costs)
   --to-database       Store results in PostgreSQL 
   --model MODEL       Use different LLM model (default: gpt-4o-mini)
   --output FILE       JSON output file (default: analyzed_comments.json)
 ```
+
+### HTML Report
+
+The pipeline automatically generates an interactive HTML report (`report.html`) with:
+- Summary statistics and stance distribution
+- Checkbox filtering for stances, themes, and attachments
+- Text search for IDs, dates, quotes, and content
+- Clean, simple design for easy analysis
 
 ## Database Setup
 
@@ -83,6 +94,7 @@ If using PostgreSQL storage:
 - **Sampling** - Test on subsets before full runs
 - **Sleep prevention** - Uses `caffeinate` on macOS for long runs
 - **Database integration** - Optional PostgreSQL storage
+- **Automatic HTML reports** - Interactive filtering and statistics
 - **Generic design** - Easy to adapt for any regulation
 
 ## License
