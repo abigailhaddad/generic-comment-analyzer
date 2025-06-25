@@ -26,6 +26,10 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import pandas as pd
 from tqdm import tqdm
+import asyncio
+import aiohttp
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 
 # Load environment variables
 load_dotenv()
@@ -372,44 +376,98 @@ def merge_analysis_results(unique_analyzed_comments: List[Dict[str, Any]], dupli
     logger.info(f"Merged analysis results to {len(all_analyzed_comments)} total comments")
     return all_analyzed_comments
 
-def analyze_comments(comments: List[Dict[str, Any]], model: str = "gpt-4o-mini", truncate_chars: Optional[int] = None) -> List[Dict[str, Any]]:
-    """Analyze comments using the LLM."""
+def analyze_single_comment(analyzer, comment, truncate_chars=None):
+    """Analyze a single comment (for use in parallel processing)."""
+    try:
+        # Prepare text for analysis (truncate if requested)
+        analysis_text = comment['text']
+        if truncate_chars and len(analysis_text) > truncate_chars:
+            analysis_text = analysis_text[:truncate_chars]
+        
+        analysis_result = analyzer.analyze(analysis_text, comment_id=comment['id'])
+        
+        return {
+            **comment,
+            'analysis': analysis_result
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to analyze comment {comment['id']}: {e}")
+        return {
+            **comment,
+            'analysis': None,
+            'analysis_error': str(e)
+        }
+
+def analyze_comments_parallel(comments: List[Dict[str, Any]], model: str = "gpt-4o-mini", truncate_chars: Optional[int] = None, max_workers: int = 8, batch_size: int = 50) -> List[Dict[str, Any]]:
+    """Analyze comments using parallel processing for much faster LLM calls."""
     logger.info(f"Analyzing {len(comments)} comments with {model}")
+    logger.info(f"Using {max_workers} parallel workers, batch size {batch_size}")
     if truncate_chars:
         logger.info(f"Truncating text to {truncate_chars} characters for LLM analysis")
     
-    # Initialize analyzer using configuration file
-    analyzer = CommentAnalyzer(model=model)
-    
     analyzed_comments = []
     
-    # Use tqdm for progress bar
-    for comment in tqdm(comments, desc="Analyzing comments", unit="comment"):
-        try:
-            # Prepare text for analysis (truncate if requested)
-            analysis_text = comment['text']
-            if truncate_chars and len(analysis_text) > truncate_chars:
-                analysis_text = analysis_text[:truncate_chars]
-                logger.debug(f"Truncated text from {len(comment['text'])} to {len(analysis_text)} characters for {comment['id']}")
+    # Process in batches to avoid overwhelming the API
+    for batch_start in tqdm(range(0, len(comments), batch_size), desc="Processing batches", unit="batch"):
+        batch_end = min(batch_start + batch_size, len(comments))
+        batch_comments = comments[batch_start:batch_end]
+        
+        # Use ThreadPoolExecutor for parallel API calls
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Create analyzer for each worker (thread-safe)
+            def create_analyzer():
+                return CommentAnalyzer(model=model)
             
-            analysis_result = analyzer.analyze(analysis_text, comment_id=comment['id'])
+            # Submit all comments in this batch
+            future_to_comment = {}
+            for comment in batch_comments:
+                analyzer = create_analyzer()
+                future = executor.submit(analyze_single_comment, analyzer, comment, truncate_chars)
+                future_to_comment[future] = comment
             
-            analyzed_comment = {
-                **comment,
-                'analysis': analysis_result
-            }
-            analyzed_comments.append(analyzed_comment)
-            
-        except Exception as e:
-            logger.error(f"Failed to analyze comment {comment['id']}: {e}")
-            analyzed_comment = {
-                **comment,
-                'analysis': None,
-                'analysis_error': str(e)
-            }
-            analyzed_comments.append(analyzed_comment)
+            # Collect results as they complete
+            batch_results = []
+            with tqdm(total=len(batch_comments), desc=f"Batch {batch_start//batch_size + 1}", leave=False, unit="comment") as pbar:
+                for future in as_completed(future_to_comment):
+                    result = future.result()
+                    batch_results.append(result)
+                    pbar.update(1)
+        
+        # Maintain original order within batch
+        comment_id_to_result = {result['id']: result for result in batch_results}
+        ordered_results = [comment_id_to_result[comment['id']] for comment in batch_comments]
+        analyzed_comments.extend(ordered_results)
+        
+        # Brief pause between batches to be respectful to API
+        if batch_end < len(comments):
+            time.sleep(0.1)
     
+    logger.info(f"✅ Completed analysis of {len(analyzed_comments)} comments")
     return analyzed_comments
+
+def analyze_comments(comments: List[Dict[str, Any]], model: str = "gpt-4o-mini", truncate_chars: Optional[int] = None, parallel: bool = True) -> List[Dict[str, Any]]:
+    """Analyze comments using the LLM with optional parallel processing."""
+    if parallel and len(comments) > 5:
+        # Use parallel processing for better performance
+        return analyze_comments_parallel(comments, model, truncate_chars)
+    else:
+        # Fall back to sequential processing for small batches or if parallel is disabled
+        logger.info(f"Analyzing {len(comments)} comments with {model} (sequential)")
+        if truncate_chars:
+            logger.info(f"Truncating text to {truncate_chars} characters for LLM analysis")
+        
+        # Initialize analyzer using configuration file
+        analyzer = CommentAnalyzer(model=model)
+        
+        analyzed_comments = []
+        
+        # Use tqdm for progress bar
+        for comment in tqdm(comments, desc="Analyzing comments", unit="comment"):
+            result = analyze_single_comment(analyzer, comment, truncate_chars)
+            analyzed_comments.append(result)
+        
+        return analyzed_comments
 
 def save_results(analyzed_comments: List[Dict[str, Any]], output_file: str):
     """Save analyzed comments to Parquet file."""
@@ -585,6 +643,9 @@ def main():
     parser.add_argument('--model', type=str, default='gpt-4o-mini', help='LLM model to use')
     parser.add_argument('--truncate', type=int, help='Truncate comment text to N characters before LLM analysis (saves costs)')
     parser.add_argument('--to-database', action='store_true', help='Store results in PostgreSQL database (requires DATABASE_URL in .env)')
+    parser.add_argument('--workers', type=int, default=8, help='Number of parallel workers for LLM calls (default: 8)')
+    parser.add_argument('--batch-size', type=int, default=50, help='Batch size for parallel processing (default: 50)')
+    parser.add_argument('--no-parallel', action='store_true', help='Disable parallel processing (use sequential)')
     
     args = parser.parse_args()
     
@@ -606,7 +667,11 @@ def main():
         
         # Step 3: Analyze only unique comments
         logger.info("=== STEP 3: Analyzing Unique Comments ===")
-        unique_analyzed_comments = analyze_comments(unique_comments, args.model, args.truncate)
+        if args.no_parallel:
+            unique_analyzed_comments = analyze_comments(unique_comments, args.model, args.truncate, parallel=False)
+        else:
+            # Update the parallel function call to use the new parameters
+            unique_analyzed_comments = analyze_comments_parallel(unique_comments, args.model, args.truncate, args.workers, args.batch_size)
         
         # Step 4: Merge analysis results back to full dataset
         logger.info("=== STEP 4: Merging Results ===")

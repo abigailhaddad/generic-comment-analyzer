@@ -20,7 +20,20 @@ def load_results(json_file: str) -> List[Dict[str, Any]]:
 def load_results_parquet(parquet_file: str) -> List[Dict[str, Any]]:
     """Load analyzed comments from Parquet file."""
     df = pd.read_parquet(parquet_file)
-    return df.to_dict('records')
+    # Convert to dict and handle numpy arrays
+    records = df.to_dict('records')
+    
+    # Convert numpy arrays to lists for proper JSON serialization
+    import numpy as np
+    for record in records:
+        if 'analysis' in record and record['analysis']:
+            analysis = record['analysis']
+            if 'stances' in analysis and isinstance(analysis['stances'], np.ndarray):
+                analysis['stances'] = analysis['stances'].tolist()
+            if 'themes' in analysis and isinstance(analysis['themes'], np.ndarray):
+                analysis['themes'] = analysis['themes'].tolist()
+    
+    return records
 
 def analyze_field_types(comments: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
     """Analyze standard analysis fields."""
@@ -975,17 +988,22 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
 
 def main():
     parser = argparse.ArgumentParser(description='Generate HTML report from comment analysis results')
-    parser.add_argument('--json', type=str, default='analyzed_comments.json', help='Input JSON file')
+    parser.add_argument('--json', type=str, help='Input JSON file')
+    parser.add_argument('--parquet', type=str, default='analyzed_comments.parquet', help='Input Parquet file')
     parser.add_argument('--output', type=str, default='index.html', help='Output HTML file')
     
     args = parser.parse_args()
     
-    if not os.path.exists(args.json):
-        print(f"Error: JSON file '{args.json}' not found")
+    # Try Parquet first, then JSON
+    if args.json and os.path.exists(args.json):
+        print(f"Loading results from {args.json}...")
+        comments = load_results(args.json)
+    elif os.path.exists(args.parquet):
+        print(f"Loading results from {args.parquet}...")
+        comments = load_results_parquet(args.parquet)
+    else:
+        print(f"Error: Neither JSON file '{args.json}' nor Parquet file '{args.parquet}' found")
         return
-    
-    print(f"Loading results from {args.json}...")
-    comments = load_results(args.json)
     
     print("Analyzing field types...")
     field_analysis = analyze_field_types(comments)

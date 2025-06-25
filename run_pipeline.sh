@@ -9,7 +9,10 @@ SAMPLE=""
 MODEL="gpt-4o-mini"
 TRUNCATE=""
 TO_DATABASE=false
-OUTPUT="analyzed_comments.json"
+OUTPUT="analyzed_comments.parquet"
+WORKERS="8"
+BATCH_SIZE="50"
+NO_PARALLEL=false
 
 # Function to show usage
 usage() {
@@ -22,14 +25,18 @@ usage() {
     echo "  --sample <N>              Process only N random comments (default: all)"
     echo "  --model <model>           LLM model to use (default: gpt-4o-mini)"
     echo "  --truncate <N>            Truncate comment text to N characters for LLM analysis"
-    echo "  --output <file>           Output JSON file (default: analyzed_comments.json)"
+    echo "  --output <file>           Output Parquet file (default: analyzed_comments.parquet)"
     echo "  --to-database             Store results in PostgreSQL database"
+    echo "  --workers <N>             Number of parallel workers (default: 8)"
+    echo "  --batch-size <N>          Batch size for parallel processing (default: 50)"
+    echo "  --no-parallel             Disable parallel processing (slower but more stable)"
     echo "  --help                    Show this help"
     echo ""
     echo "Examples:"
     echo "  $0 --csv comments.csv --sample 100"
     echo "  $0 --csv comments.csv --truncate 5000 --to-database"
-    echo "  $0 --csv comments.csv --sample 50 --truncate 3000"
+    echo "  $0 --csv comments.csv --workers 16 --batch-size 100"
+    echo "  $0 --csv comments.csv --no-parallel  # Use for debugging"
 }
 
 # Parse command line arguments
@@ -57,6 +64,18 @@ while [[ $# -gt 0 ]]; do
             ;;
         --to-database)
             TO_DATABASE=true
+            shift
+            ;;
+        --workers)
+            WORKERS="$2"
+            shift 2
+            ;;
+        --batch-size)
+            BATCH_SIZE="$2"
+            shift 2
+            ;;
+        --no-parallel)
+            NO_PARALLEL=true
             shift
             ;;
         --help)
@@ -98,6 +117,12 @@ if [[ "$TO_DATABASE" == true ]]; then
     PIPELINE_ARGS="$PIPELINE_ARGS --to-database"
 fi
 
+if [[ "$NO_PARALLEL" == true ]]; then
+    PIPELINE_ARGS="$PIPELINE_ARGS --no-parallel"
+else
+    PIPELINE_ARGS="$PIPELINE_ARGS --workers $WORKERS --batch-size $BATCH_SIZE"
+fi
+
 # Show what we're about to run
 echo "🚀 Starting comment analysis pipeline..."
 echo "📁 CSV file: $CSV_FILE"
@@ -117,6 +142,11 @@ if [[ "$TO_DATABASE" == true ]]; then
     echo "🗄️  Database: PostgreSQL (enabled)"
 else
     echo "🗄️  Database: Disabled (use --to-database to enable)"
+fi
+if [[ "$NO_PARALLEL" == true ]]; then
+    echo "🔧 Processing: Sequential (parallel disabled)"
+else
+    echo "🔧 Processing: Parallel ($WORKERS workers, batch size $BATCH_SIZE)"
 fi
 
 echo ""
