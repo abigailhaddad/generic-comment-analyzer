@@ -51,6 +51,34 @@ def analyze_field_types(comments: List[Dict[str, Any]]) -> Dict[str, Dict[str, A
             'total_occurrences': total_values
         }
     
+    # Add duplication count analysis
+    dup_counts = {}
+    dup_ratios = {}
+    
+    for comment in comments:
+        count = comment.get('duplication_count', 1)
+        ratio = comment.get('duplication_ratio', 1)
+        
+        dup_counts[count] = dup_counts.get(count, 0) + 1
+        dup_ratios[ratio] = dup_ratios.get(ratio, 0) + 1
+    
+    # Sort by count/ratio value
+    field_analysis['duplication_count'] = {
+        'type': 'checkbox',
+        'unique_values': sorted(dup_counts.keys()),
+        'num_unique': len(dup_counts),
+        'is_list': False,
+        'counts': dup_counts
+    }
+    
+    field_analysis['duplication_ratio'] = {
+        'type': 'checkbox', 
+        'unique_values': sorted(dup_ratios.keys()),
+        'num_unique': len(dup_ratios),
+        'is_list': False,
+        'counts': dup_ratios
+    }
+    
     return field_analysis
 
 def calculate_stats(comments: List[Dict[str, Any]], field_analysis: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
@@ -487,6 +515,24 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
             color: #28a745;
         }}
         
+        .unique-indicator {{
+            background: #28a745;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 500;
+        }}
+        
+        .duplicate-indicator {{
+            background: #ffc107;
+            color: #212529;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 500;
+        }}
+        
         .meta-info {{
             background: #343a40;
             color: white;
@@ -608,12 +654,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                                     <input type="text" class="filter-input" data-column="0" placeholder="Filter ID..." onkeyup="filterTable()">
                                 </div>
                             </th>
-                            <th class="filterable" data-column="1">
-                                Date <span class="filter-arrow" onclick="toggleFilter(1)">▼</span>
-                                <div class="filter-dropdown" id="filter-1" style="display: none;">
-                                    <input type="text" class="filter-input" data-column="1" placeholder="Filter date..." onkeyup="filterTable()">
-                                </div>
-                            </th>
+                            <th>Date</th>
                             <th class="filterable" data-column="2">
                                 Submitter <span class="filter-arrow" onclick="toggleFilter(2)">▼</span>
                                 <div class="filter-dropdown" id="filter-2" style="display: none;">
@@ -649,6 +690,18 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                                 <div class="filter-dropdown" id="filter-7" style="display: none;">
                                     <label class="filter-checkbox"><input type="checkbox" data-filter="attachments" value="yes" onchange="filterTable()"> With attachments</label>
                                     <label class="filter-checkbox"><input type="checkbox" data-filter="attachments" value="no" onchange="filterTable()"> No attachments</label>
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="8">
+                                Dup Count <span class="filter-arrow" onclick="toggleFilter(8)">▼</span>
+                                <div class="filter-dropdown" id="filter-8" style="display: none;">
+                                    {"".join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="duplication_count" value="{count}" onchange="filterTable()"> {count}</label>' for count in sorted(field_analysis.get('duplication_count', {}).get('unique_values', []), reverse=True))}
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="9">
+                                Dup Ratio <span class="filter-arrow" onclick="toggleFilter(9)">▼</span>
+                                <div class="filter-dropdown" id="filter-9" style="display: none;">
+                                    {"".join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="duplication_ratio" value="{ratio}" onchange="filterTable()"> 1:{ratio}</label>' for ratio in sorted(field_analysis.get('duplication_ratio', {}).get('unique_values', []), reverse=True))}
                                 </div>
                             </th>
                         </tr>
@@ -698,6 +751,17 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         # Attachments
         has_attachments = '<span class="attachment-indicator">📎</span>' if comment.get('attachment_text', '').strip() else ''
         
+        # Duplication count and ratio
+        duplication_count = comment.get('duplication_count', 1)
+        duplication_ratio = comment.get('duplication_ratio', 1)
+        
+        if duplication_count == 1:
+            count_display = '<span class="unique-indicator">1</span>'
+            ratio_display = f'<span class="unique-indicator">1:{duplication_ratio}</span>'
+        else:
+            count_display = f'<span class="duplicate-indicator">{duplication_count}</span>'
+            ratio_display = f'<span class="duplicate-indicator">1:{duplication_ratio}</span>'
+        
         html_template += f"""
                             <tr>
                                 <td><span class="comment-id">{comment.get('id', '')}</span></td>
@@ -708,6 +772,8 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                                 <td>{key_quote[:200]}{'...' if len(key_quote) > 200 else ''}</td>
                                 <td class="text-preview">{text_preview}</td>
                                 <td>{has_attachments}</td>
+                                <td>{count_display}</td>
+                                <td>{ratio_display}</td>
                             </tr>
 """
 
@@ -768,10 +834,14 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
             const stanceCheckboxes = document.querySelectorAll('input[data-filter="stances"]:checked');
             const themeCheckboxes = document.querySelectorAll('input[data-filter="themes"]:checked');
             const attachmentCheckboxes = document.querySelectorAll('input[data-filter="attachments"]:checked');
+            const duplicationCountCheckboxes = document.querySelectorAll('input[data-filter="duplication_count"]:checked');
+            const duplicationRatioCheckboxes = document.querySelectorAll('input[data-filter="duplication_ratio"]:checked');
             
             const selectedStances = Array.from(stanceCheckboxes).map(cb => cb.value.toLowerCase());
             const selectedThemes = Array.from(themeCheckboxes).map(cb => cb.value.toLowerCase());
             const selectedAttachments = Array.from(attachmentCheckboxes).map(cb => cb.value);
+            const selectedDuplicationCounts = Array.from(duplicationCountCheckboxes).map(cb => parseInt(cb.value));
+            const selectedDuplicationRatios = Array.from(duplicationRatioCheckboxes).map(cb => parseInt(cb.value));
 
             // Filter each row
             for (let i = 1; i < rows.length; i++) {{
@@ -827,6 +897,30 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                         showRow = false;
                     }}
                 }}
+                
+                // Check duplication count filter (column 8)
+                if (showRow && selectedDuplicationCounts.length > 0) {{
+                    const duplicationCell = cells[8];
+                    const duplicationText = duplicationCell.textContent.trim();
+                    const duplicationCount = parseInt(duplicationText);
+                    
+                    if (!selectedDuplicationCounts.includes(duplicationCount)) {{
+                        showRow = false;
+                    }}
+                }}
+                
+                // Check duplication ratio filter (column 9)
+                if (showRow && selectedDuplicationRatios.length > 0) {{
+                    const ratioCell = cells[9];
+                    const ratioText = ratioCell.textContent.trim();
+                    // Extract number after "1:" (e.g., "1:10" -> 10)
+                    const ratioMatch = ratioText.match(/1:(\\d+)/);
+                    const ratioValue = ratioMatch ? parseInt(ratioMatch[1]) : 1;
+                    
+                    if (!selectedDuplicationRatios.includes(ratioValue)) {{
+                        showRow = false;
+                    }}
+                }}
 
                 row.style.display = showRow ? '' : 'none';
             }}
@@ -876,7 +970,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
 def main():
     parser = argparse.ArgumentParser(description='Generate HTML report from comment analysis results')
     parser.add_argument('--json', type=str, default='analyzed_comments.json', help='Input JSON file')
-    parser.add_argument('--output', type=str, default='report.html', help='Output HTML file')
+    parser.add_argument('--output', type=str, default='index.html', help='Output HTML file')
     
     args = parser.parse_args()
     

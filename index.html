@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comment Analysis Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            line-height: 1.5;
+            background: #f8f9fa;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            font-size: 2em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .section {
+            background: white;
+            margin: 30px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h2 {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+        }
+        
+        .filters-container {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .filters-header {
+            font-weight: 600;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+        
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .filter-label {
+            font-weight: 500;
+            color: #333;
+            font-size: 0.9em;
+        }
+        
+        .filterable {
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .filter-arrow {
+            float: right;
+            font-size: 12px;
+            color: #666;
+            margin-left: 8px;
+            user-select: none;
+        }
+        
+        .filter-arrow:hover {
+            color: #007bff;
+        }
+        
+        .filter-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 1000;
+            padding: 10px;
+            min-width: 200px;
+        }
+        
+        .filter-input {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        
+        .filter-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 1px rgba(0,123,255,0.25);
+        }
+        
+        .filter-checkbox {
+            display: block;
+            margin: 5px 0;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        
+        .filter-checkbox input {
+            margin-right: 6px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9em;
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            margin: 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        th {
+            background: #e9ecef;
+            padding: 12px 8px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #dee2e6;
+            position: sticky;
+            top: 0;
+        }
+        
+        td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: top;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        tr:hover {
+            background-color: #e3f2fd;
+        }
+        
+        .stance-for {
+            background: #28a745;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .stance-against {
+            background: #dc3545;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .stance-neutral {
+            background: #ffc107;
+            color: #212529;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .stance-unknown {
+            background: #6c757d;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .themes-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            max-width: 300px;
+        }
+        
+        .theme-tag {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+            border: 1px solid #bbdefb;
+        }
+        
+        .text-preview {
+            max-width: 300px;
+            max-height: 100px;
+            overflow: hidden;
+            font-size: 12px;
+        }
+        
+        .comment-id {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        
+        .date-cell {
+            white-space: nowrap;
+            font-size: 12px;
+        }
+        
+        .attachment-indicator {
+            font-size: 16px;
+            color: #28a745;
+        }
+        
+        .unique-indicator {
+            background: #28a745;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .duplicate-indicator {
+            background: #ffc107;
+            color: #212529;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .meta-info {
+            background: #343a40;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+        
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .meta-label {
+            font-size: 0.8em;
+            opacity: 0.8;
+        }
+        
+        .meta-value {
+            font-weight: 600;
+        }
+        
+        .themes-list {
+            list-style: none;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 10px;
+        }
+        
+        .themes-list li {
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 4px;
+            border-left: 3px solid #007bff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .theme-name {
+            font-weight: 500;
+        }
+        
+        .theme-count {
+            background: #007bff;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .clear-filters {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .clear-filters:hover {
+            background: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Comment Analysis Report</h1>
+            <div class="subtitle">Analysis of public comments with interactive filtering</div>
+        </div>
+        
+        <!-- Summary Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">50</div>
+                <div class="stat-label">Total Comments</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">1</div>
+                <div class="stat-label">With Attachments</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">1,087</div>
+                <div class="stat-label">Avg. Characters</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">2025-06-16 to 2025-06-24</div>
+                <div class="stat-label">Date Range</div>
+            </div>
+        </div>
+
+        <!-- Analysis Field Distributions -->
+        
+        <div class="section">
+            <h2>📊 Stances Distribution</h2>
+            <div class="stats-grid">
+                
+                <div class="stat-card">
+                    <div class="stat-number">40</div>
+                    <div class="stat-label">Critique of Political Interference</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-number">32</div>
+                    <div class="stat-label">Remove COVID Vaccines from the Market</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-number">15</div>
+                    <div class="stat-label">Maintain Vaccine Accessibility</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-number">14</div>
+                    <div class="stat-label">Scientific Evidence for Vaccination</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-number">12</div>
+                    <div class="stat-label">Support for ACIP's Expert Members</div>
+                </div>
+                
+            </div>
+        </div>
+        <div class="section">
+            <h2>📊 Themes Distribution</h2>
+            <div class="stats-grid">
+                
+                <div class="stat-card">
+                    <div class="stat-number">47</div>
+                    <div class="stat-label">Public health trust</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-number">32</div>
+                    <div class="stat-label">Vaccine safety concerns</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-number">15</div>
+                    <div class="stat-label">Accessibility of vaccines</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-number">14</div>
+                    <div class="stat-label">Expertise in health advisory</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-number">9</div>
+                    <div class="stat-label">Political influence in health decisions</div>
+                </div>
+                
+            </div>
+        </div>
+
+        <!-- Comments Table -->
+        <div class="section">
+            <h2>Comments</h2>
+            <div class="table-controls">
+                <button class="clear-filters" onclick="clearAllFilters()">Clear All Filters</button>
+            </div>
+                
+            <div style="overflow-x: auto;">
+                <table id="commentsTable" class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th class="filterable" data-column="0">
+                                Comment ID <span class="filter-arrow" onclick="toggleFilter(0)">▼</span>
+                                <div class="filter-dropdown" id="filter-0" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="0" placeholder="Filter ID..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th>Date</th>
+                            <th class="filterable" data-column="2">
+                                Submitter <span class="filter-arrow" onclick="toggleFilter(2)">▼</span>
+                                <div class="filter-dropdown" id="filter-2" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="2" placeholder="Filter name..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="3">
+                                Stances <span class="filter-arrow" onclick="toggleFilter(3)">▼</span>
+                                <div class="filter-dropdown" id="filter-3" style="display: none;">
+                                    <label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Critique of Political Interference" onchange="filterTable()"> Critique of Political Interference</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Maintain Vaccine Accessibility" onchange="filterTable()"> Maintain Vaccine Accessibility</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Remove COVID Vaccines from the Market" onchange="filterTable()"> Remove COVID Vaccines from the Market</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Scientific Evidence for Vaccination" onchange="filterTable()"> Scientific Evidence for Vaccination</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Support for ACIP's Expert Members" onchange="filterTable()"> Support for ACIP's Expert Members</label>
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="4">
+                                Themes <span class="filter-arrow" onclick="toggleFilter(4)">▼</span>
+                                <div class="filter-dropdown" id="filter-4" style="display: none;">
+                                    <label class="filter-checkbox"><input type="checkbox" data-filter="themes" value="Accessibility of vaccines" onchange="filterTable()"> Accessibility of vaccines</label><label class="filter-checkbox"><input type="checkbox" data-filter="themes" value="Expertise in health advisory" onchange="filterTable()"> Expertise in health advisory</label><label class="filter-checkbox"><input type="checkbox" data-filter="themes" value="Political influence in health decisions" onchange="filterTable()"> Political influence in health decisions</label><label class="filter-checkbox"><input type="checkbox" data-filter="themes" value="Public health trust" onchange="filterTable()"> Public health trust</label><label class="filter-checkbox"><input type="checkbox" data-filter="themes" value="Vaccine safety concerns" onchange="filterTable()"> Vaccine safety concerns</label>
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="5">
+                                Key Quote <span class="filter-arrow" onclick="toggleFilter(5)">▼</span>
+                                <div class="filter-dropdown" id="filter-5" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="5" placeholder="Search quotes..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="6">
+                                Text Preview <span class="filter-arrow" onclick="toggleFilter(6)">▼</span>
+                                <div class="filter-dropdown" id="filter-6" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="6" placeholder="Search text..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="7">
+                                📎 <span class="filter-arrow" onclick="toggleFilter(7)">▼</span>
+                                <div class="filter-dropdown" id="filter-7" style="display: none;">
+                                    <label class="filter-checkbox"><input type="checkbox" data-filter="attachments" value="yes" onchange="filterTable()"> With attachments</label>
+                                    <label class="filter-checkbox"><input type="checkbox" data-filter="attachments" value="no" onchange="filterTable()"> No attachments</label>
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="8">
+                                Dup Count <span class="filter-arrow" onclick="toggleFilter(8)">▼</span>
+                                <div class="filter-dropdown" id="filter-8" style="display: none;">
+                                    <label class="filter-checkbox"><input type="checkbox" data-filter="duplication_count" value="26" onchange="filterTable()"> 26</label><label class="filter-checkbox"><input type="checkbox" data-filter="duplication_count" value="1" onchange="filterTable()"> 1</label>
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="9">
+                                Dup Ratio <span class="filter-arrow" onclick="toggleFilter(9)">▼</span>
+                                <div class="filter-dropdown" id="filter-9" style="display: none;">
+                                    <label class="filter-checkbox"><input type="checkbox" data-filter="duplication_ratio" value="50" onchange="filterTable()"> 1:50</label><label class="filter-checkbox"><input type="checkbox" data-filter="duplication_ratio" value="2" onchange="filterTable()"> 1:2</label>
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                        <tbody>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-10969</span></td>
+                                <td class="date-cell">2025-06-24</td>
+                                <td>Anonymous Anonymous</td>
+                                <td><div class="themes-container"><span class="theme-tag">Maintain Vaccine Accessibility</span> <span class="theme-tag">Support for ACIP's Expert Members</span> <span class="theme-tag">Scientific Evidence for Vaccination</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Accessibility of vaccines</span> <span class="theme-tag">Expertise in health advisory</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>Without access, there is no right to choose.</td>
+                                <td class="text-preview">I am writing to express concern over termination of all 17 CDC ACIP members. The CDC ACIP is responsible for ensuring access to life-saving vaccinations. Even in an individualistic society, members of that society must have access to vaccinations in order to be able to express their right to choose ...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-2858</span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Sue Graham</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-3964</span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>sammy Pyon</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-1903</span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Tami Amiot</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-2980</span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Silvia Larson</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-6907</span></td>
+                                <td class="date-cell">2025-06-20</td>
+                                <td>Fern Utz</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-3494</span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Theresa Kondel</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-7441</span></td>
+                                <td class="date-cell">2025-06-20</td>
+                                <td>Roxann Messner</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-5411</span></td>
+                                <td class="date-cell">2025-06-19</td>
+                                <td>Martina McHolland</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-6603</span></td>
+                                <td class="date-cell">2025-06-20</td>
+                                <td>Wynter Kruger</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-3207</span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Shirley Lamonna</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-5011</span></td>
+                                <td class="date-cell">2025-06-19</td>
+                                <td>Jacqueline Green</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-2528</span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Marle Vane</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-3878</span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Anais Tekerian</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-7372</span></td>
+                                <td class="date-cell">2025-06-20</td>
+                                <td>Shelly Mulligan</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-1522</span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Annette Vulpis</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-5840</span></td>
+                                <td class="date-cell">2025-06-19</td>
+                                <td>Amy Slusher</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-8109</span></td>
+                                <td class="date-cell">2025-06-21</td>
+                                <td>Lisa Wiesen</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-2984</span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Barbara Fess</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-1760</span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Victoria Sinclair</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-4117</span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Marty Grosjean</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-6080</span></td>
+                                <td class="date-cell">2025-06-19</td>
+                                <td>kristina Smith - Simpson</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-6445</span></td>
+                                <td class="date-cell">2025-06-20</td>
+                                <td>Loisirene Blumberg</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-4193</span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Christine Alexander</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-3069</span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Colleen Isdale</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-7735</span></td>
+                                <td class="date-cell">2025-06-20</td>
+                                <td>Gail Wilson</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-6039</span></td>
+                                <td class="date-cell">2025-06-19</td>
+                                <td>Michelle Brown</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="duplicate-indicator">26</span></td>
+                                <td><span class="duplicate-indicator">1:2</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-8320</span></td>
+                                <td class="date-cell">2025-06-21</td>
+                                <td>Janna Abeling</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span> <span class="theme-tag">Expertise in health advisory</span></div></td>
+                                <td>As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated C...</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+Please remove all currently licensed COVID shots from the market.  It is time to get back to basic science principals.  We need better studies and  for ALL research, good bad and ugly to be published.  I am tired of following the money trail to figure why ce...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-8304</span></td>
+                                <td class="date-cell">2025-06-21</td>
+                                <td>Kimberly Sabo</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-10058</span></td>
+                                <td class="date-cell">2025-06-23</td>
+                                <td>Penny Majors</td>
+                                <td><div class="themes-container"><span class="theme-tag">Maintain Vaccine Accessibility</span> <span class="theme-tag">Support for ACIP's Expert Members</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Accessibility of vaccines</span> <span class="theme-tag">Public health trust</span> <span class="theme-tag">Expertise in health advisory</span></div></td>
+                                <td>Respect their freedom to get vaccines, make the vaccines available for everyone, and you can expect happy parents who will support you.</td>
+                                <td class="text-preview">I am writing to share my concern about the replacement of the 17 ACIP members with people who are biased against vaccines. Most of us have had vaccines for decades without interference and now this new group along with RFK, jr wants to restrict my freedom to get vaccines even though they supported m...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-8032</span></td>
+                                <td class="date-cell">2025-06-21</td>
+                                <td>Colleen and Joe OMeara</td>
+                                <td><div class="themes-container"><span class="theme-tag">Support for ACIP's Expert Members</span> <span class="theme-tag">Maintain Vaccine Accessibility</span> <span class="theme-tag">Scientific Evidence for Vaccination</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Expertise in health advisory</span> <span class="theme-tag">Accessibility of vaccines</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>ACIP must preserve a universal recommendation for COVID vaccines for people of all ages, including children and pregnant people, at least twice annually.</td>
+                                <td class="text-preview">RFK Jr. must preserve an independent decision process with CDC’s ACIP and reverse the decision to remove the recent expert advisors.
+
+Members of ACIP must disclose all financial and other conflicts of interest.
+
+ACIP must understand that currently available FDA-approved vaccines are safe and effecti...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-1121</span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Anonymous Anonymous</td>
+                                <td><div class="themes-container"><span class="theme-tag">Maintain Vaccine Accessibility</span> <span class="theme-tag">Support for ACIP's Expert Members</span> <span class="theme-tag">Scientific Evidence for Vaccination</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Accessibility of vaccines</span> <span class="theme-tag">Expertise in health advisory</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>ACIP must preserve a universal recommendation for COVID vaccines for people of all ages, including children and pregnant people, at least twice annually.</td>
+                                <td class="text-preview">Vaccines keep us healthy and safe. There is a long history of rigorous science behind why vaccines work. Vaccines help me feel safe and keep my family safe. 
+
+RFK Jr. must preserve an independent decision process with CDC’s ACIP and reverse the decision to remove the recent expert advisors.
+
+Members...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-4311</span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Anonymous Anonymous</td>
+                                <td><div class="themes-container"><span class="theme-tag">Maintain Vaccine Accessibility</span> <span class="theme-tag">Support for ACIP's Expert Members</span> <span class="theme-tag">Critique of Political Interference</span> <span class="theme-tag">Scientific Evidence for Vaccination</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Accessibility of vaccines</span> <span class="theme-tag">Expertise in health advisory</span> <span class="theme-tag">Political influence in health decisions</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>Everyone must have regular access to updated COVID vaccines which must be made widely available and fully covered by health insurance.</td>
+                                <td class="text-preview">Docket: CDC-2025-0024
+
+Public Comment for the June 25-27, 2025, CDC ACIP Committee Meeting
+
+To RFK Jr. and Members of the CDC ACIP committee:
+
+I have no conflicts of interest to disclose.
+
+Today, I am writing to express grave concerns about the recent termination of all 17 members of the CDC ACIP co...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-0730</span></td>
+                                <td class="date-cell">2025-06-17</td>
+                                <td>Jerry Young</td>
+                                <td><div class="themes-container"><span class="theme-tag">Support for ACIP's Expert Members</span> <span class="theme-tag">Maintain Vaccine Accessibility</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Expertise in health advisory</span> <span class="theme-tag">Accessibility of vaccines</span> <span class="theme-tag">Political influence in health decisions</span></div></td>
+                                <td>HHS must preserve an independent decision process with CDC’s ACIP and reverse the decision to remove the recent expert advisors.</td>
+                                <td class="text-preview">HHS document meant to support Kennedy’s decision to no longer recommend COVID vaccines for pregnant women or healthy children is not based on proven science. HHS must preserve an independent decision process with CDC’s ACIP and reverse the decision to remove the recent expert advisors. ACIP must con...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-11015</span></td>
+                                <td class="date-cell">2025-06-24</td>
+                                <td>Michael King</td>
+                                <td><div class="themes-container"><span class="theme-tag">Maintain Vaccine Accessibility</span> <span class="theme-tag">Support for ACIP's Expert Members</span> <span class="theme-tag">Scientific Evidence for Vaccination</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Accessibility of vaccines</span> <span class="theme-tag">Public health trust</span> <span class="theme-tag">Expertise in health advisory</span></div></td>
+                                <td>I think it is imperative that we have a robust effort to continue in the development and distribution of appropriate COVID vaccines.</td>
+                                <td class="text-preview">I am very concerned about the firing of the vaccine experts and where that will leave us in regard to COVID.  I think it is imperative that we have a robust effort to continue in the development and distribution of appropriate COVID vaccines.  Please ensure that this effort gets top priority, as mos...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-11039</span></td>
+                                <td class="date-cell">2025-06-24</td>
+                                <td>Brittany Montoro</td>
+                                <td><div class="themes-container"><span class="theme-tag">Maintain Vaccine Accessibility</span> <span class="theme-tag">Scientific Evidence for Vaccination</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Accessibility of vaccines</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>Universal vaccine access is necessary. It is part of medical justice for all.</td>
+                                <td class="text-preview">Universal vaccine access is necessary. It is part of medical justice for all. It is necessary. We cannot combat or hope to prevent future pandemics without vaccination as a given for all Americans. My Polio and MMR vaccines helped protect me as a child. My gardasil and covid vaccines protect me as a...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-0923</span></td>
+                                <td class="date-cell">2025-06-17</td>
+                                <td>Anonymous Anonymous</td>
+                                <td><div class="themes-container"><span class="theme-tag">Critique of Political Interference</span> <span class="theme-tag">Maintain Vaccine Accessibility</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Political influence in health decisions</span> <span class="theme-tag">Accessibility of vaccines</span></div></td>
+                                <td>It is pseudoscientific and downright dangerous to limit our access to vaccines and takes this country backward.</td>
+                                <td class="text-preview">RFK Jr. has completely overstepped his bounds. It is pseudoscientific and downright dangerous to limit our access to vaccines and takes this country backward. This is appalling and needs to be stopped.</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-10314</span></td>
+                                <td class="date-cell">2025-06-23</td>
+                                <td>Teresa Mead</td>
+                                <td><div class="themes-container"><span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Political influence in health decisions</span></div></td>
+                                <td>Adding these members and removing the previous ones will take away people's rights to receive the most advanced, newest vaccines.</td>
+                                <td class="text-preview">Adding these members and removing the previous ones will take away people's rights to receive the most advanced, newest vaccines.</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-0789</span></td>
+                                <td class="date-cell">2025-06-17</td>
+                                <td>Anonymous Anonymous</td>
+                                <td><div class="themes-container"><span class="theme-tag">Maintain Vaccine Accessibility</span> <span class="theme-tag">Scientific Evidence for Vaccination</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Accessibility of vaccines</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>It is safer and easier to make the vaccine available for anyone who wants to protect themselves and their family- it is safer and easier for people to be allowed to make these decisions for themselves...</td>
+                                <td class="text-preview">Restricting who is "allowed" to get any specific vaccination, not just for COVID-19, severely limits who the people that are vaccinated can interact with on a regular, normal life basis.  If only the elderly and immune-compromised  are eligible for vaccines, that will still leave them at risk becaus...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-11024</span></td>
+                                <td class="date-cell">2025-06-24</td>
+                                <td>Suzanne Johnson-DeLeon</td>
+                                <td><div class="themes-container"><span class="theme-tag">Maintain Vaccine Accessibility</span> <span class="theme-tag">Scientific Evidence for Vaccination</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Accessibility of vaccines</span> <span class="theme-tag">Public health trust</span> <span class="theme-tag">Expertise in health advisory</span></div></td>
+                                <td>Please focus on things that are actually important. Like making COVID-19 vaccine available and recommended for pregnant women.</td>
+                                <td class="text-preview">How incredibly embarrassing that a vote on thimerosal in flu vaccine is on the agenda in this day and age! Ignorance on full display.
+
+1. The science is completely settled. Thimerosal in vaccines has been proven safe and effective over and over (and over!) again. Its use in multi-dose vials is a cos...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-0822</span></td>
+                                <td class="date-cell">2025-06-17</td>
+                                <td>Elisha Hamilton</td>
+                                <td><div class="themes-container"><span class="theme-tag">Maintain Vaccine Accessibility</span> <span class="theme-tag">Support for ACIP's Expert Members</span> <span class="theme-tag">Critique of Political Interference</span> <span class="theme-tag">Scientific Evidence for Vaccination</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Accessibility of vaccines</span> <span class="theme-tag">Public health trust</span> <span class="theme-tag">Expertise in health advisory</span> <span class="theme-tag">Political influence in health decisions</span></div></td>
+                                <td>Anyone who wants the vaccine should have access and it should be covered by insurance.</td>
+                                <td class="text-preview">Vaccine access is extremely important to me and my family as we have high risk members who could be seriously affected by many diseases that are kept in check by vaccines, including the Covid 19 vaccines.
+
+It is very alarming that despite all promises before being put into the position, that RFK Jr....</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-1348</span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Janis Belcher</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-0736</span></td>
+                                <td class="date-cell">2025-06-17</td>
+                                <td>Celest Tidd</td>
+                                <td><div class="themes-container"><span class="theme-tag">Maintain Vaccine Accessibility</span> <span class="theme-tag">Scientific Evidence for Vaccination</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Accessibility of vaccines</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I want it. I demand it! How dare you take the option let alone choice away from a working adult, and not considering what circumstances a younger person might want access to the vaccine for.</td>
+                                <td class="text-preview">I am a medical worker within a long term care facility and for the safety of my aged/immuno-compromised residents, have elected to get every version and update of the Covid vaccine so as to not risk communicating it to those I work with. I cannot believe that simply because I'm under 65, that I'll b...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-7628</span></td>
+                                <td class="date-cell">2025-06-20</td>
+                                <td></td>
+                                <td><div class="themes-container"><span class="theme-tag">Support for ACIP's Expert Members</span> <span class="theme-tag">Critique of Political Interference</span> <span class="theme-tag">Scientific Evidence for Vaccination</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Expertise in health advisory</span> <span class="theme-tag">Political influence in health decisions</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>Disregarding long-standing norms by firing an entire advisory committee without due cause sends a chilling message to scientists, clinicians, public health professionals, and the country at large: Exp...</td>
+                                <td class="text-preview">Comments from the Partnership to Fight Infectious Disease attached.</td>
+                                <td><span class="attachment-indicator">📎</span></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-7207</span></td>
+                                <td class="date-cell">2025-06-20</td>
+                                <td>Melanie BROWN</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-7967</span></td>
+                                <td class="date-cell">2025-06-20</td>
+                                <td>Lawrence Dick</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>I strongly urge all ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td class="text-preview">ACIP –  Regain the Public’s Trust?
+I strongly urge all ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. 
+
+In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-0611</span></td>
+                                <td class="date-cell">2025-06-16</td>
+                                <td>Maggie McKee</td>
+                                <td><div class="themes-container"><span class="theme-tag">Support for ACIP's Expert Members</span> <span class="theme-tag">Critique of Political Interference</span> <span class="theme-tag">Scientific Evidence for Vaccination</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Public health trust</span> <span class="theme-tag">Expertise in health advisory</span> <span class="theme-tag">Political influence in health decisions</span></div></td>
+                                <td>I'm writing to strenuously object to the removal of all 17 members of the CDC's vaccine advisory committee by RFK Jr. The data shows that vaccines reduce severe illness, death, and long COVID, and RFK...</td>
+                                <td class="text-preview">I'm writing to strenuously object to the removal of all 17 members of the CDC's vaccine advisory committee by RFK Jr. The data shows that vaccines reduce severe illness, death, and long COVID, and RFK Jr. ignored this evidence and bypassed expert advisory committee input when he removed vaccine reco...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-0416</span></td>
+                                <td class="date-cell">2025-06-16</td>
+                                <td>Kimberly Hageman</td>
+                                <td><div class="themes-container"><span class="theme-tag">Maintain Vaccine Accessibility</span> <span class="theme-tag">Support for ACIP's Expert Members</span> <span class="theme-tag">Critique of Political Interference</span> <span class="theme-tag">Scientific Evidence for Vaccination</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Accessibility of vaccines</span> <span class="theme-tag">Expertise in health advisory</span> <span class="theme-tag">Political influence in health decisions</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>The scientific evidence is clear: COVID vaccination within the last year reduces the risk of symptoms, severe disease, disability, and death for people of all ages, including previously healthy people...</td>
+                                <td class="text-preview">As a family medicine physician, I care deeply about my patients and community. I believe in science, the research process, and experts guiding Immunization recommendations.
+
+We all witnessed the tremendous benefits of the COVID vaccine in real time. 
+
+To the CDC ACIP committee:
+
+I have no conflicts ...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-8589</span></td>
+                                <td class="date-cell">2025-06-21</td>
+                                <td>Kim Monroe</td>
+                                <td><div class="themes-container"><span class="theme-tag">Remove COVID Vaccines from the Market</span> <span class="theme-tag">Critique of Political Interference</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Vaccine safety concerns</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.</td>
+                                <td class="text-preview">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id">CDC-2025-0024-9339</span></td>
+                                <td class="date-cell">2025-06-23</td>
+                                <td>Anonymous Anonymous</td>
+                                <td><div class="themes-container"><span class="theme-tag">Maintain Vaccine Accessibility</span> <span class="theme-tag">Support for ACIP's Expert Members</span> <span class="theme-tag">Critique of Political Interference</span> <span class="theme-tag">Scientific Evidence for Vaccination</span></div></td>
+                                <td><div class="themes-container"><span class="theme-tag">Accessibility of vaccines</span> <span class="theme-tag">Expertise in health advisory</span> <span class="theme-tag">Political influence in health decisions</span> <span class="theme-tag">Public health trust</span></div></td>
+                                <td>"Everyone must have regular access to updated COVID vaccines and widely available with full coverage by health insurance."</td>
+                                <td class="text-preview">Docket: CDC-2025-0024
+
+Public Comment for the June 25-27, 2025, CDC ACIP Committee Meeting
+
+To RFK Jr. and Members of the CDC ACIP committee:
+
+I have no conflicts of interest to disclose.
+
+I live with family who are and I am immunocompromised myself. Furthermore, I know indiscriminate access to vacc...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:50</span></td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Meta Information -->
+        <div class="meta-info">
+            <h3 style="color: white; margin-bottom: 20px;">📋 Report Details</h3>
+            <div class="meta-grid">
+                <div class="meta-item">
+                    <div class="meta-label">Generated</div>
+                    <div class="meta-value">2025-06-25 00:09:28</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Model Used</div>
+                    <div class="meta-value">gpt-4o-mini</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Total Comments</div>
+                    <div class="meta-value">50</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">With Attachments</div>
+                    <div class="meta-value">1</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Average Length</div>
+                    <div class="meta-value">1,087 chars</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Date Range</div>
+                    <div class="meta-value">2025-06-16 to 2025-06-24</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function filterTable() {
+            const table = document.getElementById('commentsTable');
+            const rows = table.getElementsByTagName('tr');
+            
+            // Get text input filters
+            const textFilters = document.querySelectorAll('.filter-input');
+            const textFilterValues = Array.from(textFilters).map(filter => {
+                return {
+                    column: parseInt(filter.getAttribute('data-column')),
+                    value: filter.value.toLowerCase()
+                };
+            });
+            
+            // Get checkbox filters
+            const stanceCheckboxes = document.querySelectorAll('input[data-filter="stances"]:checked');
+            const themeCheckboxes = document.querySelectorAll('input[data-filter="themes"]:checked');
+            const attachmentCheckboxes = document.querySelectorAll('input[data-filter="attachments"]:checked');
+            const duplicationCountCheckboxes = document.querySelectorAll('input[data-filter="duplication_count"]:checked');
+            const duplicationRatioCheckboxes = document.querySelectorAll('input[data-filter="duplication_ratio"]:checked');
+            
+            const selectedStances = Array.from(stanceCheckboxes).map(cb => cb.value.toLowerCase());
+            const selectedThemes = Array.from(themeCheckboxes).map(cb => cb.value.toLowerCase());
+            const selectedAttachments = Array.from(attachmentCheckboxes).map(cb => cb.value);
+            const selectedDuplicationCounts = Array.from(duplicationCountCheckboxes).map(cb => parseInt(cb.value));
+            const selectedDuplicationRatios = Array.from(duplicationRatioCheckboxes).map(cb => parseInt(cb.value));
+
+            // Filter each row
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                const cells = row.getElementsByTagName('td');
+                let showRow = true;
+
+                // Check text filters
+                for (const filter of textFilterValues) {
+                    if (filter.value && filter.column < cells.length) {
+                        const cellText = cells[filter.column].textContent.toLowerCase();
+                        if (!cellText.includes(filter.value)) {
+                            showRow = false;
+                            break;
+                        }
+                    }
+                }
+                
+                // Check stance filter (column 3)
+                if (showRow && selectedStances.length > 0) {
+                    const stanceText = cells[3].textContent.toLowerCase();
+                    if (!selectedStances.some(stance => stanceText.includes(stance))) {
+                        showRow = false;
+                    }
+                }
+                
+                // Check themes filter (column 4)
+                if (showRow && selectedThemes.length > 0) {
+                    const themesText = cells[4].textContent.toLowerCase();
+                    if (!selectedThemes.some(theme => themesText.includes(theme.toLowerCase()))) {
+                        showRow = false;
+                    }
+                }
+                
+                // Check attachments filter (column 7)
+                if (showRow && selectedAttachments.length > 0) {
+                    const attachmentCell = cells[7];
+                    const hasAttachment = attachmentCell.textContent.trim() !== '';
+                    
+                    let attachmentMatch = false;
+                    for (const filter of selectedAttachments) {
+                        if (filter === 'yes' && hasAttachment) {
+                            attachmentMatch = true;
+                            break;
+                        }
+                        if (filter === 'no' && !hasAttachment) {
+                            attachmentMatch = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!attachmentMatch) {
+                        showRow = false;
+                    }
+                }
+                
+                // Check duplication count filter (column 8)
+                if (showRow && selectedDuplicationCounts.length > 0) {
+                    const duplicationCell = cells[8];
+                    const duplicationText = duplicationCell.textContent.trim();
+                    const duplicationCount = parseInt(duplicationText);
+                    
+                    if (!selectedDuplicationCounts.includes(duplicationCount)) {
+                        showRow = false;
+                    }
+                }
+                
+                // Check duplication ratio filter (column 9)
+                if (showRow && selectedDuplicationRatios.length > 0) {
+                    const ratioCell = cells[9];
+                    const ratioText = ratioCell.textContent.trim();
+                    // Extract number after "1:" (e.g., "1:10" -> 10)
+                    const ratioMatch = ratioText.match(/1:(\d+)/);
+                    const ratioValue = ratioMatch ? parseInt(ratioMatch[1]) : 1;
+                    
+                    if (!selectedDuplicationRatios.includes(ratioValue)) {
+                        showRow = false;
+                    }
+                }
+
+                row.style.display = showRow ? '' : 'none';
+            }
+        }
+        
+        function toggleFilter(columnIndex) {
+            const dropdown = document.getElementById('filter-' + columnIndex);
+            const allDropdowns = document.querySelectorAll('.filter-dropdown');
+            
+            // Close all other dropdowns
+            allDropdowns.forEach(dd => {
+                if (dd !== dropdown) {
+                    dd.style.display = 'none';
+                }});
+            
+            // Toggle current dropdown
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        function clearAllFilters() {
+            const textFilters = document.querySelectorAll('.filter-input');
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            
+            textFilters.forEach(filter => filter.value = '');
+            checkboxes.forEach(checkbox => checkbox.checked = false);
+            
+            filterTable();
+        }
+        
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(event) {
+            const isFilterClick = event.target.closest('.filterable') || event.target.closest('.filter-dropdown');
+            if (!isFilterClick) {
+                document.querySelectorAll('.filter-dropdown').forEach(dd => {
+                    dd.style.display = 'none';
+                });
+            }
+        });
+    </script>
+</body>
+</html>

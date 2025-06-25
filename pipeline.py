@@ -289,6 +289,87 @@ def read_comments_from_csv(csv_file: str, limit: Optional[int] = None, sample_si
     logger.info(f"Loaded {len(comments)} comments")
     return comments
 
+def create_dedup_table(comments: List[Dict[str, Any]]) -> tuple[List[Dict[str, Any]], Dict[str, List[Dict[str, Any]]]]:
+    """Create deduplication table and return unique comments with mapping."""
+    logger.info("Creating deduplication table...")
+    
+    # Group by combined text content
+    text_groups = {}
+    for comment in comments:
+        text_key = comment['text'].strip().lower()
+        if text_key not in text_groups:
+            text_groups[text_key] = []
+        text_groups[text_key].append(comment)
+    
+    # Create unique comments list with duplication stats
+    unique_comments = []
+    duplicate_mapping = {}
+    
+    for text_key, group in text_groups.items():
+        # Use the first comment as the representative
+        representative = group[0].copy()
+        
+        # Add duplication tracking fields
+        representative['total_count'] = len(group)
+        representative['is_unique'] = len(group) == 1
+        representative['duplication_count'] = len(group)  # Raw count of duplicates
+        representative['duplication_ratio'] = len(group)  # Will be updated later with correct ratio
+        
+        # Store all IDs that have this content
+        representative['duplicate_ids'] = [c['id'] for c in group]
+        
+        unique_comments.append(representative)
+        
+        # Map text key to full group for later merging
+        duplicate_mapping[text_key] = group
+    
+    total_comments = len(comments)
+    unique_count = len(unique_comments)
+    
+    # Update each unique comment with the correct ratio based on total dataset
+    for unique_comment in unique_comments:
+        group_size = unique_comment['duplication_count']
+        # Calculate how many total comments this represents out of the full dataset
+        unique_comment['duplication_ratio'] = round(total_comments / group_size)
+    
+    logger.info(f"Deduplication complete:")
+    logger.info(f"  Total comments: {total_comments}")
+    logger.info(f"  Unique content: {unique_count}")
+    logger.info(f"  Duplication ratio: {total_comments/unique_count:.1f}x average")
+    logger.info(f"  Will analyze {unique_count} unique pieces of content")
+    
+    return unique_comments, duplicate_mapping
+
+def merge_analysis_results(unique_analyzed_comments: List[Dict[str, Any]], duplicate_mapping: Dict[str, List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
+    """Merge analysis results back to all original comments."""
+    logger.info("Merging analysis results back to full dataset...")
+    
+    all_analyzed_comments = []
+    
+    for unique_comment in unique_analyzed_comments:
+        text_key = unique_comment['text'].strip().lower()
+        
+        if text_key in duplicate_mapping:
+            # Apply the analysis to all comments with this text
+            for original_comment in duplicate_mapping[text_key]:
+                merged_comment = original_comment.copy()
+                
+                # Add the analysis result
+                merged_comment['analysis'] = unique_comment.get('analysis')
+                merged_comment['analysis_error'] = unique_comment.get('analysis_error')
+                
+                # Add duplication tracking info
+                merged_comment['total_count'] = unique_comment['total_count']
+                merged_comment['is_unique'] = unique_comment['is_unique'] 
+                merged_comment['duplication_count'] = unique_comment['duplication_count']
+                merged_comment['duplication_ratio'] = unique_comment['duplication_ratio']
+                merged_comment['duplicate_ids'] = unique_comment['duplicate_ids']
+                
+                all_analyzed_comments.append(merged_comment)
+    
+    logger.info(f"Merged analysis results to {len(all_analyzed_comments)} total comments")
+    return all_analyzed_comments
+
 def analyze_comments(comments: List[Dict[str, Any]], model: str = "gpt-4o-mini", truncate_chars: Optional[int] = None) -> List[Dict[str, Any]]:
     """Analyze comments using the LLM."""
     logger.info(f"Analyzing {len(comments)} comments with {model}")
@@ -510,28 +591,36 @@ def main():
         logger.info("=== STEP 1: Loading Comments ===")
         comments = read_comments_from_csv(args.csv, sample_size=args.sample)
         
-        # Step 2: Analyze comments
-        logger.info("=== STEP 2: Analyzing Comments ===")
-        analyzed_comments = analyze_comments(comments, args.model, args.truncate)
+        # Step 2: Create deduplication table
+        logger.info("=== STEP 2: Creating Deduplication Table ===")
+        unique_comments, duplicate_mapping = create_dedup_table(comments)
         
-        # Step 3: Save results locally
-        logger.info("=== STEP 3: Saving Results ===")
+        # Step 3: Analyze only unique comments
+        logger.info("=== STEP 3: Analyzing Unique Comments ===")
+        unique_analyzed_comments = analyze_comments(unique_comments, args.model, args.truncate)
+        
+        # Step 4: Merge analysis results back to full dataset
+        logger.info("=== STEP 4: Merging Results ===")
+        analyzed_comments = merge_analysis_results(unique_analyzed_comments, duplicate_mapping)
+        
+        # Step 5: Save results locally
+        logger.info("=== STEP 5: Saving Results ===")
         save_results(analyzed_comments, args.output)
         
-        # Step 4: Store in PostgreSQL
+        # Step 6: Store in PostgreSQL
         if args.to_database:
-            logger.info("=== STEP 4: Database Storage ===")
+            logger.info("=== STEP 6: Database Storage ===")
             store_in_postgres(analyzed_comments)
         else:
-            logger.info("=== STEP 4: Skipping Database Storage ===")
+            logger.info("=== STEP 6: Skipping Database Storage ===")
             logger.info("Use --to-database flag to store in PostgreSQL")
         
         # Generate HTML report
-        logger.info("=== STEP 5: Generating HTML Report ===")
+        logger.info("=== STEP 7: Generating HTML Report ===")
         try:
             from generate_report import load_results, calculate_stats, generate_html, analyze_field_types
             
-            html_output = "report.html"
+            html_output = "index.html"
             logger.info(f"Loading results from {args.output}...")
             comments = load_results(args.output)
             
@@ -554,7 +643,7 @@ def main():
         logger.info("=== PIPELINE COMPLETE ===")
         logger.info(f"Processed {len(analyzed_comments)} comments")
         logger.info(f"Results saved to: {args.output}")
-        logger.info(f"HTML report: report.html")
+        logger.info(f"HTML report: index.html")
         
     except Exception as e:
         logger.error(f"Pipeline failed: {e}")

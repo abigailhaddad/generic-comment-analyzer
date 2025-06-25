@@ -91,7 +91,7 @@ Options:
 
 ### HTML Report
 
-The pipeline automatically generates an interactive HTML report (`report.html`) with:
+The pipeline automatically generates an interactive HTML report (`index.html`) with:
 - Summary statistics and distribution charts for all discovered stances/themes
 - Checkbox filtering for stances, themes, and attachments  
 - Text search for IDs, dates, quotes, and content
