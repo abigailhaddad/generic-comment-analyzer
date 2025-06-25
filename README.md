@@ -2,6 +2,17 @@
 
 A simple, flexible system for analyzing public comments on federal regulations using LLMs.
 
+## Data Source
+
+This system is designed to work with comment data from **[regulations.gov bulk download](https://www.regulations.gov/bulkdownload)**:
+
+1. **Request bulk data** for your regulation docket from regulations.gov
+2. **You'll receive an email** with download links when ready (can take hours/days)
+3. **Download and rename** the comments file to `comments.csv` 
+4. **Place `comments.csv`** in the root of this repository
+
+**Important**: The pipeline **does not resume** - it processes all comments from scratch each time. Use `--sample` to test before running the full dataset.
+
 ## Quick Start
 
 1. **Set up environment:**
@@ -20,18 +31,21 @@ A simple, flexible system for analyzing public comments on federal regulations u
 
 3. **Set up for your regulation:**
    ```bash
-   # Step 1: Detect CSV column structure
+   # Step 1: Detect CSV column structure (or manually edit column_mapping.json)
    python detect_columns.py
 
    # Step 2: Discover stances and themes from sample comments
    python discover_stances.py --sample 250
 
-   # Step 3: Test with small sample
+   # Step 3: Test with small sample to verify everything works
    python pipeline.py --csv comments.csv --sample 10
    ```
 
 4. **Run full analysis:**
    ```bash
+   # IMPORTANT: Test first, then run full dataset
+   # The pipeline does not resume - it starts from scratch each time
+   
    # Full run with all options
    ./run_pipeline.sh --csv comments.csv --truncate 5000 --to-database
    ```
@@ -40,7 +54,7 @@ A simple, flexible system for analyzing public comments on federal regulations u
 
 The system automatically discovers and adapts to your regulation with **built-in validation**:
 
-1. **Column Detection** (`detect_columns.py`): Uses LLM to automatically map CSV columns to required fields (comment text, ID, date, submitter, attachments)
+1. **Column Detection** (`detect_columns.py`): Uses LLM to automatically map CSV columns to required fields (comment text, ID, date, submitter, attachments). Alternatively, manually edit `column_mapping.json` if you know your CSV structure.
 
 2. **Stance Discovery** (`discover_stances.py`): Analyzes sample comments to discover:
    - The main arguments/positions people are taking (not just pro/con)
