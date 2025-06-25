@@ -116,6 +116,21 @@ If using PostgreSQL storage:
 - **Automatic HTML reports** - Interactive filtering and statistics
 - **Generic design** - Easy to adapt for any regulation
 
+## Data Storage
+
+### Parquet Format (Recommended)
+
+For large datasets, convert the JSON output to Parquet format for ~100x compression:
+
+```bash
+source myenv/bin/activate
+python convert_to_parquet.py
+```
+
+This converts `analyzed_comments.json` (can be ~1GB+) to `analyzed_comments.parquet` (~10MB).
+
+**Note**: Parquet conversion is not yet integrated into the pipeline but should be added in future versions for efficient storage.
+
 ## License
 
 MIT
