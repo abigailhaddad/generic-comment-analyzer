@@ -29,7 +29,7 @@ from psycopg2.extras import RealDictCursor
 load_dotenv()
 
 # Import the generic comment analyzer
-from comment_analyzer import create_schedule_f_analyzer
+from comment_analyzer import CommentAnalyzer
 
 # Simple logging setup
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -122,15 +122,19 @@ def extract_text_with_gemini(file_path: str) -> str:
         logger.error(f"Gemini extraction failed for {file_path}: {e}")
         return ""
 
-def process_attachments(comment_data: Dict[str, Any], attachments_dir: str) -> str:
+def process_attachments(comment_data: Dict[str, Any], attachments_dir: str, attachment_col: str = 'Attachment Files') -> str:
     """Download and process attachments for a comment, return combined text."""
-    if 'Attachment Files' not in comment_data or not comment_data['Attachment Files']:
+    if attachment_col not in comment_data or not comment_data[attachment_col]:
         return ""
     
-    attachment_urls = comment_data['Attachment Files'].split(',')
+    attachment_urls = comment_data[attachment_col].split(',')
     combined_attachment_text = []
     
-    comment_id = comment_data['Document ID']
+    # Get comment ID using multiple possible field names
+    comment_id = (comment_data.get('Document ID') or 
+                 comment_data.get('id') or 
+                 comment_data.get('Comment ID') or 
+                 'unknown_comment')
     comment_attachment_dir = os.path.join(attachments_dir, comment_id)
     
     for i, url in enumerate(attachment_urls):
@@ -166,9 +170,37 @@ def process_attachments(comment_data: Dict[str, Any], attachments_dir: str) -> s
     
     return "\n\n--- ATTACHMENT ---\n\n".join(combined_attachment_text)
 
+def load_column_mapping() -> Dict[str, str]:
+    """Load column mappings from config file."""
+    try:
+        if os.path.exists('column_mapping.json'):
+            with open('column_mapping.json', 'r', encoding='utf-8') as f:
+                return json.load(f)
+        else:
+            logger.warning("No column_mapping.json found, using default mappings")
+            # Fallback to common column names
+            return {
+                'text': 'Comment',
+                'id': 'Document ID', 
+                'date': 'Posted Date',
+                'first_name': 'First Name',
+                'last_name': 'Last Name',
+                'organization': 'Organization Name',
+                'attachment_files': 'Attachment Files'
+            }
+    except Exception as e:
+        logger.error(f"Failed to load column mapping: {e}")
+        return {}
+
 def read_comments_from_csv(csv_file: str, limit: Optional[int] = None, sample_size: Optional[int] = None) -> List[Dict[str, Any]]:
     """Read comments from CSV file and return as list of dicts."""
     logger.info(f"Reading comments from {csv_file}")
+    
+    # Load column mappings
+    column_mapping = load_column_mapping()
+    if not column_mapping:
+        logger.error("No column mappings available")
+        return []
     
     # Create attachments directory
     attachments_dir = "attachments"
@@ -191,45 +223,68 @@ def read_comments_from_csv(csv_file: str, limit: Optional[int] = None, sample_si
     # Second pass: process the selected comments with attachments
     comments = []
     for i, row in enumerate(all_rows):
-                
-            # Extract comment ID and text
-            comment_id = row.get('Comment ID') or row.get('Document ID') or f"comment_{i}"
-            comment_text = row.get('Comment', '').strip()
-            
-            # Skip empty comments without attachments
-            has_attachments = row.get('Attachment Files', '').strip()
-            if not comment_text and not has_attachments:
-                continue
-            
-            # Process attachments
-            attachment_text = ""
-            if has_attachments:
-                logger.info(f"Processing attachments for comment {comment_id}")
-                attachment_text = process_attachments(row, attachments_dir)
-            
-            # Combine comment text and attachment text
-            full_text = comment_text
-            if attachment_text:
-                if full_text:
-                    full_text += f"\n\n--- ATTACHMENT CONTENT ---\n{attachment_text}"
-                else:
-                    full_text = attachment_text
-            
-            # Skip if still no text
-            if not full_text.strip():
-                continue
-                
-            comment_data = {
-                'id': comment_id,
-                'text': full_text,
-                'comment_text': comment_text,
-                'attachment_text': attachment_text,
-                'submitter': row.get('Submitter Name', ''),
-                'organization': row.get('Organization Name', ''),
-                'date': row.get('Posted Date', ''),
-            }
-            
-            comments.append(comment_data)
+        # Extract comment ID and text using column mappings
+        comment_id = (row.get(column_mapping.get('id', '')) or 
+                     row.get('Document ID') or 
+                     row.get('id') or 
+                     f"comment_{i}")
+        
+        comment_text = (row.get(column_mapping.get('text', '')) or 
+                       row.get('Comment', '')).strip()
+        
+        # Check for attachments using column mapping
+        attachment_col = column_mapping.get('attachment_files', 'Attachment Files')
+        has_attachments = row.get(attachment_col, '').strip()
+        
+        # Skip empty comments without attachments
+        if not comment_text and not has_attachments:
+            continue
+        
+        # Process attachments
+        attachment_text = ""
+        if has_attachments:
+            logger.info(f"Processing attachments for comment {comment_id}")
+            attachment_text = process_attachments(row, attachments_dir, attachment_col)
+        
+        # Combine comment text and attachment text
+        full_text = comment_text
+        if attachment_text:
+            if full_text:
+                full_text += f"\n\n--- ATTACHMENT CONTENT ---\n{attachment_text}"
+            else:
+                full_text = attachment_text
+        
+        # Skip if still no text
+        if not full_text.strip():
+            continue
+        
+        # Build submitter name from first/last name or use combined field
+        submitter = ""
+        first_name_col = column_mapping.get('first_name', 'First Name')
+        last_name_col = column_mapping.get('last_name', 'Last Name')
+        
+        first_name = row.get(first_name_col, '').strip()
+        last_name = row.get(last_name_col, '').strip()
+        
+        if first_name or last_name:
+            submitter = f"{first_name} {last_name}".strip()
+        else:
+            # Try other common submitter fields
+            submitter = (row.get('Submitter Name', '') or 
+                        row.get('submitter', '') or 
+                        row.get('Author', ''))
+        
+        comment_data = {
+            'id': comment_id,
+            'text': full_text,
+            'comment_text': comment_text,
+            'attachment_text': attachment_text,
+            'submitter': submitter,
+            'organization': row.get(column_mapping.get('organization', 'Organization Name'), ''),
+            'date': row.get(column_mapping.get('date', 'Posted Date'), ''),
+        }
+        
+        comments.append(comment_data)
     
     logger.info(f"Loaded {len(comments)} comments")
     return comments
@@ -240,8 +295,8 @@ def analyze_comments(comments: List[Dict[str, Any]], model: str = "gpt-4o-mini",
     if truncate_chars:
         logger.info(f"Truncating text to {truncate_chars} characters for LLM analysis")
     
-    # Initialize analyzer (TODO: make this configurable per regulation)
-    analyzer = create_schedule_f_analyzer(model=model)
+    # Initialize analyzer using configuration file
+    analyzer = CommentAnalyzer(model=model)
     
     analyzed_comments = []
     for i, comment in enumerate(comments):
@@ -474,17 +529,20 @@ def main():
         # Generate HTML report
         logger.info("=== STEP 5: Generating HTML Report ===")
         try:
-            from generate_report import load_results, calculate_stats, generate_html
+            from generate_report import load_results, calculate_stats, generate_html, analyze_field_types
             
             html_output = "report.html"
             logger.info(f"Loading results from {args.output}...")
             comments = load_results(args.output)
             
+            logger.info("Analyzing field types...")
+            field_analysis = analyze_field_types(comments)
+            
             logger.info("Calculating statistics...")
-            stats = calculate_stats(comments)
+            stats = calculate_stats(comments, field_analysis)
             
             logger.info(f"Generating HTML report: {html_output}")
-            generate_html(comments, stats, html_output)
+            generate_html(comments, stats, field_analysis, html_output)
             
             logger.info(f"✅ HTML report generated: {html_output}")
             

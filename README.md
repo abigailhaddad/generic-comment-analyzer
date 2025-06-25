@@ -18,45 +18,63 @@ A simple, flexible system for analyzing public comments on federal regulations u
    DATABASE_URL=postgresql://...  # Optional, for database storage
    ```
 
-3. **Run the pipeline:**
+3. **Set up for your regulation:**
    ```bash
-   # Test with sample
-   ./run_pipeline.sh --csv comments.csv --sample 100
+   # Step 1: Detect CSV column structure
+   python detect_columns.py
 
-   # Full run with database storage and text truncation
+   # Step 2: Discover stances and themes from sample comments
+   python discover_stances.py --sample 250
+
+   # Step 3: Test with small sample
+   python pipeline.py --csv comments.csv --sample 10
+   ```
+
+4. **Run full analysis:**
+   ```bash
+   # Full run with all options
    ./run_pipeline.sh --csv comments.csv --truncate 5000 --to-database
    ```
 
-## What It Does
+## How It Works
 
-The pipeline processes regulation comments through these steps:
+The system automatically discovers and adapts to your regulation:
 
-1. **Loads comments** from CSV file
-2. **Downloads attachments** (PDFs, DOCX, images) and extracts text
-3. **Analyzes each comment** individually with LLM for stance and themes
-4. **Saves results** to JSON file and/or PostgreSQL database
-5. **Automatically generates interactive HTML report** (`report.html`) with filtering and statistics
+1. **Column Detection** (`detect_columns.py`): Uses LLM to automatically map CSV columns to required fields (comment text, ID, date, submitter, attachments)
+
+2. **Stance Discovery** (`discover_stances.py`): Analyzes sample comments to discover:
+   - The main arguments/positions people are taking (not just pro/con)
+   - Specific indicators that signal each stance
+   - Recurring themes across comments
+   - Generates complete analysis configuration
+
+3. **Comment Analysis** (`pipeline.py`): For each comment, identifies:
+   - **Stances**: Multiple arguments/positions (e.g., "board shouldn't be fired", "process lacks transparency")
+   - **Themes**: Topics covered (e.g., "scientific integrity", "vaccine safety")
+   - **Key Quote**: Most important excerpt
+   - **Rationale**: Why those stances were selected
+
+4. **Results**: Saves to JSON, optional PostgreSQL database, and automatically generates interactive HTML report
 
 ## For Different Regulations
 
-To analyze a different regulation:
+The system is fully generic! Just:
 
-1. **Replace your data:** Put your comments CSV file in the root directory
-2. **Update the analyzer:** Edit `comment_analyzer.py` to customize:
-   - Stance options (e.g., "Support", "Oppose", "Neutral")
-   - Theme categories relevant to your regulation
-   - System prompt with regulation-specific context
+1. Put your `comments.csv` file in the directory
+2. Run the 3 setup commands above
+3. The system discovers everything automatically
 
-That's it! The pipeline handles everything else automatically.
+No manual configuration needed - it learns your regulation's specific arguments and themes.
 
 ## Files
 
+- **`detect_columns.py`** - Auto-detects CSV column structure → `column_mapping.json`
+- **`discover_stances.py`** - Discovers stances and themes → `analyzer_config.json`  
 - **`pipeline.py`** - Main processing script
-- **`comment_analyzer.py`** - Regulation-specific LLM configuration
-- **`run_pipeline.sh`** - Convenience script with sleep prevention
+- **`comment_analyzer.py`** - Configurable LLM analyzer (uses `analyzer_config.json`)
 - **`generate_report.py`** - HTML report generator (runs automatically)
+- **`run_pipeline.sh`** - Convenience script with sleep prevention
 - **`schema.sql`** - PostgreSQL database schema
-- **`requirements.txt`** - Python dependencies
 
 ## Options
 
@@ -74,9 +92,10 @@ Options:
 ### HTML Report
 
 The pipeline automatically generates an interactive HTML report (`report.html`) with:
-- Summary statistics and stance distribution
-- Checkbox filtering for stances, themes, and attachments
+- Summary statistics and distribution charts for all discovered stances/themes
+- Checkbox filtering for stances, themes, and attachments  
 - Text search for IDs, dates, quotes, and content
+- Adaptive interface that adjusts to your specific regulation's fields
 - Clean, simple design for easy analysis
 
 ## Database Setup

@@ -28,44 +28,62 @@ class TimeoutError(Exception):
     pass
 
 class CommentAnalysisResult(BaseModel):
-    """Pydantic model for comment analysis results"""
-    stance: str = Field(
-        description="The commenter's position on the proposed regulation"
+    """Standard model for comment analysis results"""
+    stances: List[str] = Field(
+        default_factory=list,
+        description="List of stances/arguments expressed in the comment (0 or more)"
     )
     themes: List[str] = Field(
-        description="Key themes present in the comment (select all that apply)"
+        default_factory=list,
+        description="Key themes present in the comment"
     )
     key_quote: str = Field(
-        description="The most important quote or statement from the comment that captures its essence (max 100 words)"
+        description="The most important quote that captures the essence of the comment (max 100 words)"
     )
     rationale: str = Field(
-        description="Brief explanation of the stance classification (1-2 sentences)"
+        description="Brief explanation of the stance selection (1-2 sentences)"
     )
 
 class CommentAnalyzer:
     """LiteLLM-based analyzer for public comments using configurable prompts and categories."""
     
-    def __init__(self, model=None, timeout_seconds=120, system_prompt=None, 
-                 stance_options=None, theme_options=None):
+    def __init__(self, model=None, timeout_seconds=120, config_file="analyzer_config.json"):
         """
-        Initialize the analyzer with configurable parameters.
+        Initialize the analyzer with configuration from JSON file.
         
         Args:
             model: LLM model to use (defaults to environment config)
             timeout_seconds: API timeout in seconds
-            system_prompt: Custom system prompt for the regulation
-            stance_options: List of possible stance values
-            theme_options: List of possible theme values
+            config_file: Path to JSON configuration file with regulation-specific settings
         """
         self.model = model or os.getenv('LLM_MODEL', 'gpt-4o-mini')
         self.timeout_seconds = timeout_seconds
-        self.system_prompt = system_prompt
-        self.stance_options = stance_options or ["For", "Against", "Neutral/Unclear"]
-        self.theme_options = theme_options or []
+        
+        # Load configuration from file
+        self.config = self._load_config(config_file)
+        self.stance_options = self.config.get('stance_options', [])
+        self.theme_options = self.config.get('theme_options', [])
+        self.system_prompt = self.config.get('system_prompt')
+        
+        logger.info(f"Loaded configuration for: {self.config.get('regulation_name', 'Unknown Regulation')}")
+        logger.info(f"Using {len(self.theme_options)} themes and {len(self.stance_options)} stance options")
         
         # Ensure API key is available
         if "OPENAI_API_KEY" not in os.environ:
             raise ValueError("OPENAI_API_KEY not found in environment variables or .env file")
+    
+    def _load_config(self, config_file: str) -> Dict[str, Any]:
+        """Load configuration from JSON file."""
+        try:
+            if os.path.exists(config_file):
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            else:
+                logger.warning(f"Configuration file {config_file} not found, using defaults")
+                return {}
+        except Exception as e:
+            logger.error(f"Failed to load configuration from {config_file}: {e}")
+            return {}
     
     def get_system_prompt(self):
         """Get the system prompt, using default if none provided"""
@@ -164,7 +182,7 @@ Analyze objectively and avoid inserting personal opinions or biases."""
                 if not isinstance(result, dict):
                     raise ValueError("Result is not a dictionary")
                 
-                required_fields = ['stance', 'themes', 'key_quote', 'rationale']
+                required_fields = ['stances', 'themes', 'key_quote', 'rationale']
                 for field in required_fields:
                     if field not in result:
                         raise ValueError(f"Missing required field: {field}")

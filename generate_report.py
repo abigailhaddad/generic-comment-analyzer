@@ -16,28 +16,66 @@ def load_results(json_file: str) -> List[Dict[str, Any]]:
     with open(json_file, 'r', encoding='utf-8') as f:
         return json.load(f)
 
-def calculate_stats(comments: List[Dict[str, Any]]) -> Dict[str, Any]:
+def analyze_field_types(comments: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    """Analyze standard analysis fields."""
+    field_analysis = {}
+    
+    # Standard fields we expect - only show stats for checkbox fields
+    fields = {
+        'stances': {'type': 'checkbox', 'is_list': True},
+        'themes': {'type': 'checkbox', 'is_list': True}
+    }
+    
+    for field_name, field_info in fields.items():
+        unique_values = set()
+        total_values = 0
+        
+        for comment in comments:
+            analysis = comment.get('analysis', {})
+            if analysis and field_name in analysis:
+                value = analysis[field_name]
+                total_values += 1
+                
+                if field_info['is_list'] and isinstance(value, list):
+                    for item in value:
+                        if isinstance(item, str):
+                            unique_values.add(item.strip())
+                elif isinstance(value, str):
+                    unique_values.add(value.strip())
+        
+        field_analysis[field_name] = {
+            'type': field_info['type'],
+            'unique_values': sorted(list(unique_values)),
+            'num_unique': len(unique_values),
+            'is_list': field_info['is_list'],
+            'total_occurrences': total_values
+        }
+    
+    return field_analysis
+
+def calculate_stats(comments: List[Dict[str, Any]], field_analysis: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
     """Calculate summary statistics."""
     total_comments = len(comments)
     
-    # Count stances
-    stance_counts = {}
-    for comment in comments:
-        analysis = comment.get('analysis', {})
-        if analysis:
-            stance = analysis.get('stance', 'Unknown')
-            stance_counts[stance] = stance_counts.get(stance, 0) + 1
-    
-    # Count themes
-    theme_counts = {}
-    for comment in comments:
-        analysis = comment.get('analysis', {})
-        if analysis and analysis.get('themes'):
-            for theme in analysis['themes']:
-                theme_counts[theme] = theme_counts.get(theme, 0) + 1
-    
-    # Top themes
-    top_themes = sorted(theme_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    # Dynamic field counting based on field analysis
+    field_counts = {}
+    for field, info in field_analysis.items():
+        field_counts[field] = {}
+        
+        for comment in comments:
+            analysis = comment.get('analysis', {})
+            if analysis and field in analysis:
+                value = analysis[field]
+                
+                if info['is_list'] and isinstance(value, list):
+                    # Count each item in list
+                    for item in value:
+                        if isinstance(item, str):
+                            item = item.strip()
+                            field_counts[field][item] = field_counts[field].get(item, 0) + 1
+                elif isinstance(value, str):
+                    value = value.strip()
+                    field_counts[field][value] = field_counts[field].get(value, 0) + 1
     
     # Comments with attachments
     with_attachments = sum(1 for c in comments if c.get('attachment_text', '').strip())
@@ -48,8 +86,7 @@ def calculate_stats(comments: List[Dict[str, Any]]) -> Dict[str, Any]:
     
     return {
         'total_comments': total_comments,
-        'stance_counts': stance_counts,
-        'top_themes': top_themes,
+        'field_counts': field_counts,
         'with_attachments': with_attachments,
         'avg_text_length': int(avg_length),
         'date_range': get_date_range(comments)
@@ -76,32 +113,77 @@ def get_date_range(comments: List[Dict[str, Any]]) -> str:
         return f"{min_date} to {max_date}"
     return "Unknown"
 
-def get_unique_values(comments: List[Dict[str, Any]]) -> Dict[str, List[str]]:
-    """Get unique values for enumerated fields."""
-    stances = set()
-    themes = set()
+def generate_field_distribution_html(field_name: str, field_info: Dict[str, Any], stats: Dict[str, Any]) -> str:
+    """Generate distribution HTML for a specific analysis field."""
+    field_counts = stats['field_counts'].get(field_name, {})
+    if not field_counts:
+        return ""
     
-    for comment in comments:
-        analysis = comment.get('analysis', {})
-        if analysis:
-            stance = analysis.get('stance', 'Unknown')
-            stances.add(stance)
-            
-            comment_themes = analysis.get('themes', [])
-            themes.update(comment_themes)
+    field_label = field_name.replace('_', ' ').title()
     
-    return {
-        'stances': sorted(list(stances)),
-        'themes': sorted(list(themes))
-    }
+    # Sort by count
+    sorted_items = sorted(field_counts.items(), key=lambda x: x[1], reverse=True)
+    
+    # For checkbox fields (few unique values), show as stat cards
+    if field_info['type'] == 'checkbox':
+        return f'''
+        <div class="section">
+            <h2>📊 {field_label} Distribution</h2>
+            <div class="stats-grid">
+                {"".join(f'''
+                <div class="stat-card">
+                    <div class="stat-number">{count:,}</div>
+                    <div class="stat-label">{value}</div>
+                </div>
+                ''' for value, count in sorted_items[:10])}
+            </div>
+        </div>'''
+    else:
+        # For text fields with many values, show top 10 as a list
+        return f'''
+        <div class="section">
+            <h2>📝 Top {field_label}s</h2>
+            <ul class="themes-list">
+                {"".join(f'''<li>
+                    <span class="theme-name">{value}</span>
+                    <span class="theme-count">{count:,}</span>
+                </li>''' for value, count in sorted_items[:10])}
+            </ul>
+        </div>'''
 
-def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], output_file: str):
+def generate_filter_html(field_name: str, field_info: Dict[str, Any], column_index: int) -> str:
+    """Generate filter HTML for a specific field based on its type."""
+    field_label = field_name.replace('_', ' ').title()
+    
+    if field_info['type'] == 'checkbox':
+        # Generate checkbox filter
+        checkboxes = []
+        for i, value in enumerate(field_info['unique_values']):
+            safe_id = f"{field_name}-{i}"
+            checkboxes.append(f'''<div class="checkbox-item">
+                <input type="checkbox" id="{safe_id}" data-filter="{field_name}" value="{value}" onchange="filterTable()">
+                <label for="{safe_id}">{value}</label>
+            </div>''')
+        
+        return f'''<div class="filter-group">
+            <div class="filter-label">{field_label}</div>
+            <div class="checkbox-group">
+                {"".join(checkboxes)}
+            </div>
+        </div>'''
+    else:
+        # Generate text input filter
+        return f'''<div class="filter-group">
+            <div class="filter-label">{field_label}</div>
+            <input type="text" class="filter-input" data-column="{column_index}" placeholder="Filter by {field_label.lower()}..." onkeyup="filterTable()">
+        </div>'''
+
+def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_analysis: Dict[str, Dict[str, Any]], output_file: str):
     """Generate HTML report."""
     
-    # Get metadata and unique values
+    # Get metadata
     model_used = "gpt-4o-mini"  # Default assumption
     generated_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    unique_values = get_unique_values(comments)
     
     html_template = f"""<!DOCTYPE html>
 <html lang="en">
@@ -224,17 +306,61 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], output_
             font-size: 0.9em;
         }}
         
+        .filterable {{
+            position: relative;
+            cursor: pointer;
+        }}
+        
+        .filter-arrow {{
+            float: right;
+            font-size: 12px;
+            color: #666;
+            margin-left: 8px;
+            user-select: none;
+        }}
+        
+        .filter-arrow:hover {{
+            color: #007bff;
+        }}
+        
+        .filter-dropdown {{
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 1000;
+            padding: 10px;
+            min-width: 200px;
+        }}
+        
         .filter-input {{
-            padding: 8px 12px;
+            width: 100%;
+            padding: 6px 8px;
             border: 1px solid #ced4da;
             border-radius: 4px;
-            font-size: 14px;
+            font-size: 12px;
+            margin-bottom: 5px;
         }}
         
         .filter-input:focus {{
             outline: none;
             border-color: #007bff;
-            box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+            box-shadow: 0 0 0 1px rgba(0,123,255,0.25);
+        }}
+        
+        .filter-checkbox {{
+            display: block;
+            margin: 5px 0;
+            font-size: 13px;
+            cursor: pointer;
+        }}
+        
+        .filter-checkbox input {{
+            margin-right: 6px;
         }}
         
         .checkbox-group {{
@@ -462,109 +588,89 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], output_
             </div>
         </div>
 
-        <!-- Stance Breakdown -->
-        <div class="section">
-            <h2>📈 Stance Distribution</h2>
-            <div class="stats-grid">
-                {"".join(f'''
-                <div class="stat-card">
-                    <div class="stat-number">{count:,}</div>
-                    <div class="stat-label">{stance}</div>
-                </div>
-                ''' for stance, count in stats['stance_counts'].items())}
-            </div>
-        </div>
-
-        <!-- Top Themes -->
-        <div class="section">
-            <h2>🏷️ Top Themes</h2>
-            <ul class="themes-list">
-                {"".join(f'''<li>
-                    <span class="theme-name">{theme}</span>
-                    <span class="theme-count">{count:,}</span>
-                </li>''' for theme, count in stats['top_themes'])}
-            </ul>
-        </div>
+        <!-- Analysis Field Distributions -->
+        {"".join(generate_field_distribution_html(field_name, field_info, stats) for field_name, field_info in field_analysis.items())}
 
         <!-- Comments Table -->
         <div class="section">
             <h2>Comments</h2>
-            <div class="filters-container">
-                <div class="filters-header">Filter Comments</div>
-                <div class="filters-grid">
-                    <div class="filter-group">
-                        <div class="filter-label">Comment ID</div>
-                        <input type="text" class="filter-input" data-column="0" placeholder="Filter by ID..." onkeyup="filterTable()">
-                    </div>
-                    <div class="filter-group">
-                        <div class="filter-label">Date</div>
-                        <input type="text" class="filter-input" data-column="1" placeholder="Filter by date..." onkeyup="filterTable()">
-                    </div>
-                    <div class="filter-group">
-                        <div class="filter-label">Stance</div>
-                        <div class="checkbox-group">
-                            {"".join(f'''<div class="checkbox-item">
-                                <input type="checkbox" id="stance-{stance.lower()}" data-filter="stance" value="{stance}" onchange="filterTable()">
-                                <label for="stance-{stance.lower()}">{stance}</label>
-                            </div>''' for stance in unique_values['stances'])}
-                        </div>
-                    </div>
-                    <div class="filter-group">
-                        <div class="filter-label">Themes</div>
-                        <div class="checkbox-group">
-                            {"".join(f'''<div class="checkbox-item">
-                                <input type="checkbox" id="theme-{i}" data-filter="themes" value="{theme}" onchange="filterTable()">
-                                <label for="theme-{i}">{theme}</label>
-                            </div>''' for i, theme in enumerate(unique_values['themes']))}
-                        </div>
-                    </div>
-                    <div class="filter-group">
-                        <div class="filter-label">Has Attachments</div>
-                        <div class="checkbox-group">
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="has-attachments" data-filter="attachments" value="yes" onchange="filterTable()">
-                                <label for="has-attachments">Yes</label>
-                            </div>
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="no-attachments" data-filter="attachments" value="no" onchange="filterTable()">
-                                <label for="no-attachments">No</label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="filter-group">
-                        <div class="filter-label">Key Quote</div>
-                        <input type="text" class="filter-input" data-column="4" placeholder="Search quotes..." onkeyup="filterTable()">
-                    </div>
-                    <div class="filter-group">
-                        <div class="filter-label">Text Content</div>
-                        <input type="text" class="filter-input" data-column="5" placeholder="Search text..." onkeyup="filterTable()">
-                    </div>
-                </div>
-                <div style="margin-top: 15px;">
-                    <button class="clear-filters" onclick="clearAllFilters()">Clear All Filters</button>
-                </div>
+            <div class="table-controls">
+                <button class="clear-filters" onclick="clearAllFilters()">Clear All Filters</button>
             </div>
                 
-                <div style="overflow-x: auto;">
-                    <table id="commentsTable">
-                        <thead>
-                            <tr>
-                                <th>Comment ID</th>
-                                <th>Date</th>
-                                <th>Stance</th>
-                                <th>Themes</th>
-                                <th>Key Quote</th>
-                                <th>Text Preview</th>
-                                <th>📎</th>
-                            </tr>
-                        </thead>
+            <div style="overflow-x: auto;">
+                <table id="commentsTable" class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th class="filterable" data-column="0">
+                                Comment ID <span class="filter-arrow" onclick="toggleFilter(0)">▼</span>
+                                <div class="filter-dropdown" id="filter-0" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="0" placeholder="Filter ID..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="1">
+                                Date <span class="filter-arrow" onclick="toggleFilter(1)">▼</span>
+                                <div class="filter-dropdown" id="filter-1" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="1" placeholder="Filter date..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="2">
+                                Submitter <span class="filter-arrow" onclick="toggleFilter(2)">▼</span>
+                                <div class="filter-dropdown" id="filter-2" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="2" placeholder="Filter name..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="3">
+                                Stances <span class="filter-arrow" onclick="toggleFilter(3)">▼</span>
+                                <div class="filter-dropdown" id="filter-3" style="display: none;">
+                                    {"".join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="{stance}" onchange="filterTable()"> {stance}</label>' for stance in field_analysis.get('stances', {}).get('unique_values', []))}
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="4">
+                                Themes <span class="filter-arrow" onclick="toggleFilter(4)">▼</span>
+                                <div class="filter-dropdown" id="filter-4" style="display: none;">
+                                    {"".join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="themes" value="{theme}" onchange="filterTable()"> {theme}</label>' for theme in field_analysis.get('themes', {}).get('unique_values', []))}
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="5">
+                                Key Quote <span class="filter-arrow" onclick="toggleFilter(5)">▼</span>
+                                <div class="filter-dropdown" id="filter-5" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="5" placeholder="Search quotes..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="6">
+                                Text Preview <span class="filter-arrow" onclick="toggleFilter(6)">▼</span>
+                                <div class="filter-dropdown" id="filter-6" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="6" placeholder="Search text..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="7">
+                                📎 <span class="filter-arrow" onclick="toggleFilter(7)">▼</span>
+                                <div class="filter-dropdown" id="filter-7" style="display: none;">
+                                    <label class="filter-checkbox"><input type="checkbox" data-filter="attachments" value="yes" onchange="filterTable()"> With attachments</label>
+                                    <label class="filter-checkbox"><input type="checkbox" data-filter="attachments" value="no" onchange="filterTable()"> No attachments</label>
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
                         <tbody>
 """
 
     # Add table rows
     for comment in comments:
         analysis = comment.get('analysis', {}) or {}
-        stance = analysis.get('stance', 'Unknown')
+        
+        # Handle stance as either string or list
+        stance_data = analysis.get('stance', analysis.get('stances', []))
+        if isinstance(stance_data, str):
+            # Legacy single stance
+            stances = [stance_data] if stance_data else []
+        elif isinstance(stance_data, list):
+            # New multi-stance format
+            stances = stance_data
+        else:
+            stances = []
+        
         themes = analysis.get('themes', [])
         key_quote = analysis.get('key_quote', '')
         
@@ -578,8 +684,8 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], output_
             except:
                 formatted_date = date_str[:10] if len(date_str) >= 10 else date_str
         
-        # Stance styling
-        stance_class = f"stance-{stance.lower()}" if stance.lower() in ['for', 'against', 'neutral'] else "stance-unknown"
+        # Stances display (similar to themes)
+        stances_html = '<div class="themes-container">' + ' '.join(f'<span class="theme-tag">{stance}</span>' for stance in stances) + '</div>' if stances else '<span style="color: #999;">None</span>'
         
         # Themes display
         themes_html = '<div class="themes-container">' + ' '.join(f'<span class="theme-tag">{theme}</span>' for theme in themes) + '</div>'
@@ -596,7 +702,8 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], output_
                             <tr>
                                 <td><span class="comment-id">{comment.get('id', '')}</span></td>
                                 <td class="date-cell">{formatted_date}</td>
-                                <td><span class="{stance_class}">{stance}</span></td>
+                                <td>{comment.get('submitter', '')}</td>
+                                <td>{stances_html}</td>
                                 <td>{themes_html}</td>
                                 <td>{key_quote[:200]}{'...' if len(key_quote) > 200 else ''}</td>
                                 <td class="text-preview">{text_preview}</td>
@@ -658,7 +765,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], output_
             }});
             
             // Get checkbox filters
-            const stanceCheckboxes = document.querySelectorAll('input[data-filter="stance"]:checked');
+            const stanceCheckboxes = document.querySelectorAll('input[data-filter="stances"]:checked');
             const themeCheckboxes = document.querySelectorAll('input[data-filter="themes"]:checked');
             const attachmentCheckboxes = document.querySelectorAll('input[data-filter="attachments"]:checked');
             
@@ -683,25 +790,25 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], output_
                     }}
                 }}
                 
-                // Check stance filter (column 2)
+                // Check stance filter (column 3)
                 if (showRow && selectedStances.length > 0) {{
-                    const stanceText = cells[2].textContent.toLowerCase();
+                    const stanceText = cells[3].textContent.toLowerCase();
                     if (!selectedStances.some(stance => stanceText.includes(stance))) {{
                         showRow = false;
                     }}
                 }}
                 
-                // Check themes filter (column 3)
+                // Check themes filter (column 4)
                 if (showRow && selectedThemes.length > 0) {{
-                    const themesText = cells[3].textContent.toLowerCase();
+                    const themesText = cells[4].textContent.toLowerCase();
                     if (!selectedThemes.some(theme => themesText.includes(theme.toLowerCase()))) {{
                         showRow = false;
                     }}
                 }}
                 
-                // Check attachments filter (column 6)
+                // Check attachments filter (column 7)
                 if (showRow && selectedAttachments.length > 0) {{
-                    const attachmentCell = cells[6];
+                    const attachmentCell = cells[7];
                     const hasAttachment = attachmentCell.textContent.trim() !== '';
                     
                     let attachmentMatch = false;
@@ -725,6 +832,20 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], output_
             }}
         }}
         
+        function toggleFilter(columnIndex) {{
+            const dropdown = document.getElementById('filter-' + columnIndex);
+            const allDropdowns = document.querySelectorAll('.filter-dropdown');
+            
+            // Close all other dropdowns
+            allDropdowns.forEach(dd => {{
+                if (dd !== dropdown) {{
+                    dd.style.display = 'none';
+                }}}});
+            
+            // Toggle current dropdown
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        }}
+        
         function clearAllFilters() {{
             const textFilters = document.querySelectorAll('.filter-input');
             const checkboxes = document.querySelectorAll('input[type="checkbox"]');
@@ -734,6 +855,16 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], output_
             
             filterTable();
         }}
+        
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(event) {{
+            const isFilterClick = event.target.closest('.filterable') || event.target.closest('.filter-dropdown');
+            if (!isFilterClick) {{
+                document.querySelectorAll('.filter-dropdown').forEach(dd => {{
+                    dd.style.display = 'none';
+                }});
+            }}
+        }});
     </script>
 </body>
 </html>
@@ -756,11 +887,14 @@ def main():
     print(f"Loading results from {args.json}...")
     comments = load_results(args.json)
     
+    print("Analyzing field types...")
+    field_analysis = analyze_field_types(comments)
+    
     print("Calculating statistics...")
-    stats = calculate_stats(comments)
+    stats = calculate_stats(comments, field_analysis)
     
     print(f"Generating HTML report: {args.output}")
-    generate_html(comments, stats, args.output)
+    generate_html(comments, stats, field_analysis, args.output)
     
     print(f"✅ Report generated: {args.output}")
     print(f"📊 {stats['total_comments']:,} comments analyzed")
