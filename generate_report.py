@@ -542,6 +542,11 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
             font-size: 11px;
         }}
         
+        .comment-id a:hover {{
+            color: #0056b3 !important;
+            background-color: #e3f2fd;
+        }}
+        
         .date-cell {{
             white-space: nowrap;
             font-size: 12px;
@@ -802,7 +807,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         
         html_template += f"""
                             <tr>
-                                <td><span class="comment-id">{comment.get('id', '')}</span></td>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/{comment.get('id', '')}" target="_blank" style="color: #007bff; text-decoration: underline;">{comment.get('id', '')}</a></span></td>
                                 <td class="date-cell">{formatted_date}</td>
                                 <td>{comment.get('submitter', '')}</td>
                                 <td>{stances_html}</td>
