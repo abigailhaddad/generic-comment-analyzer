@@ -292,7 +292,7 @@ def update_comment_analyzer(config: CommentAnalyzerConfig):
         if stance_end > 0:
             content = content[:stance_end] + "\n\n" + theme_enum + "\n" + content[stance_end:]
     
-    # Now update the stance_options and theme_options lists in create_schedule_f_analyzer
+    # Now update the stance_options and theme_options lists in create_regulation_analyzer
     # Build the new list definitions
     stance_list = '    stance_options = [\n' + ',\n'.join([f'        "{stance}"' for stance in config.stance_options]) + '\n    ]'
     theme_list = '    theme_options = [\n' + ',\n'.join([f'        "{theme}"' for theme in config.theme_options]) + '\n    ]'
@@ -307,7 +307,7 @@ def update_comment_analyzer(config: CommentAnalyzerConfig):
     if re.search(theme_list_pattern, content):
         content = re.sub(theme_list_pattern, theme_list, content, count=1)
     
-    # Also update the system prompt in create_schedule_f_analyzer
+    # Also update the system prompt in create_regulation_analyzer
     system_prompt_pattern = r'    system_prompt = """[\s\S]*?"""'
     if re.search(system_prompt_pattern, content):
         # Escape the system prompt for regex

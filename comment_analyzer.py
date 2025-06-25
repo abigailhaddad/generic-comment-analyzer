@@ -225,9 +225,9 @@ Analyze objectively and avoid inserting personal opinions or biases."""
         # If we get here, all retries failed
         raise last_error
 
-# Legacy compatibility - create a Schedule F specific analyzer
-def create_schedule_f_analyzer(model=None, timeout_seconds=None):
-    """Create an analyzer configured for Schedule F regulation analysis"""
+# Create a regulation-specific analyzer
+def create_regulation_analyzer(model=None, timeout_seconds=None):
+    """Create an analyzer configured for regulation analysis"""
     
     stance_options = [
         "Opposition to COVID Vaccines",

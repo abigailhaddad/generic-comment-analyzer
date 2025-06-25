@@ -78,6 +78,90 @@ The system includes **automatic enum validation** to ensure data quality:
 
 **Example**: If your regulation has stances like "Support for Transparency" and "Opposition to Changes", only these exact values can be assigned - no variations or typos allowed.
 
+## Manual Customization (Advanced)
+
+If you prefer to write your own analysis prompt instead of using automatic discovery, you need to manually edit **`comment_analyzer.py`**:
+
+### 1. Edit the Enums in `comment_analyzer.py`
+
+Open `comment_analyzer.py` and replace the auto-generated enums with your custom values:
+
+```python
+class Stance(str, Enum):
+    SUPPORT_POLICY = "Support for Policy"
+    OPPOSE_POLICY = "Opposition to Policy" 
+    CONCERNS_PROCESS = "Concerns About Process"
+    # Add your custom stances here
+
+class Theme(str, Enum):
+    ECONOMIC_IMPACT = "Economic Impact"
+    ENVIRONMENTAL_CONCERNS = "Environmental Concerns"
+    PUBLIC_SAFETY = "Public Safety"
+    # Add your custom themes here
+```
+
+### 2. Edit the `create_regulation_analyzer` Function in `comment_analyzer.py`
+
+Still in `comment_analyzer.py`, find the `create_regulation_analyzer` function and replace the auto-generated lists and prompt:
+
+```python
+def create_regulation_analyzer(model=None, timeout_seconds=None):
+    # Hard-code your stance options
+    stance_options = [
+        "Support for Policy",
+        "Opposition to Policy", 
+        "Concerns About Process"
+    ]
+    
+    # Hard-code your theme options  
+    theme_options = [
+        "Economic Impact",
+        "Environmental Concerns",
+        "Public Safety"
+    ]
+    
+    # Write your custom system prompt
+    system_prompt = """You are analyzing public comments about [YOUR REGULATION].
+
+[Your regulation description here]
+
+For each comment, identify:
+
+1. Stances: Which of these positions does the commenter express?
+- Support for Policy: [describe indicators]
+- Opposition to Policy: [describe indicators] 
+- Concerns About Process: [describe indicators]
+
+2. Themes: Which topics are present?
+- Economic Impact
+- Environmental Concerns  
+- Public Safety
+
+3. Key Quote: Most important quote (max 100 words, verbatim from text)
+
+4. Rationale: Brief explanation (1-2 sentences) of stance selection
+
+Instructions:
+- Select all applicable stances and themes
+- Be objective and avoid personal bias"""
+    
+    # Rest of function stays the same...
+```
+
+### 3. Save and Skip the Discovery Step
+
+After editing `comment_analyzer.py`:
+
+1. **Save the file** with your changes
+2. **Skip**: `python discover_stances.py` (since you've manually configured everything)
+3. **Run directly**: `python pipeline.py --csv comments.csv`
+
+**Summary**: You're editing **two parts** of `comment_analyzer.py`:
+- The `Stance` and `Theme` enum classes at the top
+- The `create_regulation_analyzer` function at the bottom
+
+This gives you complete control over the analysis categories and prompt while maintaining enum validation.
+
 ## Files
 
 - **`detect_columns.py`** - Auto-detects CSV column structure → `column_mapping.json`

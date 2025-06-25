@@ -25,6 +25,7 @@ import docx
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import pandas as pd
+from tqdm import tqdm
 
 # Load environment variables
 load_dotenv()
@@ -381,15 +382,15 @@ def analyze_comments(comments: List[Dict[str, Any]], model: str = "gpt-4o-mini",
     analyzer = CommentAnalyzer(model=model)
     
     analyzed_comments = []
-    for i, comment in enumerate(comments):
-        logger.info(f"Analyzing comment {i+1}/{len(comments)}: {comment['id']}")
-        
+    
+    # Use tqdm for progress bar
+    for comment in tqdm(comments, desc="Analyzing comments", unit="comment"):
         try:
             # Prepare text for analysis (truncate if requested)
             analysis_text = comment['text']
             if truncate_chars and len(analysis_text) > truncate_chars:
                 analysis_text = analysis_text[:truncate_chars]
-                logger.info(f"  Truncated text from {len(comment['text'])} to {len(analysis_text)} characters")
+                logger.debug(f"Truncated text from {len(comment['text'])} to {len(analysis_text)} characters for {comment['id']}")
             
             analysis_result = analyzer.analyze(analysis_text, comment_id=comment['id'])
             
