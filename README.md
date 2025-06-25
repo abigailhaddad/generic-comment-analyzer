@@ -7,7 +7,7 @@ A simple, flexible system for analyzing public comments on federal regulations u
 This system is designed to work with comment data from **[regulations.gov bulk download](https://www.regulations.gov/bulkdownload)**:
 
 1. **Request bulk data** for your regulation docket from regulations.gov
-2. **You'll receive an email** with download links when ready (can take hours/days)
+2. **You'll receive an email** with download links when ready
 3. **Download and rename** the comments file to `comments.csv` 
 4. **Place `comments.csv`** in the root of this repository
 
