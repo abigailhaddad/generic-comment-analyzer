@@ -1,0 +1,31 @@
+{
+  "regulation_name": "COVID-19 Vaccine Access and Safety",
+  "regulation_description": "Debates over the safety, efficacy, and access to COVID-19 vaccines following recent ACIP committee changes and vaccine recommendations.",
+  "stance_options": [
+    "Opposition to COVID Vaccines",
+    "Support for Universal Vaccine Access",
+    "Concerns About ACIP Changes",
+    "Defense of Vaccines' Effectiveness",
+    "Call for Transparency and Research Integrity"
+  ],
+  "stance_indicators": {
+    "Opposition to COVID Vaccines": "remove all currently licensed COVID shots; reports of deaths following COVID vaccination; historical comparison with swine flu vaccine; calls for immediate action by ACIP; COVID shots are unnecessary if safety is in question",
+    "Support for Universal Vaccine Access": "universal access to vaccines; medical decisions up to individuals and their doctors; vaccines must be available for all populations; calls for financial coverage by insurance; importance of vaccination for personal health safety",
+    "Concerns About ACIP Changes": "grave concerns about recent termination of ACIP members; independent expert scientists; conflicts of interest among new members; impact on public trust in vaccines; emphasis on expertise in vaccination guidance",
+    "Defense of Vaccines' Effectiveness": "vaccines save lives; prevent serious outcomes from COVID; support for continued vaccination recommendations; importance of vaccines in public health; highlighting success of past vaccinations in society",
+    "Call for Transparency and Research Integrity": "calls for disclosure of financial conflicts; demands accurate research and consultation; highlighting need for scientific decisions; urgency for unbiased vaccine recommendations; concerns over politicization of health guidelines"
+  },
+  "theme_options": [
+    "vaccine safety concerns",
+    "need for transparency",
+    "importance of public health",
+    "individual medical choice",
+    "scientific expertise",
+    "impact of ACIP decisions",
+    "universal vaccine access",
+    "long COVID considerations",
+    "community health responsibilities"
+  ],
+  "system_prompt": "You are analyzing public comments about COVID-19 Vaccine Access and Safety.\n\nDebates over the safety, efficacy, and access to COVID-19 vaccines following recent ACIP committee changes and vaccine recommendations.\n\nFor each comment, identify:\n\n1. Stances: Which of these positions/arguments does the commenter express? Look for the indicators listed below. (Select ALL that apply, or none if none apply)\n- Opposition to COVID Vaccines: remove all currently licensed COVID shots; reports of deaths following COVID vaccination; historical comparison with swine flu vaccine; calls for immediate action by ACIP; COVID shots are unnecessary if safety is in question\n- Support for Universal Vaccine Access: universal access to vaccines; medical decisions up to individuals and their doctors; vaccines must be available for all populations; calls for financial coverage by insurance; importance of vaccination for personal health safety\n- Concerns About ACIP Changes: grave concerns about recent termination of ACIP members; independent expert scientists; conflicts of interest among new members; impact on public trust in vaccines; emphasis on expertise in vaccination guidance\n- Defense of Vaccines' Effectiveness: vaccines save lives; prevent serious outcomes from COVID; support for continued vaccination recommendations; importance of vaccines in public health; highlighting success of past vaccinations in society\n- Call for Transparency and Research Integrity: calls for disclosure of financial conflicts; demands accurate research and consultation; highlighting need for scientific decisions; urgency for unbiased vaccine recommendations; concerns over politicization of health guidelines\n\n2. Themes: Which of these themes are present in the comment? (Select all that apply)\n- vaccine safety concerns\n- need for transparency\n- importance of public health\n- individual medical choice\n- scientific expertise\n- impact of ACIP decisions\n- universal vaccine access\n- long COVID considerations\n- community health responsibilities\n\n3. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. Must be verbatim from the text.\n\n4. Rationale: Briefly explain (1-2 sentences) why you selected these stances.\n\nInstructions:\n- A comment may express multiple stances or no clear stance\n- Only select stances that are clearly expressed in the comment\n- Be objective and avoid inserting personal opinions",
+  "generated_at": "2025-06-25"
+}

@@ -27,13 +27,32 @@ class TimeoutError(Exception):
     """Custom timeout exception for API calls"""
     pass
 
+# Placeholder enums - will be populated by discover_stances.py
+class Stance(str, Enum):
+    OPPOSITION_TO_COVID_VACCINES = "Opposition to COVID Vaccines"
+    SUPPORT_FOR_UNIVERSAL_VACCINE_ACCESS = "Support for Universal Vaccine Access"
+    CONCERNS_ABOUT_ACIP_CHANGES = "Concerns About ACIP Changes"
+    DEFENSE_OF_VACCINES_EFFECTIVENESS = "Defense of Vaccines' Effectiveness"
+    CALL_FOR_TRANSPARENCY_AND_RESEARCH_INTEGRITY = "Call for Transparency and Research Integrity"
+
+class Theme(str, Enum):
+    VACCINE_SAFETY_CONCERNS = "vaccine safety concerns"
+    NEED_FOR_TRANSPARENCY = "need for transparency"
+    IMPORTANCE_OF_PUBLIC_HEALTH = "importance of public health"
+    INDIVIDUAL_MEDICAL_CHOICE = "individual medical choice"
+    SCIENTIFIC_EXPERTISE = "scientific expertise"
+    IMPACT_OF_ACIP_DECISIONS = "impact of ACIP decisions"
+    UNIVERSAL_VACCINE_ACCESS = "universal vaccine access"
+    LONG_COVID_CONSIDERATIONS = "long COVID considerations"
+    COMMUNITY_HEALTH_RESPONSIBILITIES = "community health responsibilities"
+
 class CommentAnalysisResult(BaseModel):
     """Standard model for comment analysis results"""
-    stances: List[str] = Field(
+    stances: List[Stance] = Field(
         default_factory=list,
         description="List of stances/arguments expressed in the comment (0 or more)"
     )
-    themes: List[str] = Field(
+    themes: List[Theme] = Field(
         default_factory=list,
         description="Key themes present in the comment"
     )
@@ -187,6 +206,12 @@ Analyze objectively and avoid inserting personal opinions or biases."""
                     if field not in result:
                         raise ValueError(f"Missing required field: {field}")
                 
+                # Convert string values to enum values if needed
+                if 'stances' in result and isinstance(result['stances'], list):
+                    result['stances'] = [s if isinstance(s, Stance) else s for s in result['stances']]
+                if 'themes' in result and isinstance(result['themes'], list):
+                    result['themes'] = [t if isinstance(t, Theme) else t for t in result['themes']]
+                
                 return result
                 
             except Exception as e:
@@ -204,56 +229,57 @@ Analyze objectively and avoid inserting personal opinions or biases."""
 def create_schedule_f_analyzer(model=None, timeout_seconds=None):
     """Create an analyzer configured for Schedule F regulation analysis"""
     
-    stance_options = ["For", "Against", "Neutral/Unclear"]
+    stance_options = [
+        "Opposition to COVID Vaccines",
+        "Support for Universal Vaccine Access",
+        "Concerns About ACIP Changes",
+        "Defense of Vaccines' Effectiveness",
+        "Call for Transparency and Research Integrity"
+    ]
     theme_options = [
-        "Merit-based system concerns",
-        "Due process/employee rights", 
-        "Politicization concerns",
-        "Scientific integrity",
-        "Institutional knowledge loss"
+        "vaccine safety concerns",
+        "need for transparency",
+        "importance of public health",
+        "individual medical choice",
+        "scientific expertise",
+        "impact of ACIP decisions",
+        "universal vaccine access",
+        "long COVID considerations",
+        "community health responsibilities"
     ]
     
-    system_prompt = """You are analyzing public comments submitted regarding a proposed rule to implement "Schedule F" (or "Schedule Policy/Career").
+    system_prompt = """You are analyzing public comments about COVID-19 Vaccine Access and Safety.
 
-This proposed rule would allow federal agencies to reclassify career civil servants in policy-influencing positions into a new employment category where they could be removed without the standard due process protections normally afforded to career federal employees.
+Debates over the safety, efficacy, and access to COVID-19 vaccines following recent ACIP committee changes and vaccine recommendations.
 
-1. Stance: Determine if the comment is "For" (supporting the rule), "Against" (opposing the rule), or "Neutral/Unclear" by examining both explicit statements and underlying intent.
+For each comment, identify:
 
-Classification guidelines with special attention to boundary cases:
+1. Stances: Which of these positions/arguments does the commenter express? Look for the indicators listed below. (Select ALL that apply, or none if none apply)
+- Opposition to COVID Vaccines: remove all currently licensed COVID shots; reports of deaths following COVID vaccination; historical comparison with swine flu vaccine; calls for immediate action by ACIP; COVID shots are unnecessary if safety is in question
+- Support for Universal Vaccine Access: universal access to vaccines; medical decisions up to individuals and their doctors; vaccines must be available for all populations; calls for financial coverage by insurance; importance of vaccination for personal health safety
+- Concerns About ACIP Changes: grave concerns about recent termination of ACIP members; independent expert scientists; conflicts of interest among new members; impact on public trust in vaccines; emphasis on expertise in vaccination guidance
+- Defense of Vaccines' Effectiveness: vaccines save lives; prevent serious outcomes from COVID; support for continued vaccination recommendations; importance of vaccines in public health; highlighting success of past vaccinations in society
+- Call for Transparency and Research Integrity: calls for disclosure of financial conflicts; demands accurate research and consultation; highlighting need for scientific decisions; urgency for unbiased vaccine recommendations; concerns over politicization of health guidelines
 
-- "For": Comment supports the rule, defends its merits, or argues for implementation. Look for: praise of accountability, presidential authority, removing bureaucratic obstacles, or making it easier to remove poor performers. Comments which oppose the deep state or support the president are almost certainty also in support of the regulation, even if they don't explicitly say so. 
+2. Themes: Which of these themes are present in the comment? (Select all that apply)
+- vaccine safety concerns
+- need for transparency
+- importance of public health
+- individual medical choice
+- scientific expertise
+- impact of ACIP decisions
+- universal vaccine access
+- long COVID considerations
+- community health responsibilities
 
-- "Against": Comment opposes the rule, including indirect opposition through thematic alignment. Critical indicators include:
-  * Questions about constitutionality or legal concerns, even without explicit opposition
-  * Support for current merit-based systems or civil service protections
-  * Concerns about politicization of civil service
-  * Emphasis on nonpartisan governance, constitutional loyalty, or professional integrity (these themes inherently oppose politicization)
-  * Anti-Trump or anti-administration sentiment, EVEN if not combined with any explicit comments about the regulation
-  * Comments about job performance standards that emphasize merit/fairness over political considerations
-  Again, if this is talking about how the president or government is doing bad things, it's almost certainly in opposition, unless it's talking about the civil service or deep state doing bad things. Like, if the comment is about how Trump is acting like a king, or it just says NO or fuck doge or something like that, it's against. 
+3. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. Must be verbatim from the text.
 
-- "Neutral/Unclear": Reserve this classification ONLY for:
-  * Comments purely requesting information without revealing stance
-  * Comments discussing completely unrelated topics which don't involve support or opposition to the president
-  * Comments that are genuinely ambiguous after considering thematic context
+4. Rationale: Briefly explain (1-2 sentences) why you selected these stances.
 
-IMPORTANT DISTINCTIONS:
-- Comments supporting easier removal of poor performers are "For" if they align with the rule's efficiency goals
-- Comments emphasizing constitutional duty, integrity, or nonpartisan service are "Against" (they oppose politicization)
-- When in doubt between "Against" and "Neutral/Unclear", consider if the comment's themes would logically oppose politicizing civil service
-
-2. Themes: Identify which of these themes are present (select all that apply):
-   - Merit-based system concerns (mentions civil service protections, merit system, etc.)
-   - Due process/employee rights (mentions worker protections, procedural rights, etc.)
-   - Politicization concerns (mentions political interference, partisan influence, etc.)
-   - Scientific integrity (mentions concerns about scientific research, grant-making, etc.)
-   - Institutional knowledge loss (mentions expertise, continuity, experience, etc.)
-
-3. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. The quote must be exactly present in the original text - do not paraphrase or modify.
-
-4. Rationale: Briefly explain (1-2 sentences) why you classified the stance as you did.
-
-Analyze objectively and avoid inserting personal opinions or biases."""
+Instructions:
+- A comment may express multiple stances or no clear stance
+- Only select stances that are clearly expressed in the comment
+- Be objective and avoid inserting personal opinions"""
 
     return CommentAnalyzer(
         model=model,

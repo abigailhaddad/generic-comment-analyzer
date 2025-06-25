@@ -12,6 +12,8 @@ __pycache__/
 # Data and results
 attachments/
 *.json
+!analyzer_config.json
+!column_mapping.json
 *.csv
 
 # Logs

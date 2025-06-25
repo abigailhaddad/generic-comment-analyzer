@@ -154,7 +154,19 @@ Focus on creating actionable indicators that an AI can use to detect these stanc
             timeout=120
         )
         
-        result_data = json.loads(response.choices[0].message.content)
+        response_content = response.choices[0].message.content
+        logger.info(f"Raw response: {response_content[:500]}...")
+        
+        result_data = json.loads(response_content)
+        logger.info(f"Parsed data keys: {list(result_data.keys())}")
+        
+        # Check if the response is wrapped in a schema structure
+        if 'properties' in result_data and 'description' in result_data:
+            # Extract the actual data from the properties field
+            actual_data = result_data['properties']
+            logger.info(f"Found schema wrapper, extracting properties: {list(actual_data.keys())}")
+            result_data = actual_data
+        
         result = DiscoveredStances(**result_data)
         
         logger.info(f"✅ Discovered {len(result.stances)} stances and {len(result.themes)} themes")
@@ -162,6 +174,8 @@ Focus on creating actionable indicators that an AI can use to detect these stanc
         
     except Exception as e:
         logger.error(f"Stance discovery failed: {e}")
+        if 'response_content' in locals():
+            logger.error(f"Response content: {response_content}")
         raise
 
 def generate_analyzer_config(discovered: DiscoveredStances) -> CommentAnalyzerConfig:
@@ -232,6 +246,81 @@ def save_config(config: CommentAnalyzerConfig, output_file: str = "analyzer_conf
     
     logger.info(f"✅ Configuration saved to {output_file}")
 
+def update_comment_analyzer(config: CommentAnalyzerConfig):
+    """Update comment_analyzer.py with discovered enums and lists."""
+    import re
+    
+    # Read the current comment_analyzer.py
+    with open('comment_analyzer.py', 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    # Create enum definitions
+    stance_enum_items = []
+    for i, stance in enumerate(config.stance_options):
+        # Create valid enum names by replacing spaces and special chars
+        enum_name = re.sub(r'[^A-Za-z0-9]+', '_', stance.upper()).strip('_')
+        stance_enum_items.append(f'    {enum_name} = "{stance}"')
+    
+    theme_enum_items = []
+    for i, theme in enumerate(config.theme_options):
+        # Create valid enum names
+        enum_name = re.sub(r'[^A-Za-z0-9]+', '_', theme.upper()).strip('_')
+        theme_enum_items.append(f'    {enum_name} = "{theme}"')
+    
+    # Build the new enum definitions
+    stance_enum = "class Stance(str, Enum):\n" + "\n".join(stance_enum_items)
+    theme_enum = "class Theme(str, Enum):\n" + "\n".join(theme_enum_items)
+    
+    # Replace existing enum definitions
+    # First, find and replace Stance enum
+    stance_pattern = r'class Stance\(str, Enum\):\n(?:    .*\n)*'
+    if re.search(stance_pattern, content):
+        content = re.sub(stance_pattern, stance_enum + "\n", content)
+    else:
+        # If no Stance enum exists, add it after imports
+        import_end = content.find('\n\n', content.find('from typing import'))
+        if import_end > 0:
+            content = content[:import_end] + "\n\n" + stance_enum + "\n" + content[import_end:]
+    
+    # Then, find and replace Theme enum
+    theme_pattern = r'class Theme\(str, Enum\):\n(?:    .*\n)*'
+    if re.search(theme_pattern, content):
+        content = re.sub(theme_pattern, theme_enum + "\n", content)
+    else:
+        # If no Theme enum exists, add it after Stance enum
+        stance_end = content.find('\n\n', content.find('class Stance'))
+        if stance_end > 0:
+            content = content[:stance_end] + "\n\n" + theme_enum + "\n" + content[stance_end:]
+    
+    # Now update the stance_options and theme_options lists in create_schedule_f_analyzer
+    # Build the new list definitions
+    stance_list = '    stance_options = [\n' + ',\n'.join([f'        "{stance}"' for stance in config.stance_options]) + '\n    ]'
+    theme_list = '    theme_options = [\n' + ',\n'.join([f'        "{theme}"' for theme in config.theme_options]) + '\n    ]'
+    
+    # Replace stance_options list
+    stance_list_pattern = r'    stance_options = \[[\s\S]*?\]'
+    if re.search(stance_list_pattern, content):
+        content = re.sub(stance_list_pattern, stance_list, content, count=1)
+    
+    # Replace theme_options list
+    theme_list_pattern = r'    theme_options = \[[\s\S]*?\]'
+    if re.search(theme_list_pattern, content):
+        content = re.sub(theme_list_pattern, theme_list, content, count=1)
+    
+    # Also update the system prompt in create_schedule_f_analyzer
+    system_prompt_pattern = r'    system_prompt = """[\s\S]*?"""'
+    if re.search(system_prompt_pattern, content):
+        # Escape the system prompt for regex
+        escaped_prompt = config.system_prompt.replace('\\', '\\\\').replace('"', '\\"')
+        new_system_prompt = f'    system_prompt = """{config.system_prompt}"""'
+        content = re.sub(system_prompt_pattern, new_system_prompt, content, count=1)
+    
+    # Write the updated content back
+    with open('comment_analyzer.py', 'w', encoding='utf-8') as f:
+        f.write(content)
+    
+    logger.info(f"✅ Updated comment_analyzer.py with {len(config.stance_options)} stances and {len(config.theme_options)} themes")
+
 def print_results(discovered: DiscoveredStances, config: CommentAnalyzerConfig):
     """Print discovered stances and configuration."""
     print("\n" + "="*80)
@@ -260,6 +349,7 @@ def print_results(discovered: DiscoveredStances, config: CommentAnalyzerConfig):
     print("CONFIGURATION GENERATED")
     print("="*80)
     print("✅ analyzer_config.json has been created")
+    print("✅ comment_analyzer.py has been updated with enum definitions")
     print("✅ The comment analyzer will now identify multiple stances per comment")
     print("✅ Ready to run: python pipeline.py --csv comments.csv")
 
@@ -292,6 +382,9 @@ def main():
         
         # Save configuration
         save_config(config, args.output)
+        
+        # Update comment_analyzer.py with enums
+        update_comment_analyzer(config)
         
         # Display results
         print_results(discovered, config)
