@@ -14,6 +14,7 @@ attachments/
 *.json
 !analyzer_config.json
 !column_mapping.json
+!regulation_metadata.json
 *.csv
 
 # Logs

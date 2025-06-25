@@ -225,19 +225,37 @@ def generate_filter_html(field_name: str, field_info: Dict[str, Any], column_ind
             <input type="text" class="filter-input" data-column="{column_index}" placeholder="Filter by {field_label.lower()}..." onkeyup="filterTable()">
         </div>'''
 
+def load_regulation_metadata() -> Dict[str, str]:
+    """Load regulation metadata if available."""
+    try:
+        if os.path.exists('regulation_metadata.json'):
+            with open('regulation_metadata.json', 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception:
+        pass
+    
+    # Fallback metadata
+    return {
+        "regulation_name": "Regulation Comments Analysis",
+        "docket_id": "",
+        "agency": "",
+        "brief_description": "Analysis of public comments on federal regulation"
+    }
+
 def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_analysis: Dict[str, Dict[str, Any]], output_file: str):
     """Generate HTML report."""
     
     # Get metadata
     model_used = "gpt-4o-mini"  # Default assumption
     generated_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    regulation_metadata = load_regulation_metadata()
     
     html_template = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comment Analysis Report</title>
+    <title>{regulation_metadata['regulation_name']} - Comment Analysis Report</title>
     <style>
         * {{
             margin: 0;
@@ -629,8 +647,9 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
 <body>
     <div class="container">
         <div class="header">
-            <h1>Comment Analysis Report</h1>
-            <div class="subtitle">Analysis of public comments with interactive filtering</div>
+            <h1>{regulation_metadata['regulation_name']}</h1>
+            <div class="subtitle">{regulation_metadata['brief_description']}</div>
+            {f'<div style="margin-top: 10px; color: #666; font-size: 0.9em;">{regulation_metadata["agency"]} Docket: {regulation_metadata["docket_id"]}</div>' if regulation_metadata['docket_id'] else ''}
         </div>
         
         <!-- Summary Statistics -->

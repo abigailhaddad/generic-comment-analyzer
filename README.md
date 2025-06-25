@@ -31,7 +31,7 @@ This system is designed to work with comment data from **[regulations.gov bulk d
 
 3. **Set up for your regulation:**
    ```bash
-   # Step 1: Detect CSV column structure (or manually edit column_mapping.json)
+   # Step 1: Detect CSV column structure and extract regulation metadata
    python detect_columns.py
 
    # Step 2: Discover stances and themes from sample comments
@@ -46,15 +46,21 @@ This system is designed to work with comment data from **[regulations.gov bulk d
    # IMPORTANT: Test first, then run full dataset
    # The pipeline does not resume - it starts from scratch each time
    
-   # Full run with all options
-   ./run_pipeline.sh --csv comments.csv --truncate 5000 --to-database
+   # Full run with parallel processing (recommended)
+   ./run_pipeline.sh --csv comments.csv --workers 8 --batch-size 100
+   
+   # Full run with database storage
+   ./run_pipeline.sh --csv comments.csv --workers 4 --batch-size 50 --to-database
+   
+   # Conservative run (if you hit API rate limits)
+   ./run_pipeline.sh --csv comments.csv --workers 4 --batch-size 25
    ```
 
 ## How It Works
 
 The system automatically discovers and adapts to your regulation with **built-in validation**:
 
-1. **Column Detection** (`detect_columns.py`): Uses LLM to automatically map CSV columns to required fields (comment text, ID, date, submitter, attachments). Alternatively, manually edit `column_mapping.json` if you know your CSV structure.
+1. **Column Detection** (`detect_columns.py`): Uses LLM to automatically map CSV columns to required fields (comment text, ID, date, submitter, attachments) and extract regulation metadata for professional report titles. Alternatively, manually edit `column_mapping.json` if you know your CSV structure.
 
 2. **Stance Discovery** (`discover_stances.py`): Analyzes sample comments to discover:
    - The main arguments/positions people are taking (not just pro/con)
@@ -178,7 +184,7 @@ This gives you complete control over the analysis categories and prompt while ma
 
 ## Files
 
-- **`detect_columns.py`** - Auto-detects CSV column structure → `column_mapping.json`
+- **`detect_columns.py`** - Auto-detects CSV column structure → `column_mapping.json` + `regulation_metadata.json`
 - **`discover_stances.py`** - Discovers stances and themes → `analyzer_config.json` + updates enum constraints
 - **`pipeline.py`** - Main processing script (outputs Parquet format)
 - **`comment_analyzer.py`** - Configurable LLM analyzer with enum validation (auto-updated by discover_stances.py)
@@ -194,7 +200,10 @@ This gives you complete control over the analysis categories and prompt while ma
 Options:
   --sample N          Process only N random comments (for testing)
   --truncate N        Truncate comment text to N characters for LLM analysis (saves costs)
-  --to-database       Store results in PostgreSQL 
+  --to-database       Store results in PostgreSQL database
+  --workers N         Number of parallel workers for faster processing (default: 8)
+  --batch-size N      Batch size for parallel processing (default: 50)
+  --no-parallel       Disable parallel processing (slower but more stable)
   --model MODEL       Use different LLM model (default: gpt-4o-mini)
   --output FILE       Parquet output file (default: analyzed_comments.parquet)
 ```
@@ -202,6 +211,7 @@ Options:
 ### HTML Report
 
 The pipeline automatically generates an interactive HTML report (`index.html`) with:
+- **Professional titles**: Uses extracted regulation metadata for proper report titles
 - Summary statistics and distribution charts for all discovered stances/themes
 - Checkbox filtering for stances, themes, and attachments  
 - Text search for IDs, dates, quotes, and content
@@ -218,6 +228,8 @@ If using PostgreSQL storage:
 
 ## Features
 
+- **Parallel processing** - 4-8x faster analysis with configurable worker threads
+- **Professional reporting** - Automatic regulation metadata extraction for proper titles
 - **Attachment processing** - Handles PDFs (PyPDF2), DOCX files, and images (Gemini OCR)
 - **Smart deduplication** - Analyzes unique content only, then maps results back to all duplicates
 - **Enum validation** - Prevents invalid stance/theme values through auto-generated Pydantic enums
