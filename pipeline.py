@@ -24,6 +24,7 @@ from PyPDF2 import PdfReader
 import docx
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import pandas as pd
 
 # Load environment variables
 load_dotenv()
@@ -410,11 +411,13 @@ def analyze_comments(comments: List[Dict[str, Any]], model: str = "gpt-4o-mini",
     return analyzed_comments
 
 def save_results(analyzed_comments: List[Dict[str, Any]], output_file: str):
-    """Save analyzed comments to JSON file."""
+    """Save analyzed comments to Parquet file."""
     logger.info(f"Saving {len(analyzed_comments)} analyzed comments to {output_file}")
     
-    with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(analyzed_comments, f, indent=2, ensure_ascii=False)
+    # Convert to DataFrame and save as Parquet
+    df = pd.DataFrame(analyzed_comments)
+    df.to_parquet(output_file, index=False)
+    logger.info(f"✅ Saved results to {output_file}")
 
 def get_db_connection():
     """Get PostgreSQL database connection."""
@@ -490,12 +493,17 @@ def check_database_status(regulation_name: str = "Schedule F Civil Service Rule"
     finally:
         conn.close()
 
-def store_in_postgres(analyzed_comments: List[Dict[str, Any]], regulation_name: str = "Schedule F Civil Service Rule", docket_id: str = "OPM-2025-0004"):
-    """Store analyzed comments in PostgreSQL database efficiently with batch operations."""
+def store_in_postgres_from_parquet(parquet_file: str, regulation_name: str = "Schedule F Civil Service Rule", docket_id: str = "OPM-2025-0004"):
+    """Store analyzed comments in PostgreSQL database from Parquet file."""
     conn = get_db_connection()
     if not conn:
         logger.warning("⚠️  Database connection failed, skipping PostgreSQL storage")
         return
+    
+    # Load data from Parquet
+    logger.info(f"Loading data from {parquet_file}")
+    df = pd.read_parquet(parquet_file)
+    analyzed_comments = df.to_dict('records')
     
     try:
         cursor = conn.cursor()
@@ -571,7 +579,7 @@ def store_in_postgres(analyzed_comments: List[Dict[str, Any]], regulation_name: 
 def main():
     parser = argparse.ArgumentParser(description='Generic regulation comment analysis pipeline')
     parser.add_argument('--csv', type=str, required=True, help='Path to comments CSV file')
-    parser.add_argument('--output', type=str, default='analyzed_comments.json', help='Output JSON file')
+    parser.add_argument('--output', type=str, default='analyzed_comments.parquet', help='Output Parquet file')
     parser.add_argument('--sample', type=int, help='Process only N random comments for testing')
     parser.add_argument('--model', type=str, default='gpt-4o-mini', help='LLM model to use')
     parser.add_argument('--truncate', type=int, help='Truncate comment text to N characters before LLM analysis (saves costs)')
@@ -610,7 +618,7 @@ def main():
         # Step 6: Store in PostgreSQL
         if args.to_database:
             logger.info("=== STEP 6: Database Storage ===")
-            store_in_postgres(analyzed_comments)
+            store_in_postgres_from_parquet(args.output)
         else:
             logger.info("=== STEP 6: Skipping Database Storage ===")
             logger.info("Use --to-database flag to store in PostgreSQL")
@@ -618,11 +626,11 @@ def main():
         # Generate HTML report
         logger.info("=== STEP 7: Generating HTML Report ===")
         try:
-            from generate_report import load_results, calculate_stats, generate_html, analyze_field_types
+            from generate_report import load_results_parquet, calculate_stats, generate_html, analyze_field_types
             
             html_output = "index.html"
             logger.info(f"Loading results from {args.output}...")
-            comments = load_results(args.output)
+            comments = load_results_parquet(args.output)
             
             logger.info("Analyzing field types...")
             field_analysis = analyze_field_types(comments)
@@ -642,7 +650,7 @@ def main():
         # Summary
         logger.info("=== PIPELINE COMPLETE ===")
         logger.info(f"Processed {len(analyzed_comments)} comments")
-        logger.info(f"Results saved to: {args.output}")
+        logger.info(f"Results saved to: {args.output} (Parquet format)")
         logger.info(f"HTML report: index.html")
         
     except Exception as e:

@@ -10,11 +10,17 @@ import json
 import os
 from datetime import datetime
 from typing import Dict, Any, List
+import pandas as pd
 
 def load_results(json_file: str) -> List[Dict[str, Any]]:
     """Load analyzed comments from JSON file."""
     with open(json_file, 'r', encoding='utf-8') as f:
         return json.load(f)
+
+def load_results_parquet(parquet_file: str) -> List[Dict[str, Any]]:
+    """Load analyzed comments from Parquet file."""
+    df = pd.read_parquet(parquet_file)
+    return df.to_dict('records')
 
 def analyze_field_types(comments: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
     """Analyze standard analysis fields."""

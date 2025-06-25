@@ -38,7 +38,7 @@ A simple, flexible system for analyzing public comments on federal regulations u
 
 ## How It Works
 
-The system automatically discovers and adapts to your regulation:
+The system automatically discovers and adapts to your regulation with **built-in validation**:
 
 1. **Column Detection** (`detect_columns.py`): Uses LLM to automatically map CSV columns to required fields (comment text, ID, date, submitter, attachments)
 
@@ -47,6 +47,7 @@ The system automatically discovers and adapts to your regulation:
    - Specific indicators that signal each stance
    - Recurring themes across comments
    - Generates complete analysis configuration
+   - **Automatically updates `comment_analyzer.py` with enum constraints** to prevent invalid values
 
 3. **Comment Analysis** (`pipeline.py`): For each comment, identifies:
    - **Stances**: Multiple arguments/positions (e.g., "board shouldn't be fired", "process lacks transparency")
@@ -54,7 +55,7 @@ The system automatically discovers and adapts to your regulation:
    - **Key Quote**: Most important excerpt
    - **Rationale**: Why those stances were selected
 
-4. **Results**: Saves to JSON, optional PostgreSQL database, and automatically generates interactive HTML report
+4. **Results**: Saves to **Parquet format** (efficient compressed storage), optional PostgreSQL database, and automatically generates interactive HTML report
 
 ## For Different Regulations
 
@@ -66,12 +67,23 @@ The system is fully generic! Just:
 
 No manual configuration needed - it learns your regulation's specific arguments and themes.
 
+## Built-in Validation System
+
+The system includes **automatic enum validation** to ensure data quality:
+
+1. **`discover_stances.py`** analyzes your comments and creates specific stance/theme lists
+2. **Automatically updates `comment_analyzer.py`** with Pydantic enum constraints  
+3. **Prevents invalid values** during analysis - only discovered stances/themes are allowed
+4. **Type safety** - eliminates typos and inconsistent categorization
+
+**Example**: If your regulation has stances like "Support for Transparency" and "Opposition to Changes", only these exact values can be assigned - no variations or typos allowed.
+
 ## Files
 
 - **`detect_columns.py`** - Auto-detects CSV column structure → `column_mapping.json`
-- **`discover_stances.py`** - Discovers stances and themes → `analyzer_config.json`  
-- **`pipeline.py`** - Main processing script
-- **`comment_analyzer.py`** - Configurable LLM analyzer (uses `analyzer_config.json`)
+- **`discover_stances.py`** - Discovers stances and themes → `analyzer_config.json` + updates enum constraints
+- **`pipeline.py`** - Main processing script (outputs Parquet format)
+- **`comment_analyzer.py`** - Configurable LLM analyzer with enum validation (auto-updated by discover_stances.py)
 - **`generate_report.py`** - HTML report generator (runs automatically)
 - **`run_pipeline.sh`** - Convenience script with sleep prevention
 - **`schema.sql`** - PostgreSQL database schema
@@ -86,7 +98,7 @@ Options:
   --truncate N        Truncate comment text to N characters for LLM analysis (saves costs)
   --to-database       Store results in PostgreSQL 
   --model MODEL       Use different LLM model (default: gpt-4o-mini)
-  --output FILE       JSON output file (default: analyzed_comments.json)
+  --output FILE       Parquet output file (default: analyzed_comments.parquet)
 ```
 
 ### HTML Report
@@ -109,27 +121,35 @@ If using PostgreSQL storage:
 ## Features
 
 - **Attachment processing** - Handles PDFs (PyPDF2), DOCX files, and images (Gemini OCR)
-- **No deduplication** - Each comment processed individually (accepts duplicates)
+- **Smart deduplication** - Analyzes unique content only, then maps results back to all duplicates
+- **Enum validation** - Prevents invalid stance/theme values through auto-generated Pydantic enums
+- **Efficient storage** - Parquet format provides ~10x compression vs JSON
 - **Sampling** - Test on subsets before full runs
 - **Sleep prevention** - Uses `caffeinate` on macOS for long runs
-- **Database integration** - Optional PostgreSQL storage
+- **Database integration** - Optional PostgreSQL storage (reads from Parquet)
 - **Automatic HTML reports** - Interactive filtering and statistics
 - **Generic design** - Easy to adapt for any regulation
 
 ## Data Storage
 
-### Parquet Format (Recommended)
+### Parquet Format (Default)
 
-For large datasets, convert the JSON output to Parquet format for ~100x compression:
+The pipeline now outputs **Parquet format by default** for efficient storage:
 
+- **Compressed**: ~10x smaller than JSON format
+- **Fast**: Optimized for data analysis and filtering
+- **Compatible**: Works with pandas, SQL databases, and analytics tools
+- **Automatic**: No conversion step needed
+
+**Output**: `analyzed_comments.parquet` (instead of JSON)
+
+### Database Integration
+
+PostgreSQL upload now reads directly from Parquet files:
 ```bash
-source myenv/bin/activate
-python convert_to_parquet.py
+python pipeline.py --csv comments.csv --to-database
+# Automatically uploads from analyzed_comments.parquet
 ```
-
-This converts `analyzed_comments.json` (can be ~1GB+) to `analyzed_comments.parquet` (~10MB).
-
-**Note**: Parquet conversion is not yet integrated into the pipeline but should be added in future versions for efficient storage.
 
 ## License
 
