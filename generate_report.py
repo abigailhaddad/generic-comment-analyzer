@@ -649,7 +649,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         <div class="header">
             <h1>{regulation_metadata['regulation_name']}</h1>
             <div class="subtitle">{regulation_metadata['brief_description']}</div>
-            {f'<div style="margin-top: 10px; color: #666; font-size: 0.9em;">{regulation_metadata["agency"]} Docket: {regulation_metadata["docket_id"]}</div>' if regulation_metadata['docket_id'] else ''}
+            {f'<div style="margin-top: 10px; color: #666; font-size: 0.9em;">{regulation_metadata["agency"]} Docket: <a href="https://www.regulations.gov/docket/{regulation_metadata["docket_id"]}" target="_blank" style="color: #007bff; text-decoration: none;">{regulation_metadata["docket_id"]}</a></div>' if regulation_metadata['docket_id'] else ''}
         </div>
         
         <!-- Summary Statistics -->
