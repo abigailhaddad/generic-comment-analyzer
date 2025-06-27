@@ -815,39 +815,43 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                         </div>
                         <div class="column-visibility-item">
                             <input type="checkbox" id="col-3" checked onchange="toggleColumn(3)">
-                            <label for="col-3">Stances</label>
+                            <label for="col-3">Organization</label>
                         </div>
                         <div class="column-visibility-item">
                             <input type="checkbox" id="col-4" checked onchange="toggleColumn(4)">
-                            <label for="col-4">Themes</label>
+                            <label for="col-4">Stances</label>
                         </div>
                         <div class="column-visibility-item">
                             <input type="checkbox" id="col-5" checked onchange="toggleColumn(5)">
-                            <label for="col-5">Comment</label>
+                            <label for="col-5">Themes</label>
                         </div>
                         <div class="column-visibility-item">
                             <input type="checkbox" id="col-6" checked onchange="toggleColumn(6)">
-                            <label for="col-6">Attachments</label>
+                            <label for="col-6">Comment</label>
                         </div>
                         <div class="column-visibility-item">
                             <input type="checkbox" id="col-7" checked onchange="toggleColumn(7)">
-                            <label for="col-7">Dup Count</label>
+                            <label for="col-7">Attachments</label>
                         </div>
                         <div class="column-visibility-item">
                             <input type="checkbox" id="col-8" checked onchange="toggleColumn(8)">
-                            <label for="col-8">Dup Ratio</label>
+                            <label for="col-8">Dup Count</label>
                         </div>
                         <div class="column-visibility-item">
-                            <input type="checkbox" id="col-9" onchange="toggleColumn(9)">
-                            <label for="col-9">Attachment</label>
+                            <input type="checkbox" id="col-9" checked onchange="toggleColumn(9)">
+                            <label for="col-9">Dup Ratio</label>
                         </div>
                         <div class="column-visibility-item">
                             <input type="checkbox" id="col-10" onchange="toggleColumn(10)">
-                            <label for="col-10">Key Quote (LLM)</label>
+                            <label for="col-10">Attachment</label>
                         </div>
                         <div class="column-visibility-item">
                             <input type="checkbox" id="col-11" onchange="toggleColumn(11)">
-                            <label for="col-11">Rationale (LLM)</label>
+                            <label for="col-11">Key Quote (LLM)</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-12" onchange="toggleColumn(12)">
+                            <label for="col-12">Rationale (LLM)</label>
                         </div>
                     </div>
                 </div>
@@ -871,58 +875,64 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                                 </div>
                             </th>
                             <th class="filterable" data-column="3">
-                                Stances <span class="filter-arrow" onclick="toggleFilter(3)">▼</span>
+                                Organization <span class="filter-arrow" onclick="toggleFilter(3)">▼</span>
                                 <div class="filter-dropdown" id="filter-3" style="display: none;">
-                                    {"".join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="{stance}" onchange="filterTable()"> {stance}</label>' for stance in field_analysis.get('stances', {}).get('unique_values', []))}
+                                    <input type="text" class="filter-input" data-column="3" placeholder="Filter organization..." onkeyup="filterTable()">
                                 </div>
                             </th>
                             <th class="filterable" data-column="4">
-                                Themes <span class="filter-arrow" onclick="toggleFilter(4)">▼</span>
+                                Stances <span class="filter-arrow" onclick="toggleFilter(4)">▼</span>
                                 <div class="filter-dropdown" id="filter-4" style="display: none;">
-                                    {"".join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="themes" value="{theme}" onchange="filterTable()"> {theme}</label>' for theme in field_analysis.get('themes', {}).get('unique_values', []))}
+                                    {"".join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="{stance}" onchange="filterTable()"> {stance}</label>' for stance in field_analysis.get('stances', {}).get('unique_values', []))}
                                 </div>
                             </th>
                             <th class="filterable" data-column="5">
-                                Comment <span class="filter-arrow" onclick="toggleFilter(5)">▼</span>
+                                Themes <span class="filter-arrow" onclick="toggleFilter(5)">▼</span>
                                 <div class="filter-dropdown" id="filter-5" style="display: none;">
-                                    <input type="text" class="filter-input" data-column="5" placeholder="Search comment text..." onkeyup="filterTable()">
+                                    {"".join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="themes" value="{theme}" onchange="filterTable()"> {theme}</label>' for theme in field_analysis.get('themes', {}).get('unique_values', []))}
                                 </div>
                             </th>
                             <th class="filterable" data-column="6">
-                                📎 <span class="filter-arrow" onclick="toggleFilter(6)">▼</span>
+                                Comment <span class="filter-arrow" onclick="toggleFilter(6)">▼</span>
                                 <div class="filter-dropdown" id="filter-6" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="6" placeholder="Search comment text..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="7">
+                                📎 <span class="filter-arrow" onclick="toggleFilter(7)">▼</span>
+                                <div class="filter-dropdown" id="filter-7" style="display: none;">
                                     <label class="filter-checkbox"><input type="checkbox" data-filter="attachments" value="yes" onchange="filterTable()"> With attachments</label>
                                     <label class="filter-checkbox"><input type="checkbox" data-filter="attachments" value="no" onchange="filterTable()"> No attachments</label>
                                 </div>
                             </th>
-                            <th class="filterable" data-column="7">
-                                Dup Count <span class="filter-arrow" onclick="toggleFilter(7)">▼</span>
-                                <div class="filter-dropdown" id="filter-7" style="display: none;">
+                            <th class="filterable" data-column="8">
+                                Dup Count <span class="filter-arrow" onclick="toggleFilter(8)">▼</span>
+                                <div class="filter-dropdown" id="filter-8" style="display: none;">
                                     {"".join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="duplication_count" value="{count}" onchange="filterTable()"> {count}</label>' for count in sorted(field_analysis.get('duplication_count', {}).get('unique_values', []), reverse=True))}
                                 </div>
                             </th>
-                            <th class="filterable" data-column="8">
-                                Dup Ratio <span class="filter-arrow" onclick="toggleFilter(8)">▼</span>
-                                <div class="filter-dropdown" id="filter-8" style="display: none;">
+                            <th class="filterable" data-column="9">
+                                Dup Ratio <span class="filter-arrow" onclick="toggleFilter(9)">▼</span>
+                                <div class="filter-dropdown" id="filter-9" style="display: none;">
                                     {"".join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="duplication_ratio" value="{ratio}" onchange="filterTable()"> 1:{ratio}</label>' for ratio in sorted(field_analysis.get('duplication_ratio', {}).get('unique_values', []), reverse=True))}
                                 </div>
                             </th>
-                            <th class="filterable" data-column="9" style="display: none;">
-                                Attachment <span class="filter-arrow" onclick="toggleFilter(9)">▼</span>
-                                <div class="filter-dropdown" id="filter-9" style="display: none;">
-                                    <input type="text" class="filter-input" data-column="9" placeholder="Search attachment text..." onkeyup="filterTable()">
-                                </div>
-                            </th>
                             <th class="filterable" data-column="10" style="display: none;">
-                                Key Quote <span class="filter-arrow" onclick="toggleFilter(10)">▼</span>
+                                Attachment <span class="filter-arrow" onclick="toggleFilter(10)">▼</span>
                                 <div class="filter-dropdown" id="filter-10" style="display: none;">
-                                    <input type="text" class="filter-input" data-column="10" placeholder="Search quotes..." onkeyup="filterTable()">
+                                    <input type="text" class="filter-input" data-column="10" placeholder="Search attachment text..." onkeyup="filterTable()">
                                 </div>
                             </th>
                             <th class="filterable" data-column="11" style="display: none;">
-                                Rationale <span class="filter-arrow" onclick="toggleFilter(11)">▼</span>
+                                Key Quote <span class="filter-arrow" onclick="toggleFilter(11)">▼</span>
                                 <div class="filter-dropdown" id="filter-11" style="display: none;">
-                                    <input type="text" class="filter-input" data-column="11" placeholder="Search rationale..." onkeyup="filterTable()">
+                                    <input type="text" class="filter-input" data-column="11" placeholder="Search quotes..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="12" style="display: none;">
+                                Rationale <span class="filter-arrow" onclick="toggleFilter(12)">▼</span>
+                                <div class="filter-dropdown" id="filter-12" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="12" placeholder="Search rationale..." onkeyup="filterTable()">
                                 </div>
                             </th>
                         </tr>
@@ -991,12 +1001,14 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         key_quote_cell = create_tooltip_cell(key_quote, 300, tooltip_max_length=500).replace('<td', '<td style="display: none;"')
         rationale_cell = create_tooltip_cell(rationale, 500, tooltip_max_length=500).replace('<td', '<td style="display: none;"')
         submitter_cell = create_tooltip_cell(comment.get('submitter', ''), 50, tooltip_max_length=200)
+        organization_cell = create_tooltip_cell(comment.get('organization', ''), 50, tooltip_max_length=200)
 
         html_template += f"""
                             <tr>
                                 <td><span class="comment-id"><a href="https://www.regulations.gov/comment/{comment.get('id', '')}" target="_blank" style="color: #007bff; text-decoration: underline;">{comment.get('id', '')}</a></span></td>
                                 <td class="date-cell">{formatted_date}</td>
                                 {submitter_cell}
+                                {organization_cell}
                                 <td>{stances_html}</td>
                                 <td>{themes_html}</td>
                                 {comment_cell}
@@ -1051,7 +1063,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
     <script>
         // Column visibility state
         const columnVisibility = {{
-            0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: true, 9: false, 10: false, 11: false
+            0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: true, 9: true, 10: false, 11: false, 12: false
         }};
 
         // Initialize column visibility on page load
@@ -1135,25 +1147,25 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                     }}
                 }}
                 
-                // Check stance filter (column 3)
+                // Check stance filter (column 4)
                 if (showRow && selectedStances.length > 0) {{
-                    const stanceText = cells[3].textContent.toLowerCase();
+                    const stanceText = cells[4].textContent.toLowerCase();
                     if (!selectedStances.some(stance => stanceText.includes(stance))) {{
                         showRow = false;
                     }}
                 }}
                 
-                // Check themes filter (column 4)
+                // Check themes filter (column 5)
                 if (showRow && selectedThemes.length > 0) {{
-                    const themesText = cells[4].textContent.toLowerCase();
+                    const themesText = cells[5].textContent.toLowerCase();
                     if (!selectedThemes.some(theme => themesText.includes(theme.toLowerCase()))) {{
                         showRow = false;
                     }}
                 }}
                 
-                // Check attachments filter (column 6)
+                // Check attachments filter (column 7)
                 if (showRow && selectedAttachments.length > 0) {{
-                    const attachmentCell = cells[6];
+                    const attachmentCell = cells[7];
                     const hasAttachment = attachmentCell.textContent.trim() !== '';
                     
                     let attachmentMatch = false;
@@ -1173,9 +1185,9 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                     }}
                 }}
                 
-                // Check duplication count filter (column 7)
+                // Check duplication count filter (column 8)
                 if (showRow && selectedDuplicationCounts.length > 0) {{
-                    const duplicationCell = cells[7];
+                    const duplicationCell = cells[8];
                     const duplicationText = duplicationCell.textContent.trim();
                     const duplicationCount = parseInt(duplicationText);
                     
@@ -1184,9 +1196,9 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                     }}
                 }}
                 
-                // Check duplication ratio filter (column 8)
+                // Check duplication ratio filter (column 9)
                 if (showRow && selectedDuplicationRatios.length > 0) {{
-                    const ratioCell = cells[8];
+                    const ratioCell = cells[9];
                     const ratioText = ratioCell.textContent.trim();
                     // Extract number after "1:" (e.g., "1:10" -> 10)
                     const ratioMatch = ratioText.match(/1:(\\d+)/);
