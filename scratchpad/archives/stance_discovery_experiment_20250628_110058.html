@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stance Discovery Experiment Results</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .results-table {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #2c3e50;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: top;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .strategy-original {
+            background: #e3f2fd;
+        }
+        
+        .strategy-mutually_exclusive {
+            background: #f3e5f5;
+        }
+        
+        .stance-list {
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        
+        .stance-item {
+            margin-bottom: 8px;
+            padding: 4px 8px;
+            background: #ffffff;
+            border-left: 3px solid #007bff;
+            border-radius: 4px;
+        }
+        
+        .error {
+            color: #dc3545;
+            font-style: italic;
+        }
+        
+        .timestamp {
+            font-size: 0.8em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Stance Discovery Experiment Results</h1>
+        <div class="subtitle">Comparing prompting strategies and target stance counts</div>
+        <div class="timestamp">Generated: 2025-06-28 11:00:58</div>
+    </div>
+    
+    <div class="results-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Strategy</th>
+                    <th>Target Count</th>
+                    <th>Actual Count</th>
+                    <th>Discovered Stances</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="strategy-original">
+                    <td><strong>Original</strong></td>
+                    <td>5</td>
+                    <td>5</td>
+                    <td><div class="stance-list"><div class="stance-item">Opposition to Schedule F or Reclassification of Civil Servants (General Opposition)</div><div class="stance-item">Opposition to Politicization of Science and Grantmaking Positions</div><div class="stance-item">Support for Schedule F or Increased Accountability of Civil Servants</div><div class="stance-item">Opposition to Regulatory Overreach and Executive Power Expansion</div><div class="stance-item">Support for Even Stronger Protections for Civil Servants (Support for Strengthening/Expanding Protections)</div></div></td>
+                </tr>
+                <tr class="strategy-original">
+                    <td><strong>Original</strong></td>
+                    <td>6</td>
+                    <td>6</td>
+                    <td><div class="stance-list"><div class="stance-item">Support for Nonpartisan, Merit-Based Civil Service Protections</div><div class="stance-item">Opposition to Political Interference in Science and Research Agencies</div><div class="stance-item">Support for Presidential Control/Accountability over Federal Workforce (Support for Schedule F)</div><div class="stance-item">Opposition to Regulatory Overreach/Abuse of Executive Power</div><div class="stance-item">Support for Stronger Accountability/Reforms (but not politicization)</div><div class="stance-item">Opposition to Weakening Legal/Due Process Protections for Civil Servants</div></div></td>
+                </tr>
+                <tr class="strategy-original">
+                    <td><strong>Original</strong></td>
+                    <td>7</td>
+                    <td>7</td>
+                    <td><div class="stance-list"><div class="stance-item">Opposition to politicization of the civil service / stripping merit protections</div><div class="stance-item">Opposition to politicization of scientific agencies and research decisions</div><div class="stance-item">Support for current civil service protections and standards</div><div class="stance-item">Support for increased presidential/administrative accountability over federal workforce</div><div class="stance-item">Opposition to regulatory/government overreach in federal employment changes</div><div class="stance-item">Opposition based on legal, fiscal, or process violations</div><div class="stance-item">Opposition to instability, churn, and turnover in federal agencies</div></div></td>
+                </tr>
+                <tr class="strategy-original">
+                    <td><strong>Original</strong></td>
+                    <td>8</td>
+                    <td>8</td>
+                    <td><div class="stance-list"><div class="stance-item">Opposition to Politicization of Civil Service / Support for Nonpartisan Civil Service Protections</div><div class="stance-item">Opposition to Politicization of Scientific/Research Positions</div><div class="stance-item">Opposition to Erosion of Civil Service Due Process and Job Protections</div><div class="stance-item">Opposition to Return of Spoils System/Patronage and Corruption</div><div class="stance-item">Support for Presidential/Executive Accountability Over Federal Workforce</div><div class="stance-item">Opposition to Regulatory Overreach / Support for Existing System and Stability</div><div class="stance-item">Opposition to Politicization of Grantmaking and Federal Funding Decisions</div><div class="stance-item">Opposition to Loyalty Tests and Political Retaliation for Civil Servants</div></div></td>
+                </tr>
+                <tr class="strategy-original">
+                    <td><strong>Original</strong></td>
+                    <td>9</td>
+                    <td>9</td>
+                    <td><div class="stance-list"><div class="stance-item">Opposition to Politicization of Civil Service / Creation or Expansion of Schedule F</div><div class="stance-item">Support for Schedule F / Increased Accountability in Bureaucracy</div><div class="stance-item">Opposition to Removal of Civil Service Protections / Due Process</div><div class="stance-item">Support for Current Merit-Based, Apolitical Civil Service System</div><div class="stance-item">Opposition to Politicization of Scientific and Grant-Making Positions</div><div class="stance-item">Opposition to Erosion of Institutional Memory and Government Capacity</div><div class="stance-item">Opposition to Violations of Law and Civil Service Acts</div><div class="stance-item">Support for Stronger Protections and Nonpartisanship in Civil Service</div><div class="stance-item">Opposition to Regulatory Overreach/Executive Power Expansion</div></div></td>
+                </tr>
+                <tr class="strategy-original">
+                    <td><strong>Original</strong></td>
+                    <td>10</td>
+                    <td>10</td>
+                    <td><div class="stance-list"><div class="stance-item">Opposition to Politicization of the Civil Service Workforce</div><div class="stance-item">Opposition to Removal of Civil Service Protections/Due Process</div><div class="stance-item">Opposition to Politicization of Scientific Agencies/Grantmaking</div><div class="stance-item">Opposition to Undermining Merit-based Hiring and Promotion</div><div class="stance-item">Opposition to Loss of Professional Expertise and Institutional Knowledge</div><div class="stance-item">Support for Schedule F / Accountability Measures (Support for Politicization/Presidential Control)</div><div class="stance-item">Opposition to Regulatory Overreach/Executive Power Grab</div><div class="stance-item">Opposition to Destabilizing Public Service & Continuity of Government</div><div class="stance-item">Support for Blocking/Repealing Schedule F and Similar Rules</div><div class="stance-item">Opposition to Weak Justification or Lack of Evidence for Changes</div></div></td>
+                </tr>
+                <tr class="strategy-mutually_exclusive">
+                    <td><strong>Mutually Exclusive</strong></td>
+                    <td>5</td>
+                    <td>5</td>
+                    <td><div class="stance-list"><div class="stance-item">Opposition to Politicization of Civil Service / Schedule F</div><div class="stance-item">Support for Increased Accountability via Schedule F / At-Will System</div><div class="stance-item">Opposition to Political Interference in Science and Research Agencies</div><div class="stance-item">Procedural/Legal Objections to Rule Implementation</div><div class="stance-item">Support for Maintaining Status Quo (No Need for Change)</div></div></td>
+                </tr>
+                <tr class="strategy-mutually_exclusive">
+                    <td><strong>Mutually Exclusive</strong></td>
+                    <td>6</td>
+                    <td>6</td>
+                    <td><div class="stance-list"><div class="stance-item">Opposition to Politicization/Reclassification of Civil Service (Opposition to Schedule F/Schedule Policy-Career)</div><div class="stance-item">Support for Politicized Accountability/Reclassification (Support for Schedule F/Schedule Policy-Career)</div><div class="stance-item">Opposition to Politicization of Science/Grant-making (Protection of Scientific Integrity)</div><div class="stance-item">Support for Maintaining Status Quo/Existing Merit-Based Civil Service</div><div class="stance-item">Legal or Procedural Objection to Rule (Process-Based Opposition)</div><div class="stance-item">Opposition to Existing Civil Service Protections (Favoring Easier Firing/Removal for Accountability)</div></div></td>
+                </tr>
+                <tr class="strategy-mutually_exclusive">
+                    <td><strong>Mutually Exclusive</strong></td>
+                    <td>7</td>
+                    <td>7</td>
+                    <td><div class="stance-list"><div class="stance-item">Strong Opposition to Schedule F/Policy Reclassification and Politicization of Civil Service</div><div class="stance-item">Opposition to Politicization of Scientific and Grantmaking Roles</div><div class="stance-item">Support for Schedule F/Reclassification to Increase Accountability and Executive Control</div><div class="stance-item">Support for Existing (Pre-Rule) Merit-Based, Apolitical Civil Service System</div><div class="stance-item">Opposition Based on Legal or Fiscal Concerns with Reclassification</div><div class="stance-item">Opposition on Workforce Morale, Stability, and Service Delivery Grounds</div><div class="stance-item">Opposition to Rule as Unnecessary, Overreach, or Cover for Political Motives</div></div></td>
+                </tr>
+                <tr class="strategy-mutually_exclusive">
+                    <td><strong>Mutually Exclusive</strong></td>
+                    <td>8</td>
+                    <td>8</td>
+                    <td><div class="stance-list"><div class="stance-item">Opposition to Politicization of Civil Service / Support for Nonpartisan, Protected Federal Workforce</div><div class="stance-item">Support for Schedule F / Increased Executive Control for Accountability and Efficiency</div><div class="stance-item">Opposition to Politicization of Science and Scientific Agencies</div><div class="stance-item">Opposition to Schedule F / Reclassification on Legal, Fiscal, or Procedural Grounds</div><div class="stance-item">Support for Maintaining Current Civil Service Structure (Status Quo Bias)</div><div class="stance-item">Opposition to Schedule F Due to Concerns About Government Service Delivery/Continuity</div><div class="stance-item">Opposition to the Proposed Rule as an Authoritarian or Anti-Democratic Power Grab</div><div class="stance-item">Support for Schedule F / Reclassification as a Correction to Partisanship or Corruption Within Civil Service</div></div></td>
+                </tr>
+                <tr class="strategy-mutually_exclusive">
+                    <td><strong>Mutually Exclusive</strong></td>
+                    <td>9</td>
+                    <td>9</td>
+                    <td><div class="stance-list"><div class="stance-item">Opposition to Schedule F or Schedule Policy/Career Reclassification</div><div class="stance-item">Support for Schedule F or Schedule Policy/Career Reclassification</div><div class="stance-item">Opposition to Politicization of Scientific and Grantmaking Agencies</div><div class="stance-item">Support for Greater Political Appointee Control in Policy-Making and Scientific Roles</div><div class="stance-item">Opposition to At-Will Employment or Removal of Due Process Protections</div><div class="stance-item">Support for Easier Removal of Federal Employees (Greater Flexibility for Firing)</div><div class="stance-item">Opposition to the 'Spoils' System/Patronage and Loyalty Requirements</div><div class="stance-item">Support for Increased Executive Branch Power Over Staffing (Unitary Executive Argument)</div><div class="stance-item">Opposition Due to Legal, Fiscal, or Procedural Concerns</div></div></td>
+                </tr>
+                <tr class="strategy-mutually_exclusive">
+                    <td><strong>Mutually Exclusive</strong></td>
+                    <td>10</td>
+                    <td>10</td>
+                    <td><div class="stance-list"><div class="stance-item">Opposition to Politicization of Civil Service (Oppose Schedule F/Reclassification)</div><div class="stance-item">Opposition to Politicization of Federal Science and Grantmaking</div><div class="stance-item">Support for Presidential Authority/Accountability Over Federal Workforce (Support Reclassification)</div><div class="stance-item">Opposition Based on Fiscal or Legal Concerns</div><div class="stance-item">Opposition to At-Will/Unprotected Employment (Oppose Removal of Due Process Protections)</div><div class="stance-item">Opposition to Loyalty Tests/Retaliation/Dictatorship Fears</div><div class="stance-item">Opposition to Politicization of Civil Service Protections for Scientific and Technical Expertise</div><div class="stance-item">Support for Maintaining Current Civil Service System/Status Quo</div><div class="stance-item">Opposition to Administration-Specific Overhaul/Partisan Purge</div><div class="stance-item">Support for Increased Performance-Based Accountability in Civil Service</div></div></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

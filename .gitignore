@@ -3,7 +3,6 @@
 myenv/
 venv/
 env/
-scratchpad/
 # Python cache
 __pycache__/
 *.py[cod]
