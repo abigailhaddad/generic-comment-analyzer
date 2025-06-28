@@ -1,0 +1,2093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regulation Comments Analysis - Comment Analysis Report</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            line-height: 1.5;
+            background: #f8f9fa;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            font-size: 2em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .section {
+            background: white;
+            margin: 30px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h2 {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+        }
+        
+        .filters-container {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .filters-header {
+            font-weight: 600;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+        
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .filter-label {
+            font-weight: 500;
+            color: #333;
+            font-size: 0.9em;
+        }
+        
+        .filterable {
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .filter-arrow {
+            float: right;
+            font-size: 12px;
+            color: #666;
+            margin-left: 8px;
+            user-select: none;
+        }
+        
+        .filter-arrow:hover {
+            color: #007bff;
+        }
+        
+        .filter-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 1000;
+            padding: 10px;
+            min-width: 200px;
+        }
+        
+        .filter-input {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        
+        .filter-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 1px rgba(0,123,255,0.25);
+        }
+        
+        .filter-checkbox {
+            display: block;
+            margin: 5px 0;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        
+        .filter-checkbox input {
+            margin-right: 6px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9em;
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            margin: 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        th {
+            background: #e9ecef;
+            padding: 12px 8px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #dee2e6;
+            position: sticky;
+            top: 0;
+        }
+        
+        td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: top;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        tr:hover {
+            background-color: #e3f2fd;
+        }
+        
+        .stance-for {
+            background: #28a745;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .stance-against {
+            background: #dc3545;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .stance-neutral {
+            background: #ffc107;
+            color: #212529;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .stance-unknown {
+            background: #6c757d;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .stances-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            max-width: 300px;
+        }
+        
+        .stance-tag {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+            border: 1px solid #bbdefb;
+        }
+        
+        .text-preview {
+            max-width: 300px;
+            max-height: 100px;
+            overflow: hidden;
+            font-size: 12px;
+        }
+        
+        .comment-id {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        
+        .comment-id a:hover {
+            color: #0056b3 !important;
+            background-color: #e3f2fd;
+        }
+        
+        .date-cell {
+            white-space: nowrap;
+            font-size: 12px;
+        }
+        
+        .attachment-indicator {
+            font-size: 16px;
+            color: #28a745;
+        }
+        
+        .unique-indicator {
+            background: #28a745;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .duplicate-indicator {
+            background: #ffc107;
+            color: #212529;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .meta-info {
+            background: #343a40;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+        
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .meta-label {
+            font-size: 0.8em;
+            opacity: 0.8;
+        }
+        
+        .meta-value {
+            font-weight: 600;
+        }
+        
+        
+        .clear-filters {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        
+        .clear-filters:hover {
+            background: #c82333;
+        }
+        
+        .show-hide-columns {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        
+        .show-hide-columns:hover {
+            background: #0056b3;
+        }
+        
+        .column-visibility-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .column-visibility-content {
+            display: none;
+            position: absolute;
+            background-color: white;
+            min-width: 250px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1000;
+            border-radius: 4px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            top: 100%;
+            left: 0;
+        }
+        
+        .column-visibility-content.show {
+            display: block;
+        }
+        
+        .column-visibility-item {
+            display: flex;
+            align-items: center;
+            padding: 5px 0;
+            gap: 8px;
+        }
+        
+        .column-visibility-item input[type="checkbox"] {
+            margin: 0;
+        }
+        
+        .column-visibility-item label {
+            cursor: pointer;
+            font-size: 14px;
+            margin: 0;
+        }
+        
+        .char-limited {
+            cursor: help;
+        }
+        
+        /* Custom tooltip styling for wider tooltips */
+        .tooltip .tooltip-inner {
+            max-width: 600px !important;
+            width: auto !important;
+            text-align: left !important;
+            font-size: 13px !important;
+            line-height: 1.4 !important;
+            padding: 8px 12px !important;
+        }
+        
+        /* Allow table to be wider and let columns size naturally */
+        table {
+            width: 100%;
+            table-layout: auto;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        
+        /* Only constrain the comment column to prevent it from being too wide */
+        th[data-column="5"] {
+            width: 25%;
+            max-width: 400px;
+        }
+        
+        .text-preview {
+            max-width: 400px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        
+        /* Co-occurrence table styles */
+        .cooccurrence-table {
+            border-collapse: collapse;
+            font-size: 12px;
+            margin: 0 auto;
+        }
+        
+        .cooccurrence-table th,
+        .cooccurrence-table td {
+            border: 1px solid #dee2e6;
+            text-align: center;
+            padding: 8px;
+            min-width: 40px;
+        }
+        
+        .cooccurrence-table .stance-label {
+            text-align: left;
+            font-weight: 500;
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .rotate-header {
+            height: 150px;
+            white-space: nowrap;
+            vertical-align: bottom;
+        }
+        
+        .rotate-header > div {
+            transform: translate(15px, 65px) rotate(-45deg);
+            width: 30px;
+            transform-origin: bottom left;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .diagonal-cell {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .cooccurrence-cell {
+            color: #333;
+            font-weight: 500;
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Regulation Comments Analysis</h1>
+            <div class="subtitle">Analysis of public comments on federal regulation</div>
+            
+        </div>
+        
+        <!-- Summary Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">50</div>
+                <div class="stat-label">Total Comments</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">0</div>
+                <div class="stat-label">With Attachments</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">776</div>
+                <div class="stat-label">Avg. Characters</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">2025-06-28</div>
+                <div class="stat-label">Date Range</div>
+            </div>
+        </div>
+
+
+        <!-- Analysis Field Distributions -->
+        
+        <div class="section">
+            <h2>📊 Stances Distribution</h2>
+            <p style="color: #666; margin-bottom: 20px; font-style: italic;">Click on any stance to see how it relates to others</p>
+            <div class="expandable-stances">
+                
+                <div class="expandable-stance-card">
+                    <div class="stance-header" onclick="toggleStanceDetails(0)">
+                        <span class="stance-count">42</span>
+                        <span class="stance-name">Opposition to Politicization of the Civil Service/Schedule F</span>
+                        <span class="expand-icon" id="icon-0">▼</span>
+                    </div>
+                    <div class="stance-details" id="details-0" style="display: none;">
+                        <div class="connection-item">67% also: Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</div><div class="connection-item">21% also: Opposition to Political Interference in Scientific and Grantmaking Roles</div>
+                    </div>
+                </div>
+                <div class="expandable-stance-card">
+                    <div class="stance-header" onclick="toggleStanceDetails(1)">
+                        <span class="stance-count">28</span>
+                        <span class="stance-name">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span>
+                        <span class="expand-icon" id="icon-1">▼</span>
+                    </div>
+                    <div class="stance-details" id="details-1" style="display: none;">
+                        <div class="connection-item">100% also: Opposition to Politicization of the Civil Service/Schedule F</div>
+                    </div>
+                </div>
+                <div class="expandable-stance-card">
+                    <div class="stance-header" onclick="toggleStanceDetails(2)">
+                        <span class="stance-count">11</span>
+                        <span class="stance-name">Opposition to Political Interference in Scientific and Grantmaking Roles</span>
+                        <span class="expand-icon" id="icon-2">▼</span>
+                    </div>
+                    <div class="stance-details" id="details-2" style="display: none;">
+                        <div class="connection-item">82% also: Opposition to Politicization of the Civil Service/Schedule F</div>
+                    </div>
+                </div>
+                <div class="expandable-stance-card">
+                    <div class="stance-header" onclick="toggleStanceDetails(3)">
+                        <span class="stance-count">4</span>
+                        <span class="stance-name">Support for Executive Authority and Accountability via Schedule F</span>
+                        <span class="expand-icon" id="icon-3">▼</span>
+                    </div>
+                    <div class="stance-details" id="details-3" style="display: none;">
+                        <div class="no-connections">No significant overlaps with other stances</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <style>
+        .expandable-stances {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .expandable-stance-card {
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .stance-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 15px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .stance-header:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .stance-count {
+            font-size: 1.6em;
+            font-weight: bold;
+            color: #2c3e50;
+            min-width: 80px;
+            flex-shrink: 0;
+        }
+        
+        .stance-name {
+            font-size: 1em;
+            color: #2c3e50;
+            line-height: 1.3;
+            font-weight: 500;
+            flex-grow: 1;
+        }
+        
+        .expand-icon {
+            font-size: 1.2em;
+            color: #7f8c8d;
+            transition: transform 0.3s;
+            flex-shrink: 0;
+        }
+        
+        .expand-icon.expanded {
+            transform: rotate(180deg);
+        }
+        
+        .stance-details {
+            padding: 0 15px 15px 15px;
+            border-top: 1px solid #ecf0f1;
+            background: #f8f9fa;
+        }
+        
+        .connection-item {
+            padding: 8px 10px;
+            margin: 8px 0;
+            background: white;
+            border-radius: 4px;
+            border-left: 3px solid #e67e22;
+            font-size: 0.9em;
+            color: #2c3e50;
+        }
+        
+        .no-connections {
+            padding: 15px;
+            text-align: center;
+            color: #888;
+            font-style: italic;
+        }
+        </style>
+        
+        <script>
+        function toggleStanceDetails(index) {
+            const details = document.getElementById('details-' + index);
+            const icon = document.getElementById('icon-' + index);
+            
+            if (details.style.display === 'none' || details.style.display === '') {
+                details.style.display = 'block';
+                icon.classList.add('expanded');
+            } else {
+                details.style.display = 'none';
+                icon.classList.remove('expanded');
+            }
+        }
+        </script>
+
+        <!-- Comments Table -->
+        <div class="section">
+            <h2>Comments</h2>
+            <div class="table-controls">
+                <button class="clear-filters" onclick="clearAllFilters()">Clear All Filters</button>
+                <div class="column-visibility-dropdown">
+                    <button class="show-hide-columns" onclick="toggleColumnVisibility()">Show/Hide Columns</button>
+                    <div class="column-visibility-content" id="columnVisibilityDropdown">
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-0" checked onchange="toggleColumn(0)">
+                            <label for="col-0">Comment ID</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-1" checked onchange="toggleColumn(1)">
+                            <label for="col-1">Date</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-2" checked onchange="toggleColumn(2)">
+                            <label for="col-2">Submitter</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-3" checked onchange="toggleColumn(3)">
+                            <label for="col-3">Organization</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-4" checked onchange="toggleColumn(4)">
+                            <label for="col-4">Stances</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-5" checked onchange="toggleColumn(5)">
+                            <label for="col-5">New Stances</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-6" checked onchange="toggleColumn(6)">
+                            <label for="col-6">Comment</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-7" checked onchange="toggleColumn(7)">
+                            <label for="col-7">Attachments</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-8" checked onchange="toggleColumn(8)">
+                            <label for="col-8">Dup Count</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-9" checked onchange="toggleColumn(9)">
+                            <label for="col-9">Dup Ratio</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-10" onchange="toggleColumn(10)">
+                            <label for="col-10">Attachment</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-11" onchange="toggleColumn(11)">
+                            <label for="col-11">Key Quote (LLM)</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-12" onchange="toggleColumn(12)">
+                            <label for="col-12">Rationale (LLM)</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                
+            <div style="overflow-x: auto;">
+                <table id="commentsTable" class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th class="filterable" data-column="0">
+                                Comment ID <span class="filter-arrow" onclick="toggleFilter(0)">▼</span>
+                                <div class="filter-dropdown" id="filter-0" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="0" placeholder="Filter ID..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th>Date</th>
+                            <th class="filterable" data-column="2">
+                                Submitter <span class="filter-arrow" onclick="toggleFilter(2)">▼</span>
+                                <div class="filter-dropdown" id="filter-2" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="2" placeholder="Filter name..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="3">
+                                Organization <span class="filter-arrow" onclick="toggleFilter(3)">▼</span>
+                                <div class="filter-dropdown" id="filter-3" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="3" placeholder="Filter organization..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="4">
+                                Stances <span class="filter-arrow" onclick="toggleFilter(4)">▼</span>
+                                <div class="filter-dropdown" id="filter-4" style="display: none;">
+                                    {"".join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="{stance}" onchange="filterTable()"> {stance}</label>' for stance in field_analysis.get('stances', {}).get('unique_values', []))}
+                                    <hr style="margin: 5px 0;">
+                                    <label class="filter-checkbox"><input type="checkbox" data-filter="unusual_combo" value="yes" onchange="filterTable()"> ⚠️ Unusual Combinations</label>
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="5">
+                                New Stances <span class="filter-arrow" onclick="toggleFilter(5)">▼</span>
+                                <div class="filter-dropdown" id="filter-5" style="display: none;">
+                                    
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="6">
+                                Comment <span class="filter-arrow" onclick="toggleFilter(6)">▼</span>
+                                <div class="filter-dropdown" id="filter-6" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="6" placeholder="Search comment text..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="7">
+                                📎 <span class="filter-arrow" onclick="toggleFilter(7)">▼</span>
+                                <div class="filter-dropdown" id="filter-7" style="display: none;">
+                                    <label class="filter-checkbox"><input type="checkbox" data-filter="attachments" value="yes" onchange="filterTable()"> With attachments</label>
+                                    <label class="filter-checkbox"><input type="checkbox" data-filter="attachments" value="no" onchange="filterTable()"> No attachments</label>
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="8">
+                                Dup Count <span class="filter-arrow" onclick="toggleFilter(8)">▼</span>
+                                <div class="filter-dropdown" id="filter-8" style="display: none;">
+                                    <label class="filter-checkbox"><input type="checkbox" data-filter="duplication_count" value="1" onchange="filterTable()"> 1</label>
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="9">
+                                Dup Ratio <span class="filter-arrow" onclick="toggleFilter(9)">▼</span>
+                                <div class="filter-dropdown" id="filter-9" style="display: none;">
+                                    <label class="filter-checkbox"><input type="checkbox" data-filter="duplication_ratio" value="1" onchange="filterTable()"> 1:1</label>
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="10" style="display: none;">
+                                Attachment <span class="filter-arrow" onclick="toggleFilter(10)">▼</span>
+                                <div class="filter-dropdown" id="filter-10" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="10" placeholder="Search attachment text..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="11" style="display: none;">
+                                Key Quote <span class="filter-arrow" onclick="toggleFilter(11)">▼</span>
+                                <div class="filter-dropdown" id="filter-11" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="11" placeholder="Search quotes..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="12" style="display: none;">
+                                Rationale <span class="filter-arrow" onclick="toggleFilter(12)">▼</span>
+                                <div class="filter-dropdown" id="filter-12" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="12" placeholder="Search rationale..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                        <tbody>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-30994" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-30994</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview">Civil service workers should not be tied to whatever party is in power.</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Civil service workers should not be tied to whatever party is in power.</td>
+                                <td style="display: none;">The comment explicitly opposes the idea of tying civil service workers to the political party in power, which aligns with concerns about the politicization of the civil service and the integrity of nonpartisan civil servants.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-34558" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-34558</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview">Our country’s civil servants are non partisan experienced workers. They serve our country. Schedule F appears to destroy their integrity and independence by falsely claiming to be more efficient. This is a terrible idea and should not be implemented. </td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Schedule F appears to destroy their integrity and independence by falsely claiming to be more efficient.</td>
+                                <td style="display: none;">The commenter expresses concern about the potential undermining of the integrity and independence of civil servants through the implementation of Schedule F, which aligns with opposition to politicization of the civil service. Additionally, the emphasis on protecting the workers' roles and the characterization of the proposal as a 'terrible idea' indicates a concern for due process and worker protections.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-4393" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-4393</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Support for Executive Authority and Accountability via Schedule F</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I support President Trump’s efforts to bring accountability to the federal bureaucracy. 
+
+
+For too long, unelected career bureaucrats in the federal government have stifled efficiency by undermining the plans and policies of the Chief Executive.
+
+OPM’s new rule cuts red tape and allows career bureaucrats to be reprimanded for poor job performance or misconduct, such as corruption or partisanship.
+
+In any industry, rogue employees are held accountable to someone. Now, government employees will be held accountable for lack of performance or inaction.
+
+
+I support President Trump’s work to rein in unaccountable bureaucrats and end the Deep State!
+">I support President Trump’s efforts to bring accountability to the federal bureaucracy. 
+
+
+For too long, unelected career bureaucrats in the federal government have stifled efficiency by undermining the plans and policies of the Chief Executive.
+
+OPM’s new rule cuts red tape and allows career bureau...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I support President Trump’s efforts to bring accountability to the federal bureaucracy.</td>
+                                <td style="display: none;">The commenter clearly expresses support for President Trump's efforts to increase accountability in the federal government through the OPM rule, framing career bureaucrats as obstacles to efficiency and emphasizing the need for reprimanding poor performance. This aligns with the stance advocating for executive authority and accountability.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-10916" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-10916</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="Essential features of effective governmental systems are competence, stability, and freedom from political bias.  Competence is gained by experience and long service.  Stability results from very low turnover.  Freedom from political bias protects citizens from being subject to the political whims of over-zealous staff.  Our current merit system for civil service is genius in guaranteeing these features.  The notion of replacing this with Schedule F is sheer madness and can only be based on someone’s desire to be a dictator.">Essential features of effective governmental systems are competence, stability, and freedom from political bias.  Competence is gained by experience and long service.  Stability results from very low turnover.  Freedom from political bias protects citizens from being subject to the political whims o...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">The notion of replacing this with Schedule F is sheer madness and can only be based on someone’s desire to be a dictator.</td>
+                                <td style="display: none;">The commenter expresses strong opposition to the implementation of Schedule F, emphasizing the importance of competence, stability, and freedom from political bias in the civil service system. This highlights concerns over the potential politicization associated with Schedule F and the risks it poses to the integrity of federal positions and worker protections.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-4986" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-4986</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I oppose the rule proposed by the Office of Personnel Management in Docket ID: OPM-2025-0004 as I believe it will lead to the instability of our federal workforce.  Federal employees should be hired and trusted to do their jobs without political motivations or interference.  If they can be fired at will because they are deemed insufficiently loyal to a sitting president, then Americans will not be able to have faith in their government and its career professionals.">I oppose the rule proposed by the Office of Personnel Management in Docket ID: OPM-2025-0004 as I believe it will lead to the instability of our federal workforce.  Federal employees should be hired and trusted to do their jobs without political motivations or interference.  If they can be fired at ...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I oppose the rule proposed by the Office of Personnel Management in Docket ID: OPM-2025-0004 as I believe it will lead to the instability of our federal workforce.</td>
+                                <td style="display: none;">The comment clearly expresses opposition to the proposed rule, warning about the risks of politicizing the federal workforce and emphasizing the need for independent, nonpartisan civil servants, which reflects concerns over both politicization and due process protections.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-25925" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-25925</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Political Interference in Scientific and Grantmaking Roles</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="&quot;Grantmaking is an important form of policymaking, so employees with a substantive discretionary role in how federal funding gets allocated may occupy policymaking positions&quot;
+
+This seems like a plan to make all institute directors political appointees, which would dramatically politicize NIH and increase the turnover in key positions, limiting longer-term research planning and execution. This would lead to furthering the demise of American science. ">"Grantmaking is an important form of policymaking, so employees with a substantive discretionary role in how federal funding gets allocated may occupy policymaking positions"
+
+This seems like a plan to make all institute directors political appointees, which would dramatically politicize NIH and inc...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">This seems like a plan to make all institute directors political appointees, which would dramatically politicize NIH and increase the turnover in key positions, limiting longer-term research planning and execution.</td>
+                                <td style="display: none;">The comment clearly opposes the idea of making federal funding allocation roles more politicized, highlighting concerns about the impact on research continuity and the health of American science, which aligns with the identified stances regarding politicization of the civil service and scientific roles.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-22127" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-22127</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="1. I oppose this proposed rule in its entirety, and every section of the proposed rule, as it allows for the reintroduction of a &quot;spoils&quot; system to the federal civil service. The proposed rule allows any given Administration to replace the nation&#039;s professional cadre of policy experts who serve the Constitution across Administrations with individuals who subordinate their duty to the Constitution and the law to partisan loyalties.
+
+2. I oppose the creation of the Schedule Policy/Career as a new category of Excepted Service under 5 CFR Part 213. Moving career civil servants into a category of at-will employment makes those civil service positions vulnerable to political manipulation and influence, including by putting those employees at risk of termination should their efforts to uphold the federal oath of employment to defend the Constitution conflict with a political appointee&#039;s belief that the employee has failed to &quot;faithfully implement administration policies to the best of their ability,&quot; as required under the proposed amendment to Sec. 213.3501(b).
+
+3. I oppose the amendment of 5 CFR part 752 that removes the right of career civil servants to appeal the transfer of their position into an Excepted Service category, including the proposed Schedule Policy/Career category. The removal of such protection violates the Fifth Amendment due process rights of federal civil servants, specifically by removing the employees&#039; interest in their tenure protections. See Cleveland Bd. of... [truncated]">1. I oppose this proposed rule in its entirety, and every section of the proposed rule, as it allows for the reintroduction of a "spoils" system to the federal civil service. The proposed rule allows any given Administration to replace the nation's professional cadre of policy experts who serve the ...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">The proposed rule allows any given Administration to replace the nation's professional cadre of policy experts who serve the Constitution across Administrations with individuals who subordinate their duty to the Constitution and the law to partisan loyalties.</td>
+                                <td style="display: none;">The commenter clearly expresses strong opposition to the proposed rule, emphasizing concerns about the reintroduction of a 'spoils' system and the threat to the independence of civil services due to partisan influence. Additionally, they highlight the erosion of due process rights for federal employees, which aligns with the concerns regarding worker protections.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-8573" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-8573</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview">It is not a good idea to have federal employees be political appointees! We have checks and balances for a reason. And new leadership for agencies every four years breaks with the continuity of the work. I very much oppose this. Keep politics out of the civil service system. Thank you.</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I very much oppose this. Keep politics out of the civil service system.</td>
+                                <td style="display: none;">The commenter expresses a clear opposition to the idea of federal employees being political appointees, emphasizing the importance of continuity in government work and the need to maintain a non-partisan civil service system. This aligns with the identified stances against the politicization of the civil service and the importance of worker protections.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-20050" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-20050</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview">I oppose this rule. Politicizing the civil service is dangerous and undemocratic. Career civil servants should serve the public, not a president’s personal agenda. If you truly represent us, do not fail to reject this rule. </td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Politicizing the civil service is dangerous and undemocratic. Career civil servants should serve the public, not a president’s personal agenda.</td>
+                                <td style="display: none;">The commenter clearly opposes the rule by emphasizing the dangers of politicizing the civil service, highlighting the importance of nonpartisan career civil servants serving the public interest rather than political agendas.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-21380" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-21380</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="It does not serve the American public well to increase the number of civil servants who are required to follow the current Executive administration&#039;s dogma. We are best served by those who are interested in carrying out their duties in the best possible manner.
+
+This is true regardless of the party or individuals who are in control of the Executive.
+
+During the Stalinist era of the Soviet Union, dogma was imposed from the top down, much like the anti-DEI dogma that is erasing language and jobs in the US lately. Or the vaccine &quot;skepticism&quot; that will maim and kill Americans in the the coming years. 
+
+The damage to the Soviet Union from this sort of dogma included fallout from Lysenko&#039;s trivially disproven theories that suppressed the study of genetics and wasted resources and lives in the pursuit of nonsense.
+
+Scientists and meteorologists and indeed ALL civil servants should be able to speak the truth, even when it goes against the Executive&#039;s policies. 
+
+Civil servants should lose their jobs when they are incompetent or abuse their positions. They should not have to worry about being fired because they are unwilling to lie in order to bow to imposed political dogma.">It does not serve the American public well to increase the number of civil servants who are required to follow the current Executive administration's dogma. We are best served by those who are interested in carrying out their duties in the best possible manner.
+
+This is true regardless of the party ...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Civil servants should lose their jobs when they are incompetent or abuse their positions. They should not have to worry about being fired because they are unwilling to lie in order to bow to imposed political dogma.</td>
+                                <td style="display: none;">The commenter expresses opposition to the politicization of civil service positions, advocating for nonpartisan professionals who can perform their duties without political pressure. Additionally, there is a concern for the protection of civil servants' rights, emphasizing that while incompetence should lead to dismissal, employees should not be at risk of losing their jobs for not adhering to political ideologies.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-34099" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-34099</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I strongly oppose this proposed regulation to create a new Schedule Policy/Career as a new category of Excepted Service. I am a former research scientist for a Department of Defense Laboratory. I spent my entire career with the DoD, the vast majority in a research position.  I chose and remained with the civil service because of the strong support for research, and because it provided a career path that was based on performance and accountability. The proposed rule would be devastating to the top notch, cutting-edge research that Federal laboratories carry out. It will especially damage efforts to recruit high caliber individuals to work at these laboratories. The rule would remove job security or promotion potential based on performance; rather, many positions would be created or filled by the will of the administration at the time. This will weaken the entire civil service because it will kill the desire of employees to perform at a high level for one’s own agency and to serve the American public.">I strongly oppose this proposed regulation to create a new Schedule Policy/Career as a new category of Excepted Service. I am a former research scientist for a Department of Defense Laboratory. I spent my entire career with the DoD, the vast majority in a research position.  I chose and remained wit...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">The proposed rule would be devastating to the top notch, cutting-edge research that Federal laboratories carry out. It will especially damage efforts to recruit high caliber individuals to work at these laboratories.</td>
+                                <td style="display: none;">The commenter clearly opposes the proposed regulation as it threatens the merit-based career progression and job security in the civil service, highlighting concerns about the politicization of positions and the erosion of due process protections. These positions align with existing stances on the risks to merit-based employment and the general weakening of worker protections.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-24171" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-24171</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Political Interference in Scientific and Grantmaking Roles</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I am a tenured scientist at a major U.S. public university in its School of Medicine. I was trained in Australia and then the U.K. before being recruited to the U.S. I have therefore experience of academia in different environments. The reason that science &#039;travel&#039;s is that good science is founded on logical reasoning, inventiveness,  rigor and reproducibility. In every country in which I worked, good science paid for itself several times over, tanigbly contributing to the enconomy of the country. 
+
+I am writing to express my dispair at the proposal to re-classify key programmatic managers at the National Institue of Health (NIH) and similar Federal Institutions as &#039;policy makers&#039;. This proposal is a thinly veiled attempt to threaten scientists and render them subject to the government of the day. It&#039;s an approach previously taken by both fascists and communist governments. History is clear that politicizing science has sent countries back economically, weakened education systems and resulted in net loss of talent and progress.
+
+Please consider country first. 
+">I am a tenured scientist at a major U.S. public university in its School of Medicine. I was trained in Australia and then the U.K. before being recruited to the U.S. I have therefore experience of academia in different environments. The reason that science 'travel's is that good science is founded o...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">This proposal is a thinly veiled attempt to threaten scientists and render them subject to the government of the day.</td>
+                                <td style="display: none;">The commenter expresses strong opposition to the reclassification of key programmatic managers as 'policy makers,' labeling the proposal as a threat to the integrity of science and likening it to oppressive regimes. They emphasize the negative historical consequences of politicizing science, indicating a clear stance against both the politicization of civil service and political interference in scientific roles.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-32990" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-32990</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="There are multiple places that reference resistance to Trump’s policies as a motivating factor for the rule change. This is clearly the crux of the issue — the remaining thousands of words solely exist to provide a veneer of legitimacy.
+
+Trump’s worst policy ideas were stymied in his first term by career staff who cared about the rule of law and following correct procedures. I, for one, am grateful for those who put country, justice, and integrity before Trump’s
+ego. The proposed rule change will make it easier for Trump to fire the law-abiding patriots who keep this country running and we will all suffer for it.">There are multiple places that reference resistance to Trump’s policies as a motivating factor for the rule change. This is clearly the crux of the issue — the remaining thousands of words solely exist to provide a veneer of legitimacy.
+
+Trump’s worst policy ideas were stymied in his first term by c...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">The proposed rule change will make it easier for Trump to fire the law-abiding patriots who keep this country running and we will all suffer for it.</td>
+                                <td style="display: none;">The commenter expresses strong opposition to the proposed rule change by highlighting concerns over politicization of the civil service and the potential for political motives to undermine the integrity of federal employees. Additionally, there is a clear concern about the weakening of due process and protections for federal workers, indicating a fear of arbitrary dismissals.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-22991" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-22991</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I am writing to express my strong opposition to the proposed rule creating a new excepted service category known as Schedule Policy/Career, formerly referred to as Schedule F. The proposal erodes the merit-based foundation of the federal hiring system by allowing subjective reclassification of roles, which will lead to favoritism and politicized hiring. It opens the door for the federal workforce to be influenced by partisan loyalty rather than professional qualifications and ethical conduct.  The impartiality of government agencies is critical to public trust. A workforce vulnerable to political purges risks undermining that trust. Career civil servants possess deep expertise and historical understanding. Removing them for political reasons threatens the continuity and efficiency of government operations. The rule’s definitions of “policy-influencing” roles are too expansive and would be applied to positions that are operational or technical rather than policy-driven. By allowing the executive branch to reclassify and terminate employees at will, this rule dangerously consolidates power and reduces essential institutional checks. 
+">I am writing to express my strong opposition to the proposed rule creating a new excepted service category known as Schedule Policy/Career, formerly referred to as Schedule F. The proposal erodes the merit-based foundation of the federal hiring system by allowing subjective reclassification of roles...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">The proposal erodes the merit-based foundation of the federal hiring system by allowing subjective reclassification of roles, which will lead to favoritism and politicized hiring.</td>
+                                <td style="display: none;">The commenter expresses strong opposition to the implementation of Schedule F by highlighting the risks it poses to merit-based hiring and the potential for politicization within the federal workforce. Additionally, concerns about the loss of due process and the effects of political purges on government operations are mentioned, justifying the selection of both stances.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-28592" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-28592</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Political Interference in Scientific and Grantmaking Roles</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I strongly oppose the proposed rule to reestablish Schedule F, which would strip civil service protections from tens of thousands of federal employees and reclassify them as “policymaking” positions. This proposal threatens the foundational principles of a nonpartisan, expert-driven civil service and endangers the integrity of federal grantmaking—particularly within scientific agencies such as the National Institutes of Health (NIH).
+The proposed rule&#039;s language explicitly targets individuals involved in discretionary aspects of grantmaking, including drafting funding opportunity announcements, evaluating applications, and selecting recipients. These tasks require deep scientific expertise, rigorous peer review, and adherence to evidence-based standards—not political alignment. Reclassifying these roles as political appointments will severely undermine the objectivity and credibility of federal funding decisions.
+Of particular concern is the reported plan to make all NIH Institute and Center Directors political appointees. This would dismantle long-term planning and erode public trust in the NIH, which has historically functioned as an independent, world-leading scientific institution. Scientific discovery and public health innovation require stability, continuity, and freedom from political influence. Replacing career scientists with politically motivated appointees will cause irreparable harm to our research infrastructure and international leadership.
+This regulation would... [truncated]">I strongly oppose the proposed rule to reestablish Schedule F, which would strip civil service protections from tens of thousands of federal employees and reclassify them as “policymaking” positions. This proposal threatens the foundational principles of a nonpartisan, expert-driven civil service an...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I strongly oppose the proposed rule to reestablish Schedule F, which would strip civil service protections from tens of thousands of federal employees and reclassify them as 'policymaking' positions.</td>
+                                <td style="display: none;">The comment clearly expresses opposition to the proposed Schedule F rule as it threatens the integrity of the civil service and scientific roles, highlighting concerns about politicization that would undermine nonpartisan expertise and scientific integrity. This aligns with the stances regarding both the politicization of the civil service and the specific impact on scientific and grantmaking processes.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-19784" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-19784</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I vehemently oppose this proposal. This is a thinly veiled attempt to allow the unjust termination of federal employees. This is not an attempt to increase efficiency, nor to remove those who are &quot;poor performers.&quot; This is an attempt to dismantle the integrity of the federal workforce, and whip them into fear. This proposal aims to paint the seeds necessary for authoritarianism to supercede the morality of the individual; it aims to strong-arm workers into isolation and make them fear for their jobs. 
+
+Any and all people who do not opposed this proposal are acting in the absence of morality, goodness, and forethought; they are acting strictly within the confines of greed, delusion, or downright evil. 
+
+Signed,
+A very concerned citizen ">I vehemently oppose this proposal. This is a thinly veiled attempt to allow the unjust termination of federal employees. This is not an attempt to increase efficiency, nor to remove those who are "poor performers." This is an attempt to dismantle the integrity of the federal workforce, and whip them...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">This proposal aims to dismantle the integrity of the federal workforce, and whip them into fear.</td>
+                                <td style="display: none;">The commenter clearly expresses opposition to the proposal as an unjust means of allowing the termination of federal employees, indicating a fear of politicization and loss of integrity within the civil service. Additionally, there is a strong emphasis on protecting worker rights and due process, highlighting the potential for authoritarianism to undermine the moral fabric of the workforce.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-5673" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-5673</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="Hello, I’m writing to let the administration know that I think this schedule F rule to convert government employees into political employees and appointees is a very bad idea and will remove all partisan insulation from important government. Work will destabilize important government work and overall lower the quality of their work. I think it’s important that career civil servants remain non-biased and able to complete their important work without having to rely on an election every couple of years to maintain their position. ">Hello, I’m writing to let the administration know that I think this schedule F rule to convert government employees into political employees and appointees is a very bad idea and will remove all partisan insulation from important government. Work will destabilize important government work and overal...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I think this schedule F rule to convert government employees into political employees and appointees is a very bad idea and will remove all partisan insulation from important government.</td>
+                                <td style="display: none;">The comment clearly opposes the Schedule F rule by expressing concerns about the loss of non-biased career civil service positions and the destabilization of government work. Additionally, it highlights the importance of protections for civil servants from political pressures, aligning with the stances on due process and worker protections.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-9910" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-9910</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I am opposed to this rule. It is misleading, at best. Federal employees are not political appointees, nor should they be. Federal employees need protections to do their jobs effectively, without regard to politics. They must be able to freely act, not be in fear for their jobs. This rule creates a culture of fear and politicizes more of our government than necessary. They should not be appointed by any politician. Please do not reclassify employees under Schedule F.">I am opposed to this rule. It is misleading, at best. Federal employees are not political appointees, nor should they be. Federal employees need protections to do their jobs effectively, without regard to politics. They must be able to freely act, not be in fear for their jobs. This rule creates a c...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Federal employees need protections to do their jobs effectively, without regard to politics. They must be able to freely act, not be in fear for their jobs.</td>
+                                <td style="display: none;">The commenter explicitly opposes the implementation of Schedule F, highlighting the need for federal employees to have protections from political influences, which aligns with fears of politicization. Additionally, the emphasis on the need for federal workers to operate without fear indicates a strong stance against weakening due process and worker protections.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-11959" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-11959</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I am writing to oppose the implementation of Schedule F. My career was at Idaho National Laboratory (INL) as a finance and accounting manager for a number of federal contractors who managed INL under the direction of Department of Energy career federal employees. The career federal servants I worked with were dedicated to the mission of INL and supporting the goals of the federal government without regard to
+political affiliation—supporting whichever administration was in power. Allowing these important positions to come under the proposed Schedule F would allow them to become politicized and endanger the overall mission of the federal agencies. Again, I am commenting to
+oppose the implementation of Schedule F.">I am writing to oppose the implementation of Schedule F. My career was at Idaho National Laboratory (INL) as a finance and accounting manager for a number of federal contractors who managed INL under the direction of Department of Energy career federal employees. The career federal servants I worked...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Allowing these important positions to come under the proposed Schedule F would allow them to become politicized and endanger the overall mission of the federal agencies.</td>
+                                <td style="display: none;">The commenter clearly opposes the implementation of Schedule F, highlighting concerns that it would politicize federal positions and undermine the mission of federal agencies. They also emphasize the value of nonpartisan civil servants, supporting the need for protections against politicization.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-26811" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-26811</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Political Interference in Scientific and Grantmaking Roles</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I oppose this wholeheartedly. This change would destroy the scientific integrity of federal funding. Allowing political interference into determining which science is worth giving money to will narrow the scope of research and cut off progress at the knees. Career scientists should be the ones determining the distribution of funding. They should be selected based on their scientific experience and expertise, not a political platform. Mixing science policy with political policy has never ended well, and we cannot let the hard work of scientists everywhere be undermined by politics. It would ruin the biotechnology industry and progress that we all rely on as a whole. 
+">I oppose this wholeheartedly. This change would destroy the scientific integrity of federal funding. Allowing political interference into determining which science is worth giving money to will narrow the scope of research and cut off progress at the knees. Career scientists should be the ones deter...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Allowing political interference into determining which science is worth giving money to will narrow the scope of research and cut off progress at the knees.</td>
+                                <td style="display: none;">The commenter clearly expresses opposition to the politicization of scientific funding decisions and emphasizes the need for career scientists to make those determinations based on expertise rather than political influences. This aligns with concerns about protecting scientific integrity and maintaining objective research agendas.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-1755" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-1755</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I am writing to comment on the proposed rule Improving Performance, Accountability and Responsiveness in the Civil Service OPM-2025-0004-0001.
+
+This proposed regulation, Schedule F, under Docket ID OPM-2025-0004” and RIN 3206-AO80, raises profound concerns about the future of the Civil Service and its foundational principles. I strongly oppose the proposed move to reclassify all management officials from the competitive service to the excepted service, effectively making them fire-able at will. This shift represents a dangerous step backward towards a spoils system of patronage, undermining the merit-based principles that have long been the bedrock of a nonpartisan and professional public service.
+
+The implications for a functioning democracy are deeply troubling. Replacing a system that prioritizes expertise and neutral competence with one susceptible to political favoritism would erode the stability and effectiveness of government agencies. Subjecting management officials to the constant threat of dismissal based on political allegiance, rather than performance, would inevitably lead to a chilling effect on their ability to provide candid and objective advice, potentially compromising the integrity of policy-making and implementation.
+
+Furthermore, this proposed regulation appears to directly contravene the spirit and potentially the letter of the Civil Service Reform Act of 1978 (CSRA). The CSRA was enacted to strengthen the merit system principles, protect federal employe... [truncated]">I am writing to comment on the proposed rule Improving Performance, Accountability and Responsiveness in the Civil Service OPM-2025-0004-0001.
+
+This proposed regulation, Schedule F, under Docket ID OPM-2025-0004” and RIN 3206-AO80, raises profound concerns about the future of the Civil Service and i...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">This shift represents a dangerous step backward towards a spoils system of patronage, undermining the merit-based principles that have long been the bedrock of a nonpartisan and professional public service.</td>
+                                <td style="display: none;">The comment clearly expresses opposition to the reimplementation of Schedule F, emphasizing concerns about politicization and its negative effects on the merit-based civil service. It also highlights the potential weakening of federal employee protections and due process, referencing the Civil Service Reform Act.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-5688" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-5688</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I strongly oppose the reclassification of civil servants as political appointees. Civil servants work for the government and the people, and reclassification could cause the services that they provide to become less effective and less efficient. Individuals with deep knowledge of systems and processes could be removed without cause, causing knowledge gaps that could take years to repair. Civil servants must remain impartial and independent to achieve the government&#039;s required outcomes and goals.">I strongly oppose the reclassification of civil servants as political appointees. Civil servants work for the government and the people, and reclassification could cause the services that they provide to become less effective and less efficient. Individuals with deep knowledge of systems and process...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I strongly oppose the reclassification of civil servants as political appointees. Civil servants work for the government and the people, and reclassification could cause the services that they provide to become less effective and less efficient.</td>
+                                <td style="display: none;">The comment explicitly opposes the reclassification of civil servants as political appointees, warning about the negative impacts on service effectiveness and the dangers of losing knowledgeable staff. It emphasizes the need for civil servants to remain impartial and points to potential disruptions caused by such changes, aligning with stances against politicization and protecting due process rights.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-8983" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-8983</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I oppose this proposed rule in its entirety, and every section of the proposed rule, as it allows for the reintroduction of a &quot;spoils&quot; system to the federal civil service. The historic &quot;spoils&quot; system of the Gilded Age enriched individuals at the expense of public, undermined citizens&#039; authority over their elected leaders, and dangerously politicized key government functions. Ending it was an important part of creating the global power and respect that the US has enjoyed since the mid-20th century. 
+
+I oppose the creation of the Schedule Policy/Career as a new category of Excepted Service under 5 CFR Part 213. Moving career civil servants into a category of at-will employment makes those civil service positions vulnerable to political manipulation and influence, including by putting those employees at risk of termination should their efforts to uphold the federal oath of employment to defend the Constitution conflict with a political appointee&#039;s belief that the employee has failed to &quot;faithfully implement administration policies to the best of their ability,&quot; as required under the proposed amendment to Sec. 213.3501(b). 
+
+I also oppose the amendment of 5 CFR part 752 that removes the right of career civil servants to appeal the transfer of their position into an Excepted Service category, including the proposed Schedule Policy/Career category. The removal of such protection violates the Fifth Amendment due process rights of federal civil servants, specifically by removing the... [truncated]">I oppose this proposed rule in its entirety, and every section of the proposed rule, as it allows for the reintroduction of a "spoils" system to the federal civil service. The historic "spoils" system of the Gilded Age enriched individuals at the expense of public, undermined citizens' authority ove...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;" class="char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="Moving career civil servants into a category of at-will employment makes those civil service positions vulnerable to political manipulation and influence, including by putting those employees at risk of termination should their efforts to uphold the federal oath of employment to defend the Constitution conflict with a political appointee&#039;s belief.">Moving career civil servants into a category of at-will employment makes those civil service positions vulnerable to political manipulation and influence, including by putting those employees at risk of termination should their efforts to uphold the federal oath of employment to defend the Constitut...</td>
+                                <td style="display: none;">The comment strongly opposes the reintroduction of a spoils system and the associated risks of politicization in the civil service, emphasizing the importance of merit-based hiring. Additionally, it highlights concerns regarding due process rights for federal employees, particularly in relation to the implications of at-will employment.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-8414" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-8414</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview">Why does this order need to go through now, at a time that the civil service is hemorrhaging staff?  How will critical roles be filled if it triggers further resignations?  What work has been done to evaluate and mitigate these impacts?</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Why does this order need to go through now, at a time that the civil service is hemorrhaging staff? How will critical roles be filled if it triggers further resignations?</td>
+                                <td style="display: none;">The comment expresses concern about the timing of the proposed rule and its potential impact on staff retention in the civil service, indicating opposition to actions perceived as harmful to the integrity and effectiveness of the federal workforce. It highlights the risks associated with further destabilizing an already strained system, aligning with concerns about politicization and the weakening of civil service protections.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-10619" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-10619</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview">Civil service is non-partisan it's what keeps gov. working. Don't change it.</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Civil service is non-partisan it's what keeps gov. working. Don't change it.</td>
+                                <td style="display: none;">The comment clearly opposes changes that could lead to politicization of the civil service, emphasizing its non-partisan nature and importance for government functionality.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-19436" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-19436</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="This policy is a horribpe and fundamentally corrupt idea. The security of governmental positions is not a policy made on accident. It is impossible to keep any office non-partisan if employment becomes at-will, and that is the primary barrier that keeps the corruption of our electoral systems away from our civil service.
+
+Do not implement this rule. If you want responsiveness in government services, you need to fund them and support them.">This policy is a horribpe and fundamentally corrupt idea. The security of governmental positions is not a policy made on accident. It is impossible to keep any office non-partisan if employment becomes at-will, and that is the primary barrier that keeps the corruption of our electoral systems away f...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">It is impossible to keep any office non-partisan if employment becomes at-will, and that is the primary barrier that keeps the corruption of our electoral systems away from our civil service.</td>
+                                <td style="display: none;">The comment clearly expresses opposition to implementing Schedule F by highlighting concerns over non-partisanship and corruption in the civil service if positions become at-will. Additionally, it addresses the general importance of protecting due process and worker rights within the federal workforce.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-6344" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-6344</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="Request Access
+federalregister.gov
+
+
+
+I strongly oppose any effort to implement or reinstate the “Schedule F” classification for federal employees. This proposal represents an alarming threat to the foundations of the merit-based civil service system—an institution that has safeguarded the competence, impartiality, and integrity of the federal workforce for over 140 years.
+
+Schedule F would dangerously erode the core protections established by the Pendleton Civil Service Reform Act of 1883, which was enacted to dismantle the corrupt spoils system and ensure that federal hiring and employment decisions are based on merit, not political loyalty. By allowing broad categories of career civil servants—especially those involved in policy development or analysis—to be reclassified and dismissed without cause, Schedule F invites the very abuses the Pendleton Act was designed to prevent.
+
+This proposal is directly at odds with the statutory merit system principles laid out in 5 U.S.C. § 2301(b), which guarantee that federal employment should be based on merit and free from political coercion. It also undermines the due process protections in 5 U.S.C. § 7513, which safeguard against arbitrary or retaliatory removals by requiring just cause and fair procedures. Stripping thousands of career officials of these protections not only threatens their job security—it endangers the government’s ability to function based on facts, expertise, and continuity.
+
+Moreover, Schedule F would have a ch... [truncated]">Request Access
+federalregister.gov
+
+
+
+I strongly oppose any effort to implement or reinstate the “Schedule F” classification for federal employees. This proposal represents an alarming threat to the foundations of the merit-based civil service system—an institution that has safeguarded the competenc...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">This proposal represents an alarming threat to the foundations of the merit-based civil service system—an institution that has safeguarded the competence, impartiality, and integrity of the federal workforce for over 140 years.</td>
+                                <td style="display: none;">The commenter explicitly opposes the reimplementation of Schedule F, highlighting the risks to merit-based employment and the potential for politicization. Additionally, they express concerns about the erosion of due process protections for federal employees, aligning with both stance categories.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-32428" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-32428</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="This proposed OPM rule is just a transparent effort to politicize policy making positions in the executive branch. This allows an executive branch to remove knowledgeable, experienced people (who are already under policies which hold them accountable) from positions where their impact is greatly needed.  
+
+The focus on the potential for rogue employees mentioned in the proposal is a red herring meant to distract people from the real focus - installing politically aligned players into key positions. This only furthers the opportunity for corruption in our government operations because of the risk that the Executive will fill these positions with unqualified political appointees whose primary qualification is loyalty to the Executive. This threatens the capacity of these departments to serve citizens, as well as the quality of the work products. In addition, it becomes a revolving door, because as soon as another political leaning takes office, these appointed individuals will likely be removed, using the same justification. This can&#039;t be an efficient long term method of government operations. 
+
+Furthermore, the Executive intends to exclude our elected representatives in Congress who established the regulations to insure that the knowledge and experience of qualified public servants can freely serve without fear of political retribution.
+
+I do not support this proposal in any way.">This proposed OPM rule is just a transparent effort to politicize policy making positions in the executive branch. This allows an executive branch to remove knowledgeable, experienced people (who are already under policies which hold them accountable) from positions where their impact is greatly nee...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">This proposed OPM rule is just a transparent effort to politicize policy making positions in the executive branch.</td>
+                                <td style="display: none;">The comment clearly articulates opposition to the potential politicization of federal positions and the risks of replacing knowledgeable civil servants with political appointees. It also raises concerns about the implications for due process protections and the overall effectiveness of government operations.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-4011" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-4011</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Support for Executive Authority and Accountability via Schedule F</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I support President Trump’s efforts to bring accountability to the federal bureaucracy. 
+
+
+For too long, unelected career bureaucrats in the federal government have stifled efficiency by undermining the plans and policies of the Chief Executive.
+
+OPM’s new rule cuts red tape and allows career bureaucrats to be reprimanded for poor job performance or misconduct, such as corruption or partisanship.
+
+In any industry, rogue employees are held accountable to someone. Now, government employees will be held accountable for lack of performance or inaction.
+
+
+I support President Trump’s work to rein in unaccountable bureaucrats and end the Deep State!
+">I support President Trump’s efforts to bring accountability to the federal bureaucracy. 
+
+
+For too long, unelected career bureaucrats in the federal government have stifled efficiency by undermining the plans and policies of the Chief Executive.
+
+OPM’s new rule cuts red tape and allows career bureau...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I support President Trump’s efforts to bring accountability to the federal bureaucracy.</td>
+                                <td style="display: none;">The commenter expresses clear support for increased executive authority and the accountability of federal employees, indicating a belief that career bureaucrats have impeded efficiency and need to be held accountable for their performance. This aligns with the stance of supporting President Trump's efforts and the broader goals of the Schedule F proposal.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-27670" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-27670</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Political Interference in Scientific and Grantmaking Roles</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview">This policy would be detrimental to science and should not be enacted. The government should not place political people in charge of science. Scientists should be in charge of science.</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">This policy would be detrimental to science and should not be enacted. The government should not place political people in charge of science.</td>
+                                <td style="display: none;">The commenter expresses clear opposition to the implementation of Schedule F due to its potential detrimental effects on science, emphasizing that scientific roles should be held by scientists rather than political appointees. This reflects both a broader concern about the politicization of the civil service and a specific worry regarding political interference in scientific roles.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-3100" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-3100</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Support for Executive Authority and Accountability via Schedule F</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I support President Trump’s efforts to bring accountability to the federal bureaucracy. 
+
+
+For too long, unelected career bureaucrats in the federal government have stifled efficiency by undermining the plans and policies of the Chief Executive.
+
+OPM’s new rule cuts red tape and allows career bureaucrats to be reprimanded for poor job performance or misconduct, such as corruption or partisanship.
+
+In any industry, rogue employees are held accountable to someone. Now, government employees will be held accountable for lack of performance or inaction.
+
+
+I support President Trump’s work to rein in unaccountable bureaucrats and end the Deep State!
+">I support President Trump’s efforts to bring accountability to the federal bureaucracy. 
+
+
+For too long, unelected career bureaucrats in the federal government have stifled efficiency by undermining the plans and policies of the Chief Executive.
+
+OPM’s new rule cuts red tape and allows career bureau...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I support President Trump’s efforts to bring accountability to the federal bureaucracy.</td>
+                                <td style="display: none;">The comment expresses strong support for President Trump’s initiatives aimed at increasing accountability and addressing inefficiencies caused by career bureaucrats, clearly aligning with the stance that advocates for executive authority and accountability through Schedule F.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-21510" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-21510</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview">I am opposed to this change in federal employee classification. The current protections help draw talented people who might otherwise go to the private sector. The job protections and benefits help balance the generally lower pay in government jobs. This change would be very detrimental.</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">The current protections help draw talented people who might otherwise go to the private sector.</td>
+                                <td style="display: none;">The commenter explicitly opposes the change in federal employee classification, indicating concerns about how the current protections help attract talent and balance lower pay. This reflects a fear of undermining the civil service's merit-based system and worker rights.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-20783" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-20783</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview">Federal employees should be there based on qualifications and merit, not loyalty to a president or their agenda.  If a president (or any politician)’s agenda is harmful, then it the duty of a public servant to oppose it.  </td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Federal employees should be there based on qualifications and merit, not loyalty to a president or their agenda.</td>
+                                <td style="display: none;">The comment explicitly opposes the idea of federal employees being hired or retained based on political loyalty, emphasizing the importance of merit and qualifications. This indicates a clear stance against the politicization of civil service and supports the need for due process and protections for civil servants.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-30005" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-30005</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="Docket ID: OPM-2025-0004
+RIN 3206-A080
+
+I worked in the NPS from 1973 until I retired in 2006 as a seasonal in four parks and a career employee in three. The great majority of my fellow employees were competent and effective with an enormous love and attachment to the incredible cultural and natural resources of this country. The employees who chose to work for the NPS were not in it for the salary but were motivated to protect these resources and to share them with the American people.
+
+The very basis for this rule is insulting to myself and to all my fellow NPS, indeed all Federal workers, who spent their entire careers in service to the American people and this country.
+
+With that stated, I strongly oppose the implementation of Schedule Policy/Career. 
+
+Overall, the proposed rule is vague and wide sweeping in its attempt to move Civil Service positions to &quot;at will&quot; positions. Loyalty should be to the Constitution and the American people, not to a political party or an individual. Non-partisan employees and experts ensure that the spoils system, that was rampant in the Federal workforce 
+in the 1880s, does not return. That was the purpose of Merit Protection. This rule, in effect, returns us to that time. Why is this necessary? 
+
+My comments are in the attached document. I look forward to detailed responses from OPM regarding the questions I have raised and to clarify and define. Thank you for your attention to this matter.
+
+">Docket ID: OPM-2025-0004
+RIN 3206-A080
+
+I worked in the NPS from 1973 until I retired in 2006 as a seasonal in four parks and a career employee in three. The great majority of my fellow employees were competent and effective with an enormous love and attachment to the incredible cultural and natural...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">The very basis for this rule is insulting to myself and to all my fellow NPS, indeed all Federal workers, who spent their entire careers in service to the American people and this country.</td>
+                                <td style="display: none;">The commenter explicitly opposes the implementation of Schedule Policy/Career due to concerns about the politicization of civil service positions and emphasizes the need for non-partisan employees to prevent a return to the spoils system. Additionally, they express concern about the degradation of worker protections, making these two stances relevant.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-1651" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-1651</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview">I oppose the new rule that would reclassify federal workers. This is through the Office of Personnel Management - Docket ID: OPM-2025-0004 or RIN 3206-AO80. I oppose this rule because it undermines the nonpartisan civil service and further erodes trust in the federal government. </td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I oppose this rule because it undermines the nonpartisan civil service and further erodes trust in the federal government.</td>
+                                <td style="display: none;">The commenter clearly expresses opposition to the proposed rule, citing concerns about the undermining of the nonpartisan civil service, which reflects a worry about politicization and the erosion of trust in government. This encapsulates a concern for civil service protections and the integrity of federal employees.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-34577" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-34577</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="Political appointments are part of our past; we created the civil service to have actual merit and expertise in the government . It’s not a perfect system but returning to the 19th century’s “to the victor, the spoils” will ruin any chance of having an effective government.  Self interest and greed will rule.  ">Political appointments are part of our past; we created the civil service to have actual merit and expertise in the government . It’s not a perfect system but returning to the 19th century’s “to the victor, the spoils” will ruin any chance of having an effective government.  Self interest and greed ...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Returning to the 19th century’s “to the victor, the spoils” will ruin any chance of having an effective government.</td>
+                                <td style="display: none;">The commenter expresses clear opposition to the politicization of the civil service and warns against reverting to a spoils system, emphasizing the importance of merit and expertise in government. This indicates a concern for retaining nonpartisan civil servants and ensuring the effectiveness of government operations.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-13617" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-13617</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Political Interference in Scientific and Grantmaking Roles</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="As a federal employee commenting in my personal capacity, I strongly oppose the proposed rule. This policy would represent an unprecedented increase in the politicization of the federal workforce, threatening the integrity and effectiveness of the civil service. I myself work on regulations and guidance, but my work involves input by numerous experts (scientific, policy, legal, etc) who respectfully discuss and agree/disagree with one another to write well reasoned documents. Other departments and agencies can also provide review and edits. Then the public and other stakeholders (including the White House and OMB) are allowed to provide their input through the notice and comment process. Rule making and guidance writing and other policy making efforts are civil service work, not that of political roles. 
+
+This work is grounded in evidence, guided by public health priorities, and intended to serve everyone—regardless of political affiliation. The ability to carry out this mission depends on a nonpartisan, merit-based civil service that values expertise and insulates scientific integrity from political pressures.
+
+Thank you.">As a federal employee commenting in my personal capacity, I strongly oppose the proposed rule. This policy would represent an unprecedented increase in the politicization of the federal workforce, threatening the integrity and effectiveness of the civil service. I myself work on regulations and guid...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">This policy would represent an unprecedented increase in the politicization of the federal workforce, threatening the integrity and effectiveness of the civil service.</td>
+                                <td style="display: none;">The commenter explicitly opposes the rule, citing concerns about increased politicization and its negative impact on the integrity and effectiveness of the civil service, thus fitting well within the stances of opposing politicization and interference in scientific roles.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-19813" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-19813</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I am not persuaded that the proposed rule will improve performance in the civil service, and the &quot;responsiveness&quot; and &quot;accountability&quot; it purports to promote seems (despite the arguments levied in the justification for the proposal) to serve the primary function of making it easier for political appointees in the executive branch (or the president) to fire civil servants who are doing work they disapprove of for political reasons, regardless of its quality. The effects of the proposed rule, it seems to me, would be to subordinate more of the executive branch to political swings from one administration to another, to make it more difficult for civil servants to accrue meaningful expertise in their important roles, and - worse - to remove civil servants who are already expert but whose positions are believed to be at odds with any current administration&#039;s goals. I hope this rule is not implemented.">I am not persuaded that the proposed rule will improve performance in the civil service, and the "responsiveness" and "accountability" it purports to promote seems (despite the arguments levied in the justification for the proposal) to serve the primary function of making it easier for political app...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">The effects of the proposed rule, it seems to me, would be to subordinate more of the executive branch to political swings from one administration to another, to make it more difficult for civil servants to accrue meaningful expertise in their important roles.</td>
+                                <td style="display: none;">The comment clearly expresses concern that the proposed rule would politicize the civil service and make it easier for political appointees to dismiss civil servants based on political disapproval rather than job performance. It also highlights the risk of undermining the expertise and continuity of the federal workforce, aligning with opposition to weakening civil service protections.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-18765" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-18765</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Political Interference in Scientific and Grantmaking Roles</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview">Disgraceful. Science flourishes when truth can be investigated free from political manipulation or agendas. These principles are among the founding tenets of this country. Please keep the NIH as an independent scientific body committed to excellence and facts.</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Science flourishes when truth can be investigated free from political manipulation or agendas.</td>
+                                <td style="display: none;">The commenter expresses a strong opposition to the politicization of science and emphasizes the importance of maintaining the independence of the NIH as a scientific body, which aligns with the stance of opposing political interference in scientific roles.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-13469" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-13469</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title=" 
+I write in opposition to the rule proposed by the Personnel Management Office on 04/23/25 titled &quot;Improving Performance, Accountability and Responsiveness in the Civil Service&quot; (Office of Personnel Management 5 CFR Parts 210, 212, 213, 302, 432, 451, and 752 [Docket ID: OPM-2025-0004] RIN 3206-AO80)
+
+A professional, non-partisan civil service is essential to having a well-managed, efficient and effective government. This merit-based system ensures that taxpayers are able to get the information, services and support that they need to do business, pay taxes and fees and to grow the economy.
+
+To undercut this system is to hamstring growth, efficiency and capacity in a way that will damage the future prosperity of the US and its citizenry for no good or well-considered reason.
+
+I ask that you vote in opposition to this bill as it is antithetical to a healthy and functioning government."> 
+I write in opposition to the rule proposed by the Personnel Management Office on 04/23/25 titled "Improving Performance, Accountability and Responsiveness in the Civil Service" (Office of Personnel Management 5 CFR Parts 210, 212, 213, 302, 432, 451, and 752 [Docket ID: OPM-2025-0004] RIN 3206-AO8...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">A professional, non-partisan civil service is essential to having a well-managed, efficient and effective government.</td>
+                                <td style="display: none;">The commenter explicitly opposes the proposed rule, emphasizing the importance of a non-partisan civil service and the risks of undermining a merit-based system. Additionally, the assertion that weakening this system would detrimentally impact government efficiency and capacity aligns with concerns about due process and worker protections.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-19554" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-19554</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview">Trump is a bell end.</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Trump is a bell end.</td>
+                                <td style="display: none;">The comment does not express any clear stance related to the OPM Schedule F or the implications of politicization and civil service rights. It appears to focus solely on an insult towards Trump without addressing the specific issues at hand.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-21221" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-21221</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Political Interference in Scientific and Grantmaking Roles</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I believe the reclassification of the career civil service employees who participate in the development of funding announcements and oversee the review of grant applications as Schedule F would politicize the NIH, reduce public trust in Federally funded science, and reduce our ability to identify future cures for diseases that impact all Americans, regardless of political ideology.">I believe the reclassification of the career civil service employees who participate in the development of funding announcements and oversee the review of grant applications as Schedule F would politicize the NIH, reduce public trust in Federally funded science, and reduce our ability to identify fu...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;" class="char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I believe the reclassification of the career civil service employees who participate in the development of funding announcements and oversee the review of grant applications as Schedule F would politicize the NIH, reduce public trust in Federally funded science, and reduce our ability to identify future cures for diseases that impact all Americans, regardless of political ideology.">I believe the reclassification of the career civil service employees who participate in the development of funding announcements and oversee the review of grant applications as Schedule F would politicize the NIH, reduce public trust in Federally funded science, and reduce our ability to identify fu...</td>
+                                <td style="display: none;">The comment clearly expresses concerns about the politicization of the NIH and its negative effects on public trust in science and the ability to make scientific advancements. These concerns directly align with the identified stances regarding the risks of politicization in the civil service, particularly in scientific and grantmaking roles.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-27048" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-27048</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Political Interference in Scientific and Grantmaking Roles</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I am opposed to the institution of Schedule F, which would reclassify thousands of governments jobs as policymaking positions that are subject to presidential appointment and removal.
+ 
+It would replace the current service protection paradigm that allows these positions to be filled based on expertise and experience, without political interference.
+ 
+I disagree strongly with the attempt to politicize grants assessment, drafting of funding opportunity announcements, evaluation of grant applications, or recommending or selecting grant recipients. POLITICAL INTERFERENCE WILL DESTROY SCIENTIFIC INTEGRITY OF FEDERAL GRANTS, which is an unacceptable way to determine the distribution of public funds.
+
+An historic example of what happens when science gets politicized include the belief that our planet earth is the center of the universe and we would not have advanced from the middle ages. With politicians getting into medical treatments we would be treating COVID19 infections with bleach infusions, treating and preventing measles with vitamin A, etc.">I am opposed to the institution of Schedule F, which would reclassify thousands of governments jobs as policymaking positions that are subject to presidential appointment and removal.
+ 
+It would replace the current service protection paradigm that allows these positions to be filled based on experti...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">POLITICAL INTERFERENCE WILL DESTROY SCIENTIFIC INTEGRITY OF FEDERAL GRANTS, which is an unacceptable way to determine the distribution of public funds.</td>
+                                <td style="display: none;">The comment clearly expresses strong opposition to the implementation of Schedule F due to concerns about politicizing government job classifications and undermining expertise. It also highlights the dangers of political interference in grantmaking processes, emphasizing the potential harm to scientific integrity. Both concerns align with the identified stances regarding the risks of politicization and the integrity of the scientific process.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-24700" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-24700</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="This proposed Schedule F rule will damage U.S. science and innovation, a major part of my pride in this country and our work. It is critical that federal employees are only terminated after adequate due process. Making it easier to terminate federal employees is contrary to our entire system of federal government and public accountability. It does not increase accountability, but rather diminishes accountability to the U.S. citizens who fill these roles in the federal government, their coworkers, and the American people that they represent and serve. Those attempting to terminate these hardworking public servants should be held accountable for their actions.">This proposed Schedule F rule will damage U.S. science and innovation, a major part of my pride in this country and our work. It is critical that federal employees are only terminated after adequate due process. Making it easier to terminate federal employees is contrary to our entire system of fede...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Making it easier to terminate federal employees is contrary to our entire system of federal government and public accountability.</td>
+                                <td style="display: none;">The commenter explicitly opposes the proposed Schedule F rule, emphasizing the negative impact on U.S. science and innovation while advocating for due process in employee termination. Their concern for public accountability and protection of federal employees aligns with established stances against politicization and weakening of worker protections.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-26143" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-26143</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Political Interference in Scientific and Grantmaking Roles</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="The proposed changes appear to politicize key positions including staff who review scientific grants. Things like cancer impact all of us. In order to preserve independence from political pressure and maintain a cogent strategy over a multi-year timeline, those reviewing grants and working in many of the positions impacting by this proposed change should not be subject to removal by the whims of a president from either party. This proposed change will have devastating impacts on our ability as a country to have a coherent, consistent approach to health and health research. ">The proposed changes appear to politicize key positions including staff who review scientific grants. Things like cancer impact all of us. In order to preserve independence from political pressure and maintain a cogent strategy over a multi-year timeline, those reviewing grants and working in many o...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;" class="char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="Things like cancer impact all of us. In order to preserve independence from political pressure and maintain a cogent strategy over a multi-year timeline, those reviewing grants and working in many of the positions impacting by this proposed change should not be subject to removal by the whims of a president from either party.">Things like cancer impact all of us. In order to preserve independence from political pressure and maintain a cogent strategy over a multi-year timeline, those reviewing grants and working in many of the positions impacting by this proposed change should not be subject to removal by the whims of a p...</td>
+                                <td style="display: none;">The comment explicitly opposes the proposed changes by highlighting the potential politicization of positions that review scientific grants and emphasizes the importance of independence from political pressure. It expresses concerns regarding the impact on health research, which aligns with both stances of opposing politicization and political interference in scientific roles.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-30873" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-30873</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview">This is one of the stupidest and most corrupt ideas that this already stupid and corrupt administration wants to implement. Do not do this.</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">This is one of the stupidest and most corrupt ideas that this already stupid and corrupt administration wants to implement.</td>
+                                <td style="display: none;">The comment expresses strong disapproval of the proposed rule and the administration behind it but does not provide specific arguments or concerns that align with the identified stances. It lacks detail on the impacts of the rule, such as politicization of the civil service or due process concerns.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-9488" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-9488</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview">Political appointees should absolutely not become the civil servants. As administrations come and go, we need non partisan civil servants to smoothly be able to keep our institutions running.</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Political appointees should absolutely not become the civil servants. As administrations come and go, we need non partisan civil servants to smoothly be able to keep our institutions running.</td>
+                                <td style="display: none;">The comment explicitly opposes the idea of political appointees replacing civil servants, advocating for a nonpartisan civil service to maintain continuity in government operations. This directly aligns with the stance against the politicization of the civil service.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-4026" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-4026</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Support for Executive Authority and Accountability via Schedule F</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I support President Trump’s efforts to bring accountability to the federal bureaucracy. 
+
+
+For too long, unelected career bureaucrats in the federal government have stifled efficiency by undermining the plans and policies of the Chief Executive.
+
+OPM’s new rule cuts red tape and allows career bureaucrats to be reprimanded for poor job performance or misconduct, such as corruption or partisanship.
+
+In any industry, rogue employees are held accountable to someone. Now, government employees will be held accountable for lack of performance or inaction.
+
+
+I support President Trump’s work to rein in unaccountable bureaucrats and end the Deep State!
+">I support President Trump’s efforts to bring accountability to the federal bureaucracy. 
+
+
+For too long, unelected career bureaucrats in the federal government have stifled efficiency by undermining the plans and policies of the Chief Executive.
+
+OPM’s new rule cuts red tape and allows career bureau...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I support President Trump’s efforts to bring accountability to the federal bureaucracy.</td>
+                                <td style="display: none;">The comment clearly expresses support for President Trump's initiatives aimed at increasing accountability within the federal workforce, aligning with the argument that career bureaucrats have hindered government efficiency. It emphasizes the importance of holding government employees accountable for their performance, which fits the stance of supporting executive authority and accountability through Schedule F.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-11670" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-11670</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview">Hey Trump administration!  Civil servants shouldn’t be forced to become Trump loyalists to keep their jobs. 
+ </td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Civil servants shouldn’t be forced to become Trump loyalists to keep their jobs.</td>
+                                <td style="display: none;">The comment clearly expresses opposition to the idea of civil servants being required to align with political loyalties to retain their positions, indicating a concern for the politicization of the civil service.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-17980" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-17980</a></span></td>
+                                <td class="date-cell">2025-06-28</td>
+                                <td></td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Political Interference in Scientific and Grantmaking Roles</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview">I whole heartedly disagree with the proposal regarding NIH scientists by political appointment based on scientific integrity and imminent harm to public health. </td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I whole heartedly disagree with the proposal regarding NIH scientists by political appointment based on scientific integrity and imminent harm to public health.</td>
+                                <td style="display: none;">The commenter directly opposes the proposal's impact on NIH scientists, highlighting concerns over scientific integrity and potential public health risks, which aligns with the established positions against politicization and political interference in scientific roles.</td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Meta Information -->
+        <div class="meta-info">
+            <h3 style="color: white; margin-bottom: 20px;">📋 Report Details</h3>
+            <div class="meta-grid">
+                <div class="meta-item">
+                    <div class="meta-label">Generated</div>
+                    <div class="meta-value">2025-06-28 15:27:06</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Model Used</div>
+                    <div class="meta-value">gpt-4o-mini</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Total Comments</div>
+                    <div class="meta-value">50</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">With Attachments</div>
+                    <div class="meta-value">0</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Average Length</div>
+                    <div class="meta-value">776 chars</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Date Range</div>
+                    <div class="meta-value">2025-06-28</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Column visibility state (13 columns with new_stances)
+        const columnVisibility = {
+            0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: true, 9: true, 10: false, 11: false, 12: false
+        };
+
+        // Initialize column visibility on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            for (const [col, visible] of Object.entries(columnVisibility)) {
+                updateColumnVisibility(parseInt(col), visible);
+            }
+        });
+
+        function toggleColumnVisibility() {
+            const dropdown = document.getElementById('columnVisibilityDropdown');
+            dropdown.classList.toggle('show');
+        }
+
+        function toggleColumn(columnIndex) {
+            const checkbox = document.getElementById('col-' + columnIndex);
+            const visible = checkbox.checked;
+            columnVisibility[columnIndex] = visible;
+            updateColumnVisibility(columnIndex, visible);
+        }
+
+        function updateColumnVisibility(columnIndex, visible) {
+            const table = document.getElementById('commentsTable');
+            const rows = table.getElementsByTagName('tr');
+            
+            // Update header
+            const headers = rows[0].getElementsByTagName('th');
+            if (headers[columnIndex]) {
+                headers[columnIndex].style.display = visible ? '' : 'none';
+            }
+            
+            // Update all data rows
+            for (let i = 1; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName('td');
+                if (cells[columnIndex]) {
+                    cells[columnIndex].style.display = visible ? '' : 'none';
+                }
+            }
+        }
+
+        function filterTable() {
+            const table = document.getElementById('commentsTable');
+            const rows = table.getElementsByTagName('tr');
+            
+            // Get text input filters
+            const textFilters = document.querySelectorAll('.filter-input');
+            const textFilterValues = Array.from(textFilters).map(filter => {
+                return {
+                    column: parseInt(filter.getAttribute('data-column')),
+                    value: filter.value.toLowerCase()
+                };
+            });
+            
+            // Get checkbox filters
+            const stanceCheckboxes = document.querySelectorAll('input[data-filter="stances"]:checked');
+            const newStanceCheckboxes = document.querySelectorAll('input[data-filter="new_stances"]:checked');
+            const unusualComboCheckboxes = document.querySelectorAll('input[data-filter="unusual_combo"]:checked');
+            const attachmentCheckboxes = document.querySelectorAll('input[data-filter="attachments"]:checked');
+            const duplicationCountCheckboxes = document.querySelectorAll('input[data-filter="duplication_count"]:checked');
+            const duplicationRatioCheckboxes = document.querySelectorAll('input[data-filter="duplication_ratio"]:checked');
+            
+            const selectedStances = Array.from(stanceCheckboxes).map(cb => cb.value.toLowerCase());
+            const selectedNewStances = Array.from(newStanceCheckboxes).map(cb => cb.value.toLowerCase());
+            const filterUnusualCombos = unusualComboCheckboxes.length > 0;
+            const selectedAttachments = Array.from(attachmentCheckboxes).map(cb => cb.value);
+            const selectedDuplicationCounts = Array.from(duplicationCountCheckboxes).map(cb => parseInt(cb.value));
+            const selectedDuplicationRatios = Array.from(duplicationRatioCheckboxes).map(cb => parseInt(cb.value));
+
+            // Always assume new_stances column exists (column 5)
+            const hasNewStances = true;
+            
+            // Filter each row
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                const cells = row.getElementsByTagName('td');
+                let showRow = true;
+
+                // Check text filters
+                for (const filter of textFilterValues) {
+                    if (filter.value && filter.column < cells.length) {
+                        const cellText = cells[filter.column].textContent.toLowerCase();
+                        if (!cellText.includes(filter.value)) {
+                            showRow = false;
+                            break;
+                        }
+                    }
+                }
+                
+                // Check stance filter (column 4)
+                if (showRow && selectedStances.length > 0) {
+                    const stanceText = cells[4].textContent.toLowerCase();
+                    if (!selectedStances.some(stance => stanceText.includes(stance))) {
+                        showRow = false;
+                    }
+                }
+                
+                // Check unusual combination filter
+                if (showRow && filterUnusualCombos) {
+                    const stanceCell = cells[4].innerHTML;
+                    if (!stanceCell.includes('⚠️')) {
+                        showRow = false;
+                    }
+                }
+                
+                // Check new stance filter (column 5 if exists)
+                if (showRow && hasNewStances && selectedNewStances.length > 0) {
+                    const newStanceText = cells[5].textContent.toLowerCase();
+                    if (!selectedNewStances.some(stance => newStanceText.includes(stance))) {
+                        showRow = false;
+                    }
+                }
+                
+                // Column positions shift by 1 when new_stances exists
+                const attachmentCol = hasNewStances ? 7 : 6;
+                const dupCountCol = hasNewStances ? 8 : 7;
+                const dupRatioCol = hasNewStances ? 9 : 8;
+                
+                // Check attachments filter
+                if (showRow && selectedAttachments.length > 0) {
+                    const attachmentCell = cells[attachmentCol];
+                    const hasAttachment = attachmentCell.textContent.trim() !== '';
+                    
+                    let attachmentMatch = false;
+                    for (const filter of selectedAttachments) {
+                        if (filter === 'yes' && hasAttachment) {
+                            attachmentMatch = true;
+                            break;
+                        }
+                        if (filter === 'no' && !hasAttachment) {
+                            attachmentMatch = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!attachmentMatch) {
+                        showRow = false;
+                    }
+                }
+                
+                // Check duplication count filter
+                if (showRow && selectedDuplicationCounts.length > 0) {
+                    const duplicationCell = cells[dupCountCol];
+                    const duplicationText = duplicationCell.textContent.trim();
+                    const duplicationCount = parseInt(duplicationText);
+                    
+                    if (!selectedDuplicationCounts.includes(duplicationCount)) {
+                        showRow = false;
+                    }
+                }
+                
+                // Check duplication ratio filter
+                if (showRow && selectedDuplicationRatios.length > 0) {
+                    const ratioCell = cells[dupRatioCol];
+                    const ratioText = ratioCell.textContent.trim();
+                    // Extract number after "1:" (e.g., "1:10" -> 10)
+                    const ratioMatch = ratioText.match(/1:(\d+)/);
+                    const ratioValue = ratioMatch ? parseInt(ratioMatch[1]) : 1;
+                    
+                    if (!selectedDuplicationRatios.includes(ratioValue)) {
+                        showRow = false;
+                    }
+                }
+
+                row.style.display = showRow ? '' : 'none';
+            }
+        }
+        
+        function toggleFilter(columnIndex) {
+            const dropdown = document.getElementById('filter-' + columnIndex);
+            const allDropdowns = document.querySelectorAll('.filter-dropdown');
+            
+            // Close all other dropdowns
+            allDropdowns.forEach(dd => {
+                if (dd !== dropdown) {
+                    dd.style.display = 'none';
+                }});
+            
+            // Toggle current dropdown
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        function clearAllFilters() {
+            const textFilters = document.querySelectorAll('.filter-input');
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            
+            textFilters.forEach(filter => filter.value = '');
+            checkboxes.forEach(checkbox => checkbox.checked = false);
+            
+            filterTable();
+        }
+        
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(event) {
+            const isFilterClick = event.target.closest('.filterable') || event.target.closest('.filter-dropdown');
+            const isColumnVisClick = event.target.closest('.column-visibility-dropdown');
+            
+            if (!isFilterClick) {
+                document.querySelectorAll('.filter-dropdown').forEach(dd => {
+                    dd.style.display = 'none';
+                });
+            }
+            
+            if (!isColumnVisClick) {
+                document.getElementById('columnVisibilityDropdown').classList.remove('show');
+            }
+        });
+        
+        // Initialize Bootstrap tooltips
+        function initializeTooltips() {
+            const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+            [...tooltipTriggerList].forEach(tooltipTriggerEl => {
+                try {
+                    // Dispose existing tooltip if any
+                    const existingTooltip = bootstrap.Tooltip.getInstance(tooltipTriggerEl);
+                    if (existingTooltip) {
+                        existingTooltip.dispose();
+                    }
+                    
+                    // Create new tooltip
+                    new bootstrap.Tooltip(tooltipTriggerEl, {
+                        boundary: document.body,
+                        trigger: 'hover focus',
+                        container: 'body'
+                    });
+                } catch (err) {
+                    console.error('Error initializing tooltip:', err);
+                }
+            });
+        }
+        
+        // Initialize tooltips when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeTooltips();
+        });
+    </script>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
