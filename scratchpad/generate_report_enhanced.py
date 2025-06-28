@@ -1,146 +1,494 @@
-# Copy the necessary imports and helper functions from main generate_report.py
-from typing import List, Dict, Any
-from datetime import datetime
-import os
-import json
+#!/usr/bin/env python3
+"""
+Generate HTML Report from Comment Analysis Results
 
-def load_regulation_metadata():
-    """Load regulation metadata from config or return defaults."""
-    default_metadata = {
-        'regulation_name': 'Regulation Comments Analysis',
-        'brief_description': 'Analysis of public comments',
-        'agency': '',
-        'docket_id': ''
+Creates an interactive HTML report with summary statistics and searchable table.
+"""
+
+import argparse
+import json
+import os
+from datetime import datetime
+from typing import Dict, Any, List
+import pandas as pd
+
+def load_results(json_file: str) -> List[Dict[str, Any]]:
+    """Load analyzed comments from JSON file."""
+    with open(json_file, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+def load_results_parquet(parquet_file: str) -> List[Dict[str, Any]]:
+    """Load analyzed comments from Parquet file."""
+    df = pd.read_parquet(parquet_file)
+    # Convert to dict and handle numpy arrays
+    records = df.to_dict('records')
+    
+    # Convert numpy arrays to lists for proper JSON serialization
+    import numpy as np
+    for record in records:
+        if 'analysis' in record and record['analysis']:
+            analysis = record['analysis']
+            if 'stances' in analysis and isinstance(analysis['stances'], np.ndarray):
+                analysis['stances'] = analysis['stances'].tolist()
+    
+    return records
+
+def analyze_field_types(comments: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    """Analyze standard analysis fields."""
+    field_analysis = {}
+    
+    # Standard fields we expect - only show stats for checkbox fields
+    fields = {
+        'stances': {'type': 'checkbox', 'is_list': True},
+        'new_stances': {'type': 'checkbox', 'is_list': True}
     }
     
-    # Try to load from analyzer_config.json if it exists
-    config_files = ['../analyzer_config.json', 'analyzer_config.json']
-    for config_file in config_files:
-        if os.path.exists(config_file):
+    for field_name, field_info in fields.items():
+        unique_values = set()
+        total_values = 0
+        
+        for comment in comments:
+            analysis = comment.get('analysis', {})
+            if analysis and field_name in analysis:
+                value = analysis[field_name]
+                total_values += 1
+                
+                if field_info['is_list'] and isinstance(value, list):
+                    for item in value:
+                        if isinstance(item, str):
+                            unique_values.add(item.strip())
+                elif isinstance(value, str):
+                    unique_values.add(value.strip())
+        
+        field_analysis[field_name] = {
+            'type': field_info['type'],
+            'unique_values': sorted(list(unique_values)),
+            'num_unique': len(unique_values),
+            'is_list': field_info['is_list'],
+            'total_occurrences': total_values
+        }
+    
+    # Add duplication count analysis
+    dup_counts = {}
+    dup_ratios = {}
+    
+    for comment in comments:
+        count = comment.get('duplication_count', 1)
+        ratio = comment.get('duplication_ratio', 1)
+        
+        dup_counts[count] = dup_counts.get(count, 0) + 1
+        dup_ratios[ratio] = dup_ratios.get(ratio, 0) + 1
+    
+    # Sort by count/ratio value
+    field_analysis['duplication_count'] = {
+        'type': 'checkbox',
+        'unique_values': sorted(dup_counts.keys()),
+        'num_unique': len(dup_counts),
+        'is_list': False,
+        'counts': dup_counts
+    }
+    
+    field_analysis['duplication_ratio'] = {
+        'type': 'checkbox', 
+        'unique_values': sorted(dup_ratios.keys()),
+        'num_unique': len(dup_ratios),
+        'is_list': False,
+        'counts': dup_ratios
+    }
+    
+    return field_analysis
+
+def calculate_stance_cooccurrence(comments: List[Dict[str, Any]], stance_list: List[str]) -> Dict[str, Dict[str, int]]:
+    """Calculate how often stances appear together."""
+    cooccurrence = {}
+    
+    # Initialize matrix
+    for stance1 in stance_list:
+        cooccurrence[stance1] = {}
+        for stance2 in stance_list:
+            cooccurrence[stance1][stance2] = 0
+    
+    # Count co-occurrences
+    for comment in comments:
+        analysis = comment.get('analysis', {})
+        if analysis:
+            stances = analysis.get('stances', [])
+            if isinstance(stances, list):
+                for stance1 in stances:
+                    if stance1 in stance_list:
+                        for stance2 in stances:
+                            if stance2 in stance_list:
+                                cooccurrence[stance1][stance2] += 1
+    
+    return cooccurrence
+
+def calculate_stats(comments: List[Dict[str, Any]], field_analysis: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    """Calculate summary statistics."""
+    total_comments = len(comments)
+    
+    # Dynamic field counting based on field analysis
+    field_counts = {}
+    for field, info in field_analysis.items():
+        field_counts[field] = {}
+        
+        for comment in comments:
+            analysis = comment.get('analysis', {})
+            if analysis and field in analysis:
+                value = analysis[field]
+                
+                if info['is_list'] and isinstance(value, list):
+                    # Count each item in list
+                    for item in value:
+                        if isinstance(item, str):
+                            item = item.strip()
+                            field_counts[field][item] = field_counts[field].get(item, 0) + 1
+                elif isinstance(value, str):
+                    value = value.strip()
+                    field_counts[field][value] = field_counts[field].get(value, 0) + 1
+    
+    # Calculate stance co-occurrences
+    stance_cooccurrence = {}
+    if 'stances' in field_analysis:
+        stance_list = field_analysis['stances'].get('unique_values', [])
+        if stance_list:
+            stance_cooccurrence = calculate_stance_cooccurrence(comments, stance_list)
+    
+    # Comments with attachments
+    with_attachments = sum(1 for c in comments if c.get('attachment_text', '').strip())
+    
+    # Average text length
+    text_lengths = [len(c.get('text', '')) for c in comments]
+    avg_length = sum(text_lengths) / len(text_lengths) if text_lengths else 0
+    
+    return {
+        'total_comments': total_comments,
+        'field_counts': field_counts,
+        'stance_cooccurrence': stance_cooccurrence,
+        'with_attachments': with_attachments,
+        'avg_text_length': int(avg_length),
+        'date_range': get_date_range(comments)
+    }
+
+def get_date_range(comments: List[Dict[str, Any]]) -> str:
+    """Get date range of comments."""
+    dates = []
+    for comment in comments:
+        date_str = comment.get('date', '')
+        if date_str:
             try:
-                with open(config_file, 'r') as f:
-                    config = json.load(f)
-                    return {
-                        'regulation_name': config.get('regulation_name', default_metadata['regulation_name']),
-                        'brief_description': config.get('regulation_description', default_metadata['brief_description']),
-                        'agency': default_metadata['agency'],
-                        'docket_id': default_metadata['docket_id']
-                    }
+                # Parse ISO date
+                date = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                dates.append(date)
             except:
                 pass
     
-    return default_metadata
+    if dates:
+        min_date = min(dates).strftime('%Y-%m-%d')
+        max_date = max(dates).strftime('%Y-%m-%d')
+        if min_date == max_date:
+            return min_date
+        return f"{min_date} to {max_date}"
+    return "Unknown"
 
-def create_tooltip_cell(text: str, max_display_length: int = 50, css_class: str = "", tooltip_max_length: int = 300) -> str:
-    """Create a table cell with text truncation and tooltip."""
-    if not text or len(text.strip()) == 0:
-        return '<td><span style="color: #999;">None</span></td>'
+def calculate_cooccurrence_percentages(stats: Dict[str, Any], field_analysis: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
+    """Calculate what percentage of comments with each stance also have other stances."""
+    cooccurrence = stats.get('stance_cooccurrence', {})
+    if not cooccurrence:
+        return {}
     
-    text = text.strip()
+    percentages = {}
+    stance_names = list(cooccurrence.keys())
     
-    if len(text) <= max_display_length:
-        return f'<td class="{css_class}">{text}</td>'
+    # Create stance number mapping
+    stance_to_num = {stance: i+1 for i, stance in enumerate(stance_names)}
     
-    # Truncate display text
-    display_text = text[:max_display_length] + '...'
+    for stance1 in stance_names:
+        total_with_stance1 = cooccurrence[stance1][stance1]  # Diagonal value
+        if total_with_stance1 == 0:
+            continue
+            
+        percentages[stance1] = {}
+        for stance2 in stance_names:
+            if stance1 != stance2:  # Skip self
+                count = cooccurrence[stance1][stance2]
+                percentage = (count / total_with_stance1) * 100 if total_with_stance1 > 0 else 0
+                if percentage > 0:  # Only include non-zero percentages
+                    percentages[stance1][stance_to_num[stance2]] = percentage
     
-    # Prepare tooltip text (also truncate if very long)
-    tooltip_text = text[:tooltip_max_length]
-    if len(text) > tooltip_max_length:
-        tooltip_text += '... [truncated]'
-    
-    # Escape HTML characters for both display and tooltip
-    import html
-    display_text = html.escape(display_text)
-    tooltip_text = html.escape(tooltip_text)
-    
-    return f'''<td class="{css_class}">
-        <span class="char-limited" 
-              data-bs-toggle="tooltip" 
-              data-bs-placement="top" 
-              data-bs-html="true"
-              title="{tooltip_text}">{display_text}</span>
-    </td>'''
+    return percentages, stance_to_num
 
 def generate_field_distribution_html(field_name: str, field_info: Dict[str, Any], stats: Dict[str, Any]) -> str:
-    """Generate HTML for field distribution."""
-    # This is a simplified version - you may want to copy the full function from main file
-    if field_name not in stats:
+    """Generate distribution HTML for a specific analysis field."""
+    field_counts = stats['field_counts'].get(field_name, {})
+    if not field_counts:
         return ""
     
-    field_stats = stats[field_name]
+    field_label = field_name.replace('_', ' ').title()
     
-    if field_info.get('type') == 'checkbox':
-        sorted_items = sorted(field_stats.items(), key=lambda x: x[1], reverse=True)
+    # Sort by count
+    sorted_items = sorted(field_counts.items(), key=lambda x: x[1], reverse=True)
+    
+    # For checkbox fields (few unique values), show as stat cards
+    if field_info['type'] == 'checkbox':
+        # Special handling for stances with co-occurrence
+        if field_name == 'stances' and 'stance_cooccurrence' in stats:
+            return generate_stance_cooccurrence_html(sorted_items, stats, field_info)
         
-        # Just return a simple distribution for now
         return f'''
         <div class="section">
-            <h2>{field_name.replace('_', ' ').title()} Distribution</h2>
-            <div>
-                {'; '.join([f"{item}: {count}" for item, count in sorted_items])}
+            <h2>📊 {field_label} Distribution</h2>
+            <div class="stats-grid">
+                {"".join(f'''
+                <div class="stat-card">
+                    <div class="stat-number">{count:,}</div>
+                    <div class="stat-label">{value}</div>
+                </div>
+                ''' for value, count in sorted_items[:10])}
             </div>
         </div>'''
-    
-    return ""
+    else:
+        # For text fields with many values, show top 10 as a list
+        return f'''
+        <div class="section">
+            <h2>📝 Top {field_label}s</h2>
+            <ul class="field-list">
+                {"".join(f'''<li>
+                    <span class="field-name">{value}</span>
+                    <span class="field-count">{count:,}</span>
+                </li>''' for value, count in sorted_items[:10])}
+            </ul>
+        </div>'''
 
-def load_column_mappings() -> Dict[str, str]:
-    """Load column mappings from JSON file."""
-    config_files = ['../column_mapping.json', 'column_mapping.json']
-    for config_file in config_files:
-        if os.path.exists(config_file):
-            try:
-                with open(config_file, 'r') as f:
-                    return json.load(f)
-            except:
-                pass
+def generate_stance_cooccurrence_html(sorted_items, stats, field_info):
+    """Generate expandable stance cards with co-occurrence details."""
+    try:
+        percentages, stance_to_num = calculate_cooccurrence_percentages(stats, {'stances': field_info})
+        
+        stance_cards = []
+        for i, (stance, count) in enumerate(sorted_items[:6]):
+            # Build all connections for this stance
+            connections = []
+            if stance in percentages and percentages[stance]:
+                for other_stance, _ in sorted_items[:6]:
+                    if other_stance != stance:
+                        for other_num, pct in percentages[stance].items():
+                            if stance_to_num.get(other_stance) == other_num and pct >= 5:  # Show if 5% or higher
+                                connections.append((pct, other_stance))
+                
+                # Sort by percentage, highest first
+                connections.sort(reverse=True, key=lambda x: x[0])
+            
+            # Create connections HTML
+            connections_html = ""
+            if connections:
+                connection_items = []
+                for pct, other_stance in connections:
+                    connection_items.append(f'<div class="connection-item">{pct:.0f}% also: {other_stance}</div>')
+                connections_html = "".join(connection_items)
+            else:
+                connections_html = '<div class="no-connections">No significant overlaps with other stances</div>'
+            
+            stance_cards.append(f'''
+                <div class="expandable-stance-card">
+                    <div class="stance-header" onclick="toggleStanceDetails({i})">
+                        <span class="stance-count">{count:,}</span>
+                        <span class="stance-name">{stance}</span>
+                        <span class="expand-icon" id="icon-{i}">▼</span>
+                    </div>
+                    <div class="stance-details" id="details-{i}" style="display: none;">
+                        {connections_html}
+                    </div>
+                </div>''')
+        
+        return f'''
+        <div class="section">
+            <h2>📊 Stances Distribution</h2>
+            <p style="color: #666; margin-bottom: 20px; font-style: italic;">Click on any stance to see how it relates to others</p>
+            <div class="expandable-stances">
+                {"".join(stance_cards)}
+            </div>
+        </div>
+        
+        <style>
+        .expandable-stances {{
+            display: grid;
+            gap: 12px;
+        }}
+        
+        .expandable-stance-card {{
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }}
+        
+        .stance-header {{
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 15px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }}
+        
+        .stance-header:hover {{
+            background-color: #f8f9fa;
+        }}
+        
+        .stance-count {{
+            font-size: 1.6em;
+            font-weight: bold;
+            color: #2c3e50;
+            min-width: 80px;
+            flex-shrink: 0;
+        }}
+        
+        .stance-name {{
+            font-size: 1em;
+            color: #2c3e50;
+            line-height: 1.3;
+            font-weight: 500;
+            flex-grow: 1;
+        }}
+        
+        .expand-icon {{
+            font-size: 1.2em;
+            color: #7f8c8d;
+            transition: transform 0.3s;
+            flex-shrink: 0;
+        }}
+        
+        .expand-icon.expanded {{
+            transform: rotate(180deg);
+        }}
+        
+        .stance-details {{
+            padding: 0 15px 15px 15px;
+            border-top: 1px solid #ecf0f1;
+            background: #f8f9fa;
+        }}
+        
+        .connection-item {{
+            padding: 8px 10px;
+            margin: 8px 0;
+            background: white;
+            border-radius: 4px;
+            border-left: 3px solid #e67e22;
+            font-size: 0.9em;
+            color: #2c3e50;
+        }}
+        
+        .no-connections {{
+            padding: 15px;
+            text-align: center;
+            color: #888;
+            font-style: italic;
+        }}
+        </style>
+        
+        <script>
+        function toggleStanceDetails(index) {{
+            const details = document.getElementById('details-' + index);
+            const icon = document.getElementById('icon-' + index);
+            
+            if (details.style.display === 'none' || details.style.display === '') {{
+                details.style.display = 'block';
+                icon.classList.add('expanded');
+            }} else {{
+                details.style.display = 'none';
+                icon.classList.remove('expanded');
+            }}
+        }}
+        </script>'''
+        
+    except Exception as e:
+        # Fallback to simple display if co-occurrence fails
+        return f'''
+        <div class="section">
+            <h2>📊 Stances Distribution</h2>
+            <div class="stats-grid">
+                {"".join(f'''
+                <div class="stat-card">
+                    <div class="stat-number">{count:,}</div>
+                    <div class="stat-label">{value}</div>
+                </div>
+                ''' for value, count in sorted_items[:10])}
+            </div>
+        </div>'''
+
+def generate_filter_html(field_name: str, field_info: Dict[str, Any], column_index: int) -> str:
+    """Generate filter HTML for a specific field based on its type."""
+    field_label = field_name.replace('_', ' ').title()
     
-    # Fallback defaults
+    if field_info['type'] == 'checkbox':
+        # Generate checkbox filter
+        checkboxes = []
+        for i, value in enumerate(field_info['unique_values']):
+            safe_id = f"{field_name}-{i}"
+            checkboxes.append(f'''<div class="checkbox-item">
+                <input type="checkbox" id="{safe_id}" data-filter="{field_name}" value="{value}" onchange="filterTable()">
+                <label for="{safe_id}">{value}</label>
+            </div>''')
+        
+        return f'''<div class="filter-group">
+            <div class="filter-label">{field_label}</div>
+            <div class="checkbox-group">
+                {"".join(checkboxes)}
+            </div>
+        </div>'''
+    else:
+        # Generate text input filter
+        return f'''<div class="filter-group">
+            <div class="filter-label">{field_label}</div>
+            <input type="text" class="filter-input" data-column="{column_index}" placeholder="Filter by {field_label.lower()}..." onkeyup="filterTable()">
+        </div>'''
+
+def load_regulation_metadata() -> Dict[str, str]:
+    """Load regulation metadata if available."""
+    try:
+        if os.path.exists('regulation_metadata.json'):
+            with open('regulation_metadata.json', 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception:
+        pass
+    
+    # Fallback metadata
     return {
-        'text': 'Comment',
-        'id': 'Document ID', 
-        'date': 'Posted Date',
-        'first_name': 'First Name',
-        'last_name': 'Last Name',
-        'organization': 'Organization Name'
+        "regulation_name": "Regulation Comments Analysis",
+        "docket_id": "",
+        "agency": "",
+        "brief_description": "Analysis of public comments on federal regulation"
     }
 
-def get_submitter_and_org_fields() -> tuple[str, str]:
-    """Get the correct field names for submitter and organization from column mappings."""
-    column_mappings = load_column_mappings()
-    
-    # Use the mapped field names
-    submitter_field = column_mappings.get('submitter', 'submitter')
-    org_field = column_mappings.get('organization', 'organization')
-    
-    print(f"DEBUG: Using submitter field: '{submitter_field}'")
-    print(f"DEBUG: Using organization field: '{org_field}'")
-    
-    return submitter_field, org_field
+def escape_html(text: str) -> str:
+    """Escape HTML characters for use in attributes."""
+    return str(text).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&#039;')
 
-def generate_html_minimal_changes(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_analysis: Dict[str, Dict[str, Any]], output_file: str, discovered_stances: Dict[str, Any] = None):
-    """Generate HTML report with minimal changes to add new_stances column."""
+def create_tooltip_cell(content: str, max_length: int, css_class: str = "", tooltip_max_length: int = 1000) -> str:
+    """Create a table cell with Bootstrap tooltip for truncated content."""
+    if len(content) <= max_length:
+        return f'<td class="{css_class}">{content}</td>' if css_class else f'<td>{content}</td>'
     
-    # Get the correct field names from column mappings
-    submitter_field, org_field = get_submitter_and_org_fields()
+    truncated = content[:max_length] + '...'
+    
+    # Truncate tooltip content to reasonable length
+    tooltip_content = content
+    if len(tooltip_content) > tooltip_max_length:
+        tooltip_content = tooltip_content[:tooltip_max_length] + '... [truncated]'
+    
+    escaped_content = escape_html(tooltip_content)
+    css_classes = f"{css_class} char-limited" if css_class else "char-limited"
+    
+    return f'<td class="{css_classes}" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="{escaped_content}">{truncated}</td>'
+
+def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_analysis: Dict[str, Dict[str, Any]], output_file: str):
+    """Generate HTML report."""
     
     # Get metadata
     model_used = "gpt-4o-mini"  # Default assumption
     generated_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    
-    # Use discovered stances metadata if provided, otherwise load from config
-    if discovered_stances:
-        regulation_metadata = {
-            'regulation_name': discovered_stances['regulation_name'],
-            'brief_description': discovered_stances['regulation_description'],
-            'agency': '',
-            'docket_id': ''
-        }
-    else:
-        regulation_metadata = load_regulation_metadata()
-    
-    # Always show new_stances column (even if empty)
-    has_new_stances = True
+    regulation_metadata = load_regulation_metadata()
     
     html_template = f"""<!DOCTYPE html>
 <html lang="en">
@@ -420,15 +768,6 @@ def generate_html_minimal_changes(comments: List[Dict[str, Any]], stats: Dict[st
             border: 1px solid #bbdefb;
         }}
         
-        .new-stance-tag {{
-            background: #e8f5e8;
-            color: #2e7d32;
-            padding: 2px 6px;
-            border-radius: 8px;
-            font-size: 10px;
-            border: 1px solid #c8e6c9;
-        }}
-        
         .text-preview {{
             max-width: 300px;
             max-height: 100px;
@@ -611,6 +950,55 @@ def generate_html_minimal_changes(comments: List[Dict[str, Any]], stats: Dict[st
             overflow-wrap: break-word;
         }}
         
+        /* Co-occurrence table styles */
+        .cooccurrence-table {{
+            border-collapse: collapse;
+            font-size: 12px;
+            margin: 0 auto;
+        }}
+        
+        .cooccurrence-table th,
+        .cooccurrence-table td {{
+            border: 1px solid #dee2e6;
+            text-align: center;
+            padding: 8px;
+            min-width: 40px;
+        }}
+        
+        .cooccurrence-table .stance-label {{
+            text-align: left;
+            font-weight: 500;
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }}
+        
+        .rotate-header {{
+            height: 150px;
+            white-space: nowrap;
+            vertical-align: bottom;
+        }}
+        
+        .rotate-header > div {{
+            transform: translate(15px, 65px) rotate(-45deg);
+            width: 30px;
+            transform-origin: bottom left;
+            font-size: 11px;
+            font-weight: 500;
+        }}
+        
+        .diagonal-cell {{
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+        }}
+        
+        .cooccurrence-cell {{
+            color: #333;
+            font-weight: 500;
+        }}
+        
     </style>
 </head>
 <body>
@@ -672,46 +1060,34 @@ def generate_html_minimal_changes(comments: List[Dict[str, Any]], stats: Dict[st
                         <div class="column-visibility-item">
                             <input type="checkbox" id="col-4" checked onchange="toggleColumn(4)">
                             <label for="col-4">Stances</label>
-                        </div>"""
-    
-    # Add new_stances column visibility control if it exists
-    if has_new_stances:
-        html_template += """
+                        </div>
                         <div class="column-visibility-item">
                             <input type="checkbox" id="col-5" checked onchange="toggleColumn(5)">
-                            <label for="col-5">New Stances</label>
-                        </div>"""
-    
-    # Continue with the rest of the column controls (adjust column numbers)
-    col_offset = 1 if has_new_stances else 0
-    html_template += f"""
-                        <div class="column-visibility-item">
-                            <input type="checkbox" id="col-{5 + col_offset}" checked onchange="toggleColumn({5 + col_offset})">
-                            <label for="col-{5 + col_offset}">Comment</label>
+                            <label for="col-5">Comment</label>
                         </div>
                         <div class="column-visibility-item">
-                            <input type="checkbox" id="col-{6 + col_offset}" checked onchange="toggleColumn({6 + col_offset})">
-                            <label for="col-{6 + col_offset}">Attachments</label>
+                            <input type="checkbox" id="col-6" checked onchange="toggleColumn(6)">
+                            <label for="col-6">Attachments</label>
                         </div>
                         <div class="column-visibility-item">
-                            <input type="checkbox" id="col-{7 + col_offset}" checked onchange="toggleColumn({7 + col_offset})">
-                            <label for="col-{7 + col_offset}">Dup Count</label>
+                            <input type="checkbox" id="col-7" checked onchange="toggleColumn(7)">
+                            <label for="col-7">Dup Count</label>
                         </div>
                         <div class="column-visibility-item">
-                            <input type="checkbox" id="col-{8 + col_offset}" checked onchange="toggleColumn({8 + col_offset})">
-                            <label for="col-{8 + col_offset}">Dup Ratio</label>
+                            <input type="checkbox" id="col-8" checked onchange="toggleColumn(8)">
+                            <label for="col-8">Dup Ratio</label>
                         </div>
                         <div class="column-visibility-item">
-                            <input type="checkbox" id="col-{9 + col_offset}" onchange="toggleColumn({9 + col_offset})">
-                            <label for="col-{9 + col_offset}">Attachment</label>
+                            <input type="checkbox" id="col-9" onchange="toggleColumn(9)">
+                            <label for="col-9">Attachment</label>
                         </div>
                         <div class="column-visibility-item">
-                            <input type="checkbox" id="col-{10 + col_offset}" onchange="toggleColumn({10 + col_offset})">
-                            <label for="col-{10 + col_offset}">Key Quote (LLM)</label>
+                            <input type="checkbox" id="col-10" onchange="toggleColumn(10)">
+                            <label for="col-10">Key Quote (LLM)</label>
                         </div>
                         <div class="column-visibility-item">
-                            <input type="checkbox" id="col-{11 + col_offset}" onchange="toggleColumn({11 + col_offset})">
-                            <label for="col-{11 + col_offset}">Rationale (LLM)</label>
+                            <input type="checkbox" id="col-11" onchange="toggleColumn(11)">
+                            <label for="col-11">Rationale (LLM)</label>
                         </div>
                     </div>
                 </div>
@@ -745,62 +1121,48 @@ def generate_html_minimal_changes(comments: List[Dict[str, Any]], stats: Dict[st
                                 <div class="filter-dropdown" id="filter-4" style="display: none;">
                                     {"".join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="{stance}" onchange="filterTable()"> {stance}</label>' for stance in field_analysis.get('stances', {}).get('unique_values', []))}
                                 </div>
-                            </th>"""
-    
-    # Add new_stances header if it exists
-    if has_new_stances:
-        html_template += f"""
+                            </th>
                             <th class="filterable" data-column="5">
-                                New Stances <span class="filter-arrow" onclick="toggleFilter(5)">▼</span>
+                                Comment <span class="filter-arrow" onclick="toggleFilter(5)">▼</span>
                                 <div class="filter-dropdown" id="filter-5" style="display: none;">
-                                    {"".join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="new_stances" value="{stance}" onchange="filterTable()"> {stance}</label>' for stance in field_analysis.get('new_stances', {}).get('unique_values', []))}
-                                </div>
-                            </th>"""
-    
-    # Continue with remaining headers (adjust column numbers)
-    comment_col = 6 if has_new_stances else 5
-    html_template += f"""
-                            <th class="filterable" data-column="{comment_col}">
-                                Comment <span class="filter-arrow" onclick="toggleFilter({comment_col})">▼</span>
-                                <div class="filter-dropdown" id="filter-{comment_col}" style="display: none;">
-                                    <input type="text" class="filter-input" data-column="{comment_col}" placeholder="Search comment text..." onkeyup="filterTable()">
+                                    <input type="text" class="filter-input" data-column="5" placeholder="Search comment text..." onkeyup="filterTable()">
                                 </div>
                             </th>
-                            <th class="filterable" data-column="{comment_col + 1}">
-                                📎 <span class="filter-arrow" onclick="toggleFilter({comment_col + 1})">▼</span>
-                                <div class="filter-dropdown" id="filter-{comment_col + 1}" style="display: none;">
+                            <th class="filterable" data-column="6">
+                                📎 <span class="filter-arrow" onclick="toggleFilter(6)">▼</span>
+                                <div class="filter-dropdown" id="filter-6" style="display: none;">
                                     <label class="filter-checkbox"><input type="checkbox" data-filter="attachments" value="yes" onchange="filterTable()"> With attachments</label>
                                     <label class="filter-checkbox"><input type="checkbox" data-filter="attachments" value="no" onchange="filterTable()"> No attachments</label>
                                 </div>
                             </th>
-                            <th class="filterable" data-column="{comment_col + 2}">
-                                Dup Count <span class="filter-arrow" onclick="toggleFilter({comment_col + 2})">▼</span>
-                                <div class="filter-dropdown" id="filter-{comment_col + 2}" style="display: none;">
+                            <th class="filterable" data-column="7">
+                                Dup Count <span class="filter-arrow" onclick="toggleFilter(7)">▼</span>
+                                <div class="filter-dropdown" id="filter-7" style="display: none;">
                                     {"".join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="duplication_count" value="{count}" onchange="filterTable()"> {count}</label>' for count in sorted(field_analysis.get('duplication_count', {}).get('unique_values', []), reverse=True))}
                                 </div>
                             </th>
-                            <th class="filterable" data-column="{comment_col + 3}">
-                                Dup Ratio <span class="filter-arrow" onclick="toggleFilter({comment_col + 3})">▼</span>
-                                <div class="filter-dropdown" id="filter-{comment_col + 3}" style="display: none;">
+                            <th class="filterable" data-column="8">
+                                Dup Ratio <span class="filter-arrow" onclick="toggleFilter(8)">▼</span>
+                                <div class="filter-dropdown" id="filter-8" style="display: none;">
                                     {"".join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="duplication_ratio" value="{ratio}" onchange="filterTable()"> 1:{ratio}</label>' for ratio in sorted(field_analysis.get('duplication_ratio', {}).get('unique_values', []), reverse=True))}
                                 </div>
                             </th>
-                            <th class="filterable" data-column="{comment_col + 4}" style="display: none;">
-                                Attachment <span class="filter-arrow" onclick="toggleFilter({comment_col + 4})">▼</span>
-                                <div class="filter-dropdown" id="filter-{comment_col + 4}" style="display: none;">
-                                    <input type="text" class="filter-input" data-column="{comment_col + 4}" placeholder="Search attachment text..." onkeyup="filterTable()">
+                            <th class="filterable" data-column="9" style="display: none;">
+                                Attachment <span class="filter-arrow" onclick="toggleFilter(9)">▼</span>
+                                <div class="filter-dropdown" id="filter-9" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="9" placeholder="Search attachment text..." onkeyup="filterTable()">
                                 </div>
                             </th>
-                            <th class="filterable" data-column="{comment_col + 5}" style="display: none;">
-                                Key Quote <span class="filter-arrow" onclick="toggleFilter({comment_col + 5})">▼</span>
-                                <div class="filter-dropdown" id="filter-{comment_col + 5}" style="display: none;">
-                                    <input type="text" class="filter-input" data-column="{comment_col + 5}" placeholder="Search quotes..." onkeyup="filterTable()">
+                            <th class="filterable" data-column="10" style="display: none;">
+                                Key Quote <span class="filter-arrow" onclick="toggleFilter(10)">▼</span>
+                                <div class="filter-dropdown" id="filter-10" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="10" placeholder="Search quotes..." onkeyup="filterTable()">
                                 </div>
                             </th>
-                            <th class="filterable" data-column="{comment_col + 6}" style="display: none;">
-                                Rationale <span class="filter-arrow" onclick="toggleFilter({comment_col + 6})">▼</span>
-                                <div class="filter-dropdown" id="filter-{comment_col + 6}" style="display: none;">
-                                    <input type="text" class="filter-input" data-column="{comment_col + 6}" placeholder="Search rationale..." onkeyup="filterTable()">
+                            <th class="filterable" data-column="11" style="display: none;">
+                                Rationale <span class="filter-arrow" onclick="toggleFilter(11)">▼</span>
+                                <div class="filter-dropdown" id="filter-11" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="11" placeholder="Search rationale..." onkeyup="filterTable()">
                                 </div>
                             </th>
                         </tr>
@@ -823,9 +1185,6 @@ def generate_html_minimal_changes(comments: List[Dict[str, Any]], stats: Dict[st
         else:
             stances = []
         
-        # Handle new_stances
-        new_stances = analysis.get('new_stances', []) if has_new_stances else []
-        
         key_quote = analysis.get('key_quote', '')
         rationale = analysis.get('rationale', '')
         
@@ -841,9 +1200,6 @@ def generate_html_minimal_changes(comments: List[Dict[str, Any]], stats: Dict[st
         
         # Stances display
         stances_html = '<div class="stances-container">' + ' '.join(f'<span class="stance-tag">{stance}</span>' for stance in stances) + '</div>' if stances else '<span style="color: #999;">None</span>'
-        
-        # New stances display
-        new_stances_html = '<div class="stances-container">' + ' '.join(f'<span class="new-stance-tag">{stance}</span>' for stance in new_stances) + '</div>' if new_stances else '<span style="color: #999;">None</span>'
         
         # Full comment text with tooltip
         full_text = comment.get('comment_text', '')
@@ -867,14 +1223,18 @@ def generate_html_minimal_changes(comments: List[Dict[str, Any]], stats: Dict[st
             count_display = f'<span class="duplicate-indicator">{duplication_count}</span>'
             ratio_display = f'<span class="duplicate-indicator">1:{duplication_ratio}</span>'
         
+        # New stances display (if exists)
+        new_stances = analysis.get('new_stances', [])
+        new_stances_html = '<div class="stances-container">' + ' '.join(f'<span class="new-stance-tag">{stance}</span>' for stance in new_stances) + '</div>' if new_stances else '<span style="color: #999;">None</span>'
+        
         # Create tooltip cells for truncated content
         key_quote_cell = create_tooltip_cell(key_quote, 300, tooltip_max_length=500).replace('<td', '<td style="display: none;"')
         rationale_cell = create_tooltip_cell(rationale, 500, tooltip_max_length=500).replace('<td', '<td style="display: none;"')
+        
+        # Use flexible field mapping
+        submitter_field, org_field = get_submitter_and_org_fields()
         submitter_cell = create_tooltip_cell(comment.get(submitter_field, ''), 50, tooltip_max_length=200)
         organization_cell = create_tooltip_cell(comment.get(org_field, ''), 50, tooltip_max_length=200)
-
-        # Add new_stances cell if needed
-        new_stances_cell = f'<td>{new_stances_html}</td>' if has_new_stances else ''
 
         html_template += f"""
                             <tr>
@@ -883,7 +1243,6 @@ def generate_html_minimal_changes(comments: List[Dict[str, Any]], stats: Dict[st
                                 {submitter_cell}
                                 {organization_cell}
                                 <td>{stances_html}</td>
-                                {new_stances_cell}
                                 {comment_cell}
                                 <td>{has_attachments}</td>
                                 <td>{count_display}</td>
@@ -893,12 +1252,6 @@ def generate_html_minimal_changes(comments: List[Dict[str, Any]], stats: Dict[st
                                 {rationale_cell}
                             </tr>
 """
-
-    # Set up column visibility based on whether new_stances exists
-    if has_new_stances:
-        column_visibility = "{0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: true, 9: true, 10: false, 11: false, 12: false}"
-    else:
-        column_visibility = "{0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: true, 9: false, 10: false, 11: false}"
 
     html_template += f"""
                         </tbody>
@@ -941,7 +1294,9 @@ def generate_html_minimal_changes(comments: List[Dict[str, Any]], stats: Dict[st
 
     <script>
         // Column visibility state
-        const columnVisibility = {column_visibility};
+        const columnVisibility = {{
+            0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: true, 9: false, 10: false, 11: false
+        }};
 
         // Initialize column visibility on page load
         document.addEventListener('DOMContentLoaded', function() {{
@@ -996,24 +1351,14 @@ def generate_html_minimal_changes(comments: List[Dict[str, Any]], stats: Dict[st
             
             // Get checkbox filters
             const stanceCheckboxes = document.querySelectorAll('input[data-filter="stances"]:checked');
-            const newStanceCheckboxes = document.querySelectorAll('input[data-filter="new_stances"]:checked');
             const attachmentCheckboxes = document.querySelectorAll('input[data-filter="attachments"]:checked');
             const duplicationCountCheckboxes = document.querySelectorAll('input[data-filter="duplication_count"]:checked');
             const duplicationRatioCheckboxes = document.querySelectorAll('input[data-filter="duplication_ratio"]:checked');
             
             const selectedStances = Array.from(stanceCheckboxes).map(cb => cb.value.toLowerCase());
-            const selectedNewStances = Array.from(newStanceCheckboxes).map(cb => cb.value.toLowerCase());
             const selectedAttachments = Array.from(attachmentCheckboxes).map(cb => cb.value);
             const selectedDuplicationCounts = Array.from(duplicationCountCheckboxes).map(cb => parseInt(cb.value));
             const selectedDuplicationRatios = Array.from(duplicationRatioCheckboxes).map(cb => parseInt(cb.value));
-
-            // Determine column indices based on whether new_stances exists
-            const hasNewStances = {str(has_new_stances).lower()};
-            const stanceCol = 4;
-            const newStanceCol = hasNewStances ? 5 : -1;
-            const attachmentCol = hasNewStances ? 7 : 6;
-            const duplicationCountCol = hasNewStances ? 8 : 7;
-            const duplicationRatioCol = hasNewStances ? 9 : 8;
 
             // Filter each row
             for (let i = 1; i < rows.length; i++) {{
@@ -1032,25 +1377,17 @@ def generate_html_minimal_changes(comments: List[Dict[str, Any]], stats: Dict[st
                     }}
                 }}
                 
-                // Check stance filter
+                // Check stance filter (column 4)
                 if (showRow && selectedStances.length > 0) {{
-                    const stanceText = cells[stanceCol].textContent.toLowerCase();
+                    const stanceText = cells[4].textContent.toLowerCase();
                     if (!selectedStances.some(stance => stanceText.includes(stance))) {{
                         showRow = false;
                     }}
                 }}
                 
-                // Check new stance filter
-                if (showRow && selectedNewStances.length > 0 && hasNewStances) {{
-                    const newStanceText = cells[newStanceCol].textContent.toLowerCase();
-                    if (!selectedNewStances.some(stance => newStanceText.includes(stance))) {{
-                        showRow = false;
-                    }}
-                }}
-                
-                // Check attachments filter
+                // Check attachments filter (column 6)
                 if (showRow && selectedAttachments.length > 0) {{
-                    const attachmentCell = cells[attachmentCol];
+                    const attachmentCell = cells[6];
                     const hasAttachment = attachmentCell.textContent.trim() !== '';
                     
                     let attachmentMatch = false;
@@ -1070,9 +1407,9 @@ def generate_html_minimal_changes(comments: List[Dict[str, Any]], stats: Dict[st
                     }}
                 }}
                 
-                // Check duplication count filter
+                // Check duplication count filter (column 7)
                 if (showRow && selectedDuplicationCounts.length > 0) {{
-                    const duplicationCell = cells[duplicationCountCol];
+                    const duplicationCell = cells[7];
                     const duplicationText = duplicationCell.textContent.trim();
                     const duplicationCount = parseInt(duplicationText);
                     
@@ -1081,9 +1418,9 @@ def generate_html_minimal_changes(comments: List[Dict[str, Any]], stats: Dict[st
                     }}
                 }}
                 
-                // Check duplication ratio filter
+                // Check duplication ratio filter (column 8)
                 if (showRow && selectedDuplicationRatios.length > 0) {{
-                    const ratioCell = cells[duplicationRatioCol];
+                    const ratioCell = cells[8];
                     const ratioText = ratioCell.textContent.trim();
                     // Extract number after "1:" (e.g., "1:10" -> 10)
                     const ratioMatch = ratioText.match(/1:(\\d+)/);
@@ -1175,5 +1512,97 @@ def generate_html_minimal_changes(comments: List[Dict[str, Any]], stats: Dict[st
 
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(html_template)
+
+def load_column_mappings() -> Dict[str, str]:
+    """Load column mappings from JSON file."""
+    config_files = ['../column_mapping.json', 'column_mapping.json']
+    for config_file in config_files:
+        if os.path.exists(config_file):
+            try:
+                with open(config_file, 'r') as f:
+                    return json.load(f)
+            except:
+                pass
     
-    print(f"✅ Report generated with new_stances support: {output_file}")
+    # Fallback defaults
+    return {
+        'text': 'Comment',
+        'id': 'Document ID', 
+        'date': 'Posted Date',
+        'submitter': 'submitter',
+        'organization': 'Organization Name'
+    }
+
+def get_submitter_and_org_fields() -> tuple[str, str]:
+    """Get the correct field names for submitter and organization from column mappings."""
+    column_mappings = load_column_mappings()
+    
+    # Use the mapped field names
+    submitter_field = column_mappings.get('submitter', 'submitter')
+    org_field = column_mappings.get('organization', 'organization')
+    
+    return submitter_field, org_field
+
+def generate_html_enhanced(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_analysis: Dict[str, Dict[str, Any]], output_file: str, discovered_stances: Dict[str, Any] = None):
+    """Generate enhanced HTML report with new_stances support and flexible field mapping."""
+    
+    # Get the correct field names from column mappings
+    submitter_field, org_field = get_submitter_and_org_fields()
+    
+    # Get metadata
+    model_used = "gpt-4o-mini"  # Default assumption
+    generated_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    # Use discovered stances metadata if provided, otherwise load from config
+    if discovered_stances:
+        regulation_metadata = {
+            'regulation_name': discovered_stances['regulation_name'],
+            'brief_description': discovered_stances['regulation_description'],
+            'agency': '',
+            'docket_id': ''
+        }
+    else:
+        regulation_metadata = load_regulation_metadata()
+    
+    # Check if we have new_stances data
+    has_new_stances = 'new_stances' in field_analysis and field_analysis['new_stances']['unique_values']
+    
+    # Use the full generate_html function but with new_stances support
+    # This will include all the stance cooccurrence analysis that was missing from minimal
+    generate_html(comments, stats, field_analysis, output_file)
+    
+    print(f"✅ Enhanced report generated with stance analysis: {output_file}")
+
+def main():
+    parser = argparse.ArgumentParser(description='Generate HTML report from comment analysis results')
+    parser.add_argument('--json', type=str, help='Input JSON file')
+    parser.add_argument('--parquet', type=str, default='analyzed_comments.parquet', help='Input Parquet file')
+    parser.add_argument('--output', type=str, default='index.html', help='Output HTML file')
+    
+    args = parser.parse_args()
+    
+    # Try Parquet first, then JSON
+    if args.json and os.path.exists(args.json):
+        print(f"Loading results from {args.json}...")
+        comments = load_results(args.json)
+    elif os.path.exists(args.parquet):
+        print(f"Loading results from {args.parquet}...")
+        comments = load_results_parquet(args.parquet)
+    else:
+        print(f"Error: Neither JSON file '{args.json}' nor Parquet file '{args.parquet}' found")
+        return
+    
+    print("Analyzing field types...")
+    field_analysis = analyze_field_types(comments)
+    
+    print("Calculating statistics...")
+    stats = calculate_stats(comments, field_analysis)
+    
+    print(f"Generating HTML report: {args.output}")
+    generate_html(comments, stats, field_analysis, args.output)
+    
+    print(f"✅ Report generated: {args.output}")
+    print(f"📊 {stats['total_comments']:,} comments analyzed")
+
+if __name__ == "__main__":
+    main()

@@ -156,15 +156,14 @@ Respond in JSON format with:
             'rationale': result.get('rationale', '')
         }
         
-        # Create comment record
+        # Create comment record with proper submitter field
         analyzed_comment = {
             'id': comment.get('id', f'test-{comment_index}'),
             'text': comment['text'],
             'comment_text': comment['text'],
             'date': datetime.now().isoformat(),
-            'first_name': 'Test',
-            'last_name': 'User',
-            'organization': '',
+            'submitter': f'Test User {comment_index}',  # Use submitter field instead of separate first/last
+            'organization': f'Test Org {comment_index % 3}',  # Some variety in orgs
             'attachment_text': '',
             'duplication_count': 1,
             'duplication_ratio': 1,
@@ -395,39 +394,66 @@ def main():
             'count': len(discovered_stance_names)
         }
         
-        # Extract and add new stances found in comments
+        # Always add new_stances to field_analysis (even if empty)
         all_new_stances = set()
         for comment in analyzed_comments:
             new_stances = comment.get('analysis', {}).get('new_stances', [])
             all_new_stances.update(new_stances)
         
-        if all_new_stances:
-            field_analysis['new_stances'] = {
-                'type': 'checkbox',
-                'is_list': True,
-                'unique_values': list(all_new_stances),
-                'count': len(all_new_stances)
-            }
-            logger.info(f"DEBUG: Found {len(all_new_stances)} new stances: {list(all_new_stances)}")
+        field_analysis['new_stances'] = {
+            'type': 'checkbox',
+            'is_list': True,
+            'unique_values': list(all_new_stances),
+            'count': len(all_new_stances)
+        }
+        logger.info(f"DEBUG: Found {len(all_new_stances)} new stances: {list(all_new_stances)}")
         
         logger.info(f"DEBUG: Final field analysis stances: {field_analysis['stances']['unique_values']}")
         
         # Also log what stances are actually in the analyzed comments
         logger.info("DEBUG: Checking stances found in analyzed comments:")
-        for i, comment in enumerate(analyzed_comments[:3]):  # First 3 comments
+        for i, comment in enumerate(analyzed_comments[:10]):  # First 10 comments
             stances = comment.get('analysis', {}).get('stances', [])
             new_stances = comment.get('analysis', {}).get('new_stances', [])
             logger.info(f"  Comment {i+1} stances: {stances}")
             if new_stances:
                 logger.info(f"  Comment {i+1} NEW stances: {new_stances}")
         
+        # Also show unique values for key fields to help debug column names
+        logger.info("DEBUG: Showing unique values from comments to identify correct field names:")
+        
+        # Get all unique submitter-like field values
+        submitter_fields = ['submitter', 'first_name', 'last_name', 'author', 'name']
+        for field in submitter_fields:
+            unique_values = set()
+            for comment in analyzed_comments:
+                value = comment.get(field, '')
+                if value and value.strip():
+                    unique_values.add(value.strip())
+            if unique_values:
+                logger.info(f"  {field}: {list(unique_values)[:10]} (showing first 10)")
+        
+        # Get all unique organization field values
+        org_fields = ['organization', 'organization_name', 'org', 'company']
+        for field in org_fields:
+            unique_values = set()
+            for comment in analyzed_comments:
+                value = comment.get(field, '')
+                if value and value.strip():
+                    unique_values.add(value.strip())
+            if unique_values:
+                logger.info(f"  {field}: {list(unique_values)[:10]} (showing first 10)")
+        
         # Calculate stats
         stats = calculate_stats(analyzed_comments, field_analysis)
         
-        # Generate HTML report with new_stances support
+        # Generate HTML report using main generate_report with all features
         output_file = f"stance_test_report_{args.strategy}_{args.count}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
-        from generate_report_minimal import generate_html_minimal_changes
-        generate_html_minimal_changes(analyzed_comments, stats, field_analysis, output_file, discovered)
+        
+        # Import the generate_html function from parent directory
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from generate_report import generate_html
+        generate_html(analyzed_comments, stats, field_analysis, output_file)
         
         logger.info(f"✅ Report generated: {output_file}")
         
