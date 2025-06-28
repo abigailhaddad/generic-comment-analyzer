@@ -29,32 +29,20 @@ class TimeoutError(Exception):
 
 # Placeholder enums - will be populated by discover_stances.py
 class Stance(str, Enum):
-    OPPOSITION_TO_COVID_VACCINES = "Opposition to COVID Vaccines"
-    SUPPORT_FOR_UNIVERSAL_VACCINE_ACCESS = "Support for Universal Vaccine Access"
-    CONCERNS_ABOUT_ACIP_CHANGES = "Concerns About ACIP Changes"
-    DEFENSE_OF_VACCINES_EFFECTIVENESS = "Defense of Vaccines' Effectiveness"
-    CALL_FOR_TRANSPARENCY_AND_RESEARCH_INTEGRITY = "Call for Transparency and Research Integrity"
+    SUPPORT_FOR_EXPANDED_INTEROPERABILITY_AND_DIGITAL_HEALTH_ADOPTION = "Support for Expanded Interoperability and Digital Health Adoption"
+    SUPPORT_FOR_STRONGER_DATA_PRIVACY_AND_PATIENT_CONSENT_PROTECTIONS = "Support for Stronger Data Privacy and Patient Consent Protections"
+    OPPOSITION_TO_DIGITAL_IDS_BIOMETRIC_DATA_AND_MANDATORY_WEARABLES_IN_HEALTHCARE_ACCESS = "Opposition to Digital IDs, Biometric Data, and Mandatory Wearables in Healthcare Access"
+    SUPPORT_FOR_STRONGER_ENFORCEMENT_OF_INTEROPERABILITY_AND_INFORMATION_BLOCKING_REGULATIONS = "Support for Stronger Enforcement of Interoperability and Information Blocking Regulations"
+    OPPOSITION_TO_REGULATORY_OVERREACH_AND_GOVERNMENT_ACCUMULATION_OF_HEALTH_DATA = "Opposition to Regulatory Overreach and Government Accumulation of Health Data"
+    SUPPORT_FOR_A_NATIONAL_HEALTH_IDENTIFIER = "Support for a National Health Identifier"
+    SUPPORT_FOR_DIGITAL_INCLUSION_AND_EQUITABLE_ACCESS_TO_HEALTH_TECHNOLOGY = "Support for Digital Inclusion and Equitable Access to Health Technology"
 
-class Theme(str, Enum):
-    VACCINE_SAFETY_CONCERNS = "vaccine safety concerns"
-    NEED_FOR_TRANSPARENCY = "need for transparency"
-    IMPORTANCE_OF_PUBLIC_HEALTH = "importance of public health"
-    INDIVIDUAL_MEDICAL_CHOICE = "individual medical choice"
-    SCIENTIFIC_EXPERTISE = "scientific expertise"
-    IMPACT_OF_ACIP_DECISIONS = "impact of ACIP decisions"
-    UNIVERSAL_VACCINE_ACCESS = "universal vaccine access"
-    LONG_COVID_CONSIDERATIONS = "long COVID considerations"
-    COMMUNITY_HEALTH_RESPONSIBILITIES = "community health responsibilities"
 
 class CommentAnalysisResult(BaseModel):
     """Standard model for comment analysis results"""
     stances: List[Stance] = Field(
         default_factory=list,
         description="List of stances/arguments expressed in the comment (0 or more)"
-    )
-    themes: List[Theme] = Field(
-        default_factory=list,
-        description="Key themes present in the comment"
     )
     key_quote: str = Field(
         description="The most important quote that captures the essence of the comment (max 100 words)"
@@ -81,11 +69,10 @@ class CommentAnalyzer:
         # Load configuration from file
         self.config = self._load_config(config_file)
         self.stance_options = self.config.get('stance_options', [])
-        self.theme_options = self.config.get('theme_options', [])
         self.system_prompt = self.config.get('system_prompt')
         
         logger.info(f"Loaded configuration for: {self.config.get('regulation_name', 'Unknown Regulation')}")
-        logger.info(f"Using {len(self.theme_options)} themes and {len(self.stance_options)} stance options")
+        logger.info(f"Using {len(self.stance_options)} stance options")
         
         # Ensure API key is available
         if "OPENAI_API_KEY" not in os.environ:
@@ -111,19 +98,15 @@ class CommentAnalyzer:
             
         # Default generic prompt
         stance_list = "\n".join([f"- {stance}" for stance in self.stance_options])
-        theme_list = "\n".join([f"- {theme}" for theme in self.theme_options]) if self.theme_options else "- (No predefined themes - identify key themes from the content)"
         
         return f"""You are analyzing public comments submitted regarding a proposed regulation.
 
 1. Stance: Determine the commenter's position on the proposed regulation. Choose from:
 {stance_list}
 
-2. Themes: Identify which themes are present in the comment. Available themes:
-{theme_list}
+2. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. The quote must be exactly present in the original text - do not paraphrase or modify.
 
-3. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. The quote must be exactly present in the original text - do not paraphrase or modify.
-
-4. Rationale: Briefly explain (1-2 sentences) why you classified the stance as you did.
+3. Rationale: Briefly explain (1-2 sentences) why you classified the stance as you did.
 
 Analyze objectively and avoid inserting personal opinions or biases."""
 
@@ -201,7 +184,7 @@ Analyze objectively and avoid inserting personal opinions or biases."""
                 if not isinstance(result, dict):
                     raise ValueError("Result is not a dictionary")
                 
-                required_fields = ['stances', 'themes', 'key_quote', 'rationale']
+                required_fields = ['stances', 'key_quote', 'rationale']
                 for field in required_fields:
                     if field not in result:
                         raise ValueError(f"Missing required field: {field}")
@@ -209,8 +192,6 @@ Analyze objectively and avoid inserting personal opinions or biases."""
                 # Convert string values to enum values if needed
                 if 'stances' in result and isinstance(result['stances'], list):
                     result['stances'] = [s if isinstance(s, Stance) else s for s in result['stances']]
-                if 'themes' in result and isinstance(result['themes'], list):
-                    result['themes'] = [t if isinstance(t, Theme) else t for t in result['themes']]
                 
                 return result
                 
@@ -230,61 +211,60 @@ def create_regulation_analyzer(model=None, timeout_seconds=None):
     """Create an analyzer configured for regulation analysis"""
     
     stance_options = [
-        "Opposition to COVID Vaccines",
-        "Support for Universal Vaccine Access",
-        "Concerns About ACIP Changes",
-        "Defense of Vaccines' Effectiveness",
-        "Call for Transparency and Research Integrity"
-    ]
-    theme_options = [
-        "vaccine safety concerns",
-        "need for transparency",
-        "importance of public health",
-        "individual medical choice",
-        "scientific expertise",
-        "impact of ACIP decisions",
-        "universal vaccine access",
-        "long COVID considerations",
-        "community health responsibilities"
+        "Support for Expanded Interoperability and Digital Health Adoption",
+        "Support for Stronger Data Privacy and Patient Consent Protections",
+        "Opposition to Digital IDs, Biometric Data, and Mandatory Wearables in Healthcare Access",
+        "Support for Stronger Enforcement of Interoperability and Information Blocking Regulations",
+        "Opposition to Regulatory Overreach and Government Accumulation of Health Data",
+        "Support for a National Health Identifier",
+        "Support for Digital Inclusion and Equitable Access to Health Technology"
     ]
     
-    system_prompt = """You are analyzing public comments about COVID-19 Vaccine Access and Safety.
+    system_prompt = """You are analyzing public comments about CMS-0042-NC: Health Technology Ecosystem RFI.
 
-Debates over the safety, efficacy, and access to COVID-19 vaccines following recent ACIP committee changes and vaccine recommendations.
+This request for information seeks public input on how to advance interoperability, digital health products, responsible data sharing, technology infrastructure, and privacy protections for Medicare and Medicaid beneficiaries, under the 21st Century Cures Act and related federal health IT initiatives.
 
 For each comment, identify:
 
 1. Stances: Which of these positions/arguments does the commenter express? Look for the indicators listed below. (Select ALL that apply, or none if none apply)
-- Opposition to COVID Vaccines: remove all currently licensed COVID shots; reports of deaths following COVID vaccination; historical comparison with swine flu vaccine; calls for immediate action by ACIP; COVID shots are unnecessary if safety is in question
-- Support for Universal Vaccine Access: universal access to vaccines; medical decisions up to individuals and their doctors; vaccines must be available for all populations; calls for financial coverage by insurance; importance of vaccination for personal health safety
-- Concerns About ACIP Changes: grave concerns about recent termination of ACIP members; independent expert scientists; conflicts of interest among new members; impact on public trust in vaccines; emphasis on expertise in vaccination guidance
-- Defense of Vaccines' Effectiveness: vaccines save lives; prevent serious outcomes from COVID; support for continued vaccination recommendations; importance of vaccines in public health; highlighting success of past vaccinations in society
-- Call for Transparency and Research Integrity: calls for disclosure of financial conflicts; demands accurate research and consultation; highlighting need for scientific decisions; urgency for unbiased vaccine recommendations; concerns over politicization of health guidelines
+- Support for Expanded Interoperability and Digital Health Adoption: support efforts to advance interoperability; applaud HHS for advancing digital health; recommend adoption of open data standards (e.g., HL7 FHIR, TEFCA); endorse/appreciate digital health ecosystem expansion; call for real-time patient data access; encourage adoption of digital care management, remote monitoring
+- Support for Stronger Data Privacy and Patient Consent Protections: concerned about patient privacy; requests explicit patient consent for data sharing; calls for patient control/ownership over health data; criticizes data access without consent; worried about data breaches, hacking, or third-party use
+- Opposition to Digital IDs, Biometric Data, and Mandatory Wearables in Healthcare Access: absolutely no digital ID requirement; oppose/against biometric data collection for healthcare; oppose mandatory wearable technology; informed consent must always be the standard; everyone should have the right to be forgotten; oppose all medical mandates to access society
+- Support for Stronger Enforcement of Interoperability and Information Blocking Regulations: stress the need for enforcement; exercise will be a waste unless you ENFORCE regulations; hospitals have strong commercial incentives not to make it easy for patients to take their business elsewhere; call for stricter penalties or oversight; current rules not sufficiently enforced
+- Opposition to Regulatory Overreach and Government Accumulation of Health Data: against government accumulation of health care data; logical conclusion is government will use data for unrelated or unethical purposes; entitlements should not require data submission; opposes any government or entity right to surveil or collect personal information; concerned about constitutional rights, coercion; references Deep State, Palantir, or similar
+- Support for a National Health Identifier: single most important step is a national health identifier; CMS should issue unique IDs for all Medicare and Medicaid recipients; national patient identifier will improve efficiency; support universal identifier to streamline care
+- Support for Digital Inclusion and Equitable Access to Health Technology: ensure all populations benefit from digital health; support digital inclusion, access for underserved; calls for efforts to bridge digital divide; emphasize need for accessibility for rural or disadvantaged communities
 
-2. Themes: Which of these themes are present in the comment? (Select all that apply)
-- vaccine safety concerns
-- need for transparency
-- importance of public health
-- individual medical choice
-- scientific expertise
-- impact of ACIP decisions
-- universal vaccine access
-- long COVID considerations
-- community health responsibilities
+2. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. Must be verbatim from the text.
 
-3. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. Must be verbatim from the text.
-
-4. Rationale: Briefly explain (1-2 sentences) why you selected these stances.
+3. Rationale: Briefly explain (1-2 sentences) why you selected these stances.
 
 Instructions:
 - A comment may express multiple stances or no clear stance
 - Only select stances that are clearly expressed in the comment
 - Be objective and avoid inserting personal opinions"""
 
-    return CommentAnalyzer(
+    # Create temporary config dict
+    temp_config = {
+        'stance_options': stance_options,
+        'system_prompt': system_prompt
+    }
+    
+    # Write temporary config to use with CommentAnalyzer
+    import tempfile
+    import json
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        json.dump(temp_config, f)
+        temp_config_file = f.name
+    
+    analyzer = CommentAnalyzer(
         model=model,
         timeout_seconds=timeout_seconds or 120,
-        system_prompt=system_prompt,
-        stance_options=stance_options,
-        theme_options=theme_options
+        config_file=temp_config_file
     )
+    
+    # Clean up temp file
+    import os
+    os.unlink(temp_config_file)
+    
+    return analyzer
