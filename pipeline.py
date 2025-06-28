@@ -599,7 +599,6 @@ def store_in_postgres_from_parquet(parquet_file: str, regulation_name: str = "Sc
                 comment.get('attachment_text', ''),
                 comment.get('text', ''),
                 analysis.get('stance'),
-                analysis.get('themes', []),
                 analysis.get('key_quote'),
                 analysis.get('rationale'),
                 bool(comment.get('attachment_text', '').strip()),
@@ -621,9 +620,9 @@ def store_in_postgres_from_parquet(parquet_file: str, regulation_name: str = "Sc
                 INSERT INTO comments (
                     comment_id, submitter_name, organization, submission_date,
                     comment_text, attachment_text, combined_text,
-                    stance, themes, key_quote, rationale,
+                    stance, key_quote, rationale,
                     has_attachments, model_used, regulation_name, docket_id
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, batch_chunk)
         
         conn.commit()

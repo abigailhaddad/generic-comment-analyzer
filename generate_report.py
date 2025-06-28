@@ -97,6 +97,30 @@ def analyze_field_types(comments: List[Dict[str, Any]]) -> Dict[str, Dict[str, A
     
     return field_analysis
 
+def calculate_stance_cooccurrence(comments: List[Dict[str, Any]], stance_list: List[str]) -> Dict[str, Dict[str, int]]:
+    """Calculate how often stances appear together."""
+    cooccurrence = {}
+    
+    # Initialize matrix
+    for stance1 in stance_list:
+        cooccurrence[stance1] = {}
+        for stance2 in stance_list:
+            cooccurrence[stance1][stance2] = 0
+    
+    # Count co-occurrences
+    for comment in comments:
+        analysis = comment.get('analysis', {})
+        if analysis:
+            stances = analysis.get('stances', [])
+            if isinstance(stances, list):
+                for stance1 in stances:
+                    if stance1 in stance_list:
+                        for stance2 in stances:
+                            if stance2 in stance_list:
+                                cooccurrence[stance1][stance2] += 1
+    
+    return cooccurrence
+
 def calculate_stats(comments: List[Dict[str, Any]], field_analysis: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
     """Calculate summary statistics."""
     total_comments = len(comments)
@@ -121,6 +145,13 @@ def calculate_stats(comments: List[Dict[str, Any]], field_analysis: Dict[str, Di
                     value = value.strip()
                     field_counts[field][value] = field_counts[field].get(value, 0) + 1
     
+    # Calculate stance co-occurrences
+    stance_cooccurrence = {}
+    if 'stances' in field_analysis:
+        stance_list = field_analysis['stances'].get('unique_values', [])
+        if stance_list:
+            stance_cooccurrence = calculate_stance_cooccurrence(comments, stance_list)
+    
     # Comments with attachments
     with_attachments = sum(1 for c in comments if c.get('attachment_text', '').strip())
     
@@ -131,6 +162,7 @@ def calculate_stats(comments: List[Dict[str, Any]], field_analysis: Dict[str, Di
     return {
         'total_comments': total_comments,
         'field_counts': field_counts,
+        'stance_cooccurrence': stance_cooccurrence,
         'with_attachments': with_attachments,
         'avg_text_length': int(avg_length),
         'date_range': get_date_range(comments)
@@ -157,6 +189,33 @@ def get_date_range(comments: List[Dict[str, Any]]) -> str:
         return f"{min_date} to {max_date}"
     return "Unknown"
 
+def calculate_cooccurrence_percentages(stats: Dict[str, Any], field_analysis: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
+    """Calculate what percentage of comments with each stance also have other stances."""
+    cooccurrence = stats.get('stance_cooccurrence', {})
+    if not cooccurrence:
+        return {}
+    
+    percentages = {}
+    stance_names = list(cooccurrence.keys())
+    
+    # Create stance number mapping
+    stance_to_num = {stance: i+1 for i, stance in enumerate(stance_names)}
+    
+    for stance1 in stance_names:
+        total_with_stance1 = cooccurrence[stance1][stance1]  # Diagonal value
+        if total_with_stance1 == 0:
+            continue
+            
+        percentages[stance1] = {}
+        for stance2 in stance_names:
+            if stance1 != stance2:  # Skip self
+                count = cooccurrence[stance1][stance2]
+                percentage = (count / total_with_stance1) * 100 if total_with_stance1 > 0 else 0
+                if percentage > 0:  # Only include non-zero percentages
+                    percentages[stance1][stance_to_num[stance2]] = percentage
+    
+    return percentages, stance_to_num
+
 def generate_field_distribution_html(field_name: str, field_info: Dict[str, Any], stats: Dict[str, Any]) -> str:
     """Generate distribution HTML for a specific analysis field."""
     field_counts = stats['field_counts'].get(field_name, {})
@@ -170,6 +229,10 @@ def generate_field_distribution_html(field_name: str, field_info: Dict[str, Any]
     
     # For checkbox fields (few unique values), show as stat cards
     if field_info['type'] == 'checkbox':
+        # Special handling for stances with co-occurrence
+        if field_name == 'stances' and 'stance_cooccurrence' in stats:
+            return generate_stance_cooccurrence_html(sorted_items, stats, field_info)
+        
         return f'''
         <div class="section">
             <h2>📊 {field_label} Distribution</h2>
@@ -187,12 +250,170 @@ def generate_field_distribution_html(field_name: str, field_info: Dict[str, Any]
         return f'''
         <div class="section">
             <h2>📝 Top {field_label}s</h2>
-            <ul class="themes-list">
+            <ul class="field-list">
                 {"".join(f'''<li>
-                    <span class="theme-name">{value}</span>
-                    <span class="theme-count">{count:,}</span>
+                    <span class="field-name">{value}</span>
+                    <span class="field-count">{count:,}</span>
                 </li>''' for value, count in sorted_items[:10])}
             </ul>
+        </div>'''
+
+def generate_stance_cooccurrence_html(sorted_items, stats, field_info):
+    """Generate expandable stance cards with co-occurrence details."""
+    try:
+        percentages, stance_to_num = calculate_cooccurrence_percentages(stats, {'stances': field_info})
+        
+        stance_cards = []
+        for i, (stance, count) in enumerate(sorted_items[:6]):
+            # Build all connections for this stance
+            connections = []
+            if stance in percentages and percentages[stance]:
+                for other_stance, _ in sorted_items[:6]:
+                    if other_stance != stance:
+                        for other_num, pct in percentages[stance].items():
+                            if stance_to_num.get(other_stance) == other_num and pct >= 5:  # Show if 5% or higher
+                                connections.append((pct, other_stance))
+                
+                # Sort by percentage, highest first
+                connections.sort(reverse=True, key=lambda x: x[0])
+            
+            # Create connections HTML
+            connections_html = ""
+            if connections:
+                connection_items = []
+                for pct, other_stance in connections:
+                    connection_items.append(f'<div class="connection-item">{pct:.0f}% also: {other_stance}</div>')
+                connections_html = "".join(connection_items)
+            else:
+                connections_html = '<div class="no-connections">No significant overlaps with other stances</div>'
+            
+            stance_cards.append(f'''
+                <div class="expandable-stance-card">
+                    <div class="stance-header" onclick="toggleStanceDetails({i})">
+                        <span class="stance-count">{count:,}</span>
+                        <span class="stance-name">{stance}</span>
+                        <span class="expand-icon" id="icon-{i}">▼</span>
+                    </div>
+                    <div class="stance-details" id="details-{i}" style="display: none;">
+                        {connections_html}
+                    </div>
+                </div>''')
+        
+        return f'''
+        <div class="section">
+            <h2>📊 Stances Distribution</h2>
+            <p style="color: #666; margin-bottom: 20px; font-style: italic;">Click on any stance to see how it relates to others</p>
+            <div class="expandable-stances">
+                {"".join(stance_cards)}
+            </div>
+        </div>
+        
+        <style>
+        .expandable-stances {{
+            display: grid;
+            gap: 12px;
+        }}
+        
+        .expandable-stance-card {{
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }}
+        
+        .stance-header {{
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 15px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }}
+        
+        .stance-header:hover {{
+            background-color: #f8f9fa;
+        }}
+        
+        .stance-count {{
+            font-size: 1.6em;
+            font-weight: bold;
+            color: #2c3e50;
+            min-width: 80px;
+            flex-shrink: 0;
+        }}
+        
+        .stance-name {{
+            font-size: 1em;
+            color: #2c3e50;
+            line-height: 1.3;
+            font-weight: 500;
+            flex-grow: 1;
+        }}
+        
+        .expand-icon {{
+            font-size: 1.2em;
+            color: #7f8c8d;
+            transition: transform 0.3s;
+            flex-shrink: 0;
+        }}
+        
+        .expand-icon.expanded {{
+            transform: rotate(180deg);
+        }}
+        
+        .stance-details {{
+            padding: 0 15px 15px 15px;
+            border-top: 1px solid #ecf0f1;
+            background: #f8f9fa;
+        }}
+        
+        .connection-item {{
+            padding: 8px 10px;
+            margin: 8px 0;
+            background: white;
+            border-radius: 4px;
+            border-left: 3px solid #e67e22;
+            font-size: 0.9em;
+            color: #2c3e50;
+        }}
+        
+        .no-connections {{
+            padding: 15px;
+            text-align: center;
+            color: #888;
+            font-style: italic;
+        }}
+        </style>
+        
+        <script>
+        function toggleStanceDetails(index) {{
+            const details = document.getElementById('details-' + index);
+            const icon = document.getElementById('icon-' + index);
+            
+            if (details.style.display === 'none' || details.style.display === '') {{
+                details.style.display = 'block';
+                icon.classList.add('expanded');
+            }} else {{
+                details.style.display = 'none';
+                icon.classList.remove('expanded');
+            }}
+        }}
+        </script>'''
+        
+    except Exception as e:
+        # Fallback to simple display if co-occurrence fails
+        return f'''
+        <div class="section">
+            <h2>📊 Stances Distribution</h2>
+            <div class="stats-grid">
+                {"".join(f'''
+                <div class="stat-card">
+                    <div class="stat-number">{count:,}</div>
+                    <div class="stat-label">{value}</div>
+                </div>
+                ''' for value, count in sorted_items[:10])}
+            </div>
         </div>'''
 
 def generate_filter_html(field_name: str, field_info: Dict[str, Any], column_index: int) -> str:
@@ -728,6 +949,55 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
             overflow-wrap: break-word;
         }}
         
+        /* Co-occurrence table styles */
+        .cooccurrence-table {{
+            border-collapse: collapse;
+            font-size: 12px;
+            margin: 0 auto;
+        }}
+        
+        .cooccurrence-table th,
+        .cooccurrence-table td {{
+            border: 1px solid #dee2e6;
+            text-align: center;
+            padding: 8px;
+            min-width: 40px;
+        }}
+        
+        .cooccurrence-table .stance-label {{
+            text-align: left;
+            font-weight: 500;
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }}
+        
+        .rotate-header {{
+            height: 150px;
+            white-space: nowrap;
+            vertical-align: bottom;
+        }}
+        
+        .rotate-header > div {{
+            transform: translate(15px, 65px) rotate(-45deg);
+            width: 30px;
+            transform-origin: bottom left;
+            font-size: 11px;
+            font-weight: 500;
+        }}
+        
+        .diagonal-cell {{
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+        }}
+        
+        .cooccurrence-cell {{
+            color: #333;
+            font-weight: 500;
+        }}
+        
     </style>
 </head>
 <body>
@@ -757,6 +1027,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                 <div class="stat-label">Date Range</div>
             </div>
         </div>
+
 
         <!-- Analysis Field Distributions -->
         {"".join(generate_field_distribution_html(field_name, field_info, stats) for field_name, field_info in field_analysis.items())}

@@ -3,7 +3,7 @@
 Generic Comment Analyzer
 
 A regulation-agnostic analyzer for public comments using LiteLLM.
-The analysis configuration (stances, themes, prompts) should be defined
+The analysis configuration (stances, prompts) should be defined
 per regulation in a separate configuration.
 """
 
@@ -29,13 +29,12 @@ class TimeoutError(Exception):
 
 # Placeholder enums - will be populated by discover_stances.py
 class Stance(str, Enum):
-    SUPPORT_FOR_EXPANDED_INTEROPERABILITY_AND_DIGITAL_HEALTH_ADOPTION = "Support for Expanded Interoperability and Digital Health Adoption"
-    SUPPORT_FOR_STRONGER_DATA_PRIVACY_AND_PATIENT_CONSENT_PROTECTIONS = "Support for Stronger Data Privacy and Patient Consent Protections"
-    OPPOSITION_TO_DIGITAL_IDS_BIOMETRIC_DATA_AND_MANDATORY_WEARABLES_IN_HEALTHCARE_ACCESS = "Opposition to Digital IDs, Biometric Data, and Mandatory Wearables in Healthcare Access"
-    SUPPORT_FOR_STRONGER_ENFORCEMENT_OF_INTEROPERABILITY_AND_INFORMATION_BLOCKING_REGULATIONS = "Support for Stronger Enforcement of Interoperability and Information Blocking Regulations"
-    OPPOSITION_TO_REGULATORY_OVERREACH_AND_GOVERNMENT_ACCUMULATION_OF_HEALTH_DATA = "Opposition to Regulatory Overreach and Government Accumulation of Health Data"
-    SUPPORT_FOR_A_NATIONAL_HEALTH_IDENTIFIER = "Support for a National Health Identifier"
-    SUPPORT_FOR_DIGITAL_INCLUSION_AND_EQUITABLE_ACCESS_TO_HEALTH_TECHNOLOGY = "Support for Digital Inclusion and Equitable Access to Health Technology"
+    OPPOSITION_TO_COVID_19_VACCINES_CALL_FOR_REMOVAL = "Opposition to COVID-19 Vaccines (Call for Removal)"
+    SUPPORT_FOR_CONTINUED_BROAD_ACCESS_TO_COVID_19_VACCINES = "Support for Continued/Broad Access to COVID-19 Vaccines"
+    SUPPORT_FOR_SCIENCE_BASED_INDEPENDENT_ACIP_COMMITTEE = "Support for Science-Based, Independent ACIP Committee"
+    OPPOSITION_TO_RESTRICTING_VACCINE_ACCESS_ELIGIBILITY_INCLUDING_CHILDREN_AND_HIGH_RISK = "Opposition to Restricting Vaccine Access/Eligibility (including Children and High-Risk)"
+    OPPOSITION_TO_POLITICIZATION_DELEGITIMIZATION_OF_VACCINE_POLICY = "Opposition to Politicization/Delegitimization of Vaccine Policy"
+    SUPPORT_FOR_VACCINE_PREVENTABLE_DISEASE_PROTECTION_AND_BROAD_IMMUNIZATION_POLICY = "Support for Vaccine-Preventable Disease Protection and Broad Immunization Policy"
 
 
 class CommentAnalysisResult(BaseModel):
@@ -211,29 +210,27 @@ def create_regulation_analyzer(model=None, timeout_seconds=None):
     """Create an analyzer configured for regulation analysis"""
     
     stance_options = [
-        "Support for Expanded Interoperability and Digital Health Adoption",
-        "Support for Stronger Data Privacy and Patient Consent Protections",
-        "Opposition to Digital IDs, Biometric Data, and Mandatory Wearables in Healthcare Access",
-        "Support for Stronger Enforcement of Interoperability and Information Blocking Regulations",
-        "Opposition to Regulatory Overreach and Government Accumulation of Health Data",
-        "Support for a National Health Identifier",
-        "Support for Digital Inclusion and Equitable Access to Health Technology"
+        "Opposition to COVID-19 Vaccines (Call for Removal)",
+        "Support for Continued/Broad Access to COVID-19 Vaccines",
+        "Support for Science-Based, Independent ACIP Committee",
+        "Opposition to Restricting Vaccine Access/Eligibility (including Children and High-Risk)",
+        "Opposition to Politicization/Delegitimization of Vaccine Policy",
+        "Support for Vaccine-Preventable Disease Protection and Broad Immunization Policy"
     ]
     
-    system_prompt = """You are analyzing public comments about CMS-0042-NC: Health Technology Ecosystem RFI.
+    system_prompt = """You are analyzing public comments about CDC ACIP COVID-19 and Vaccine Committee Policy Changes, June 2025.
 
-This request for information seeks public input on how to advance interoperability, digital health products, responsible data sharing, technology infrastructure, and privacy protections for Medicare and Medicaid beneficiaries, under the 21st Century Cures Act and related federal health IT initiatives.
+A set of proposed and implemented changes affecting the Advisory Committee on Immunization Practices (ACIP) at CDC, including the removal of all 17 previous members by RFK Jr. and policies about the continued availability, restriction, or removal of COVID-19 vaccines and other immunization recommendations and coverage.
 
 For each comment, identify:
 
 1. Stances: Which of these positions/arguments does the commenter express? Look for the indicators listed below. (Select ALL that apply, or none if none apply)
-- Support for Expanded Interoperability and Digital Health Adoption: support efforts to advance interoperability; applaud HHS for advancing digital health; recommend adoption of open data standards (e.g., HL7 FHIR, TEFCA); endorse/appreciate digital health ecosystem expansion; call for real-time patient data access; encourage adoption of digital care management, remote monitoring
-- Support for Stronger Data Privacy and Patient Consent Protections: concerned about patient privacy; requests explicit patient consent for data sharing; calls for patient control/ownership over health data; criticizes data access without consent; worried about data breaches, hacking, or third-party use
-- Opposition to Digital IDs, Biometric Data, and Mandatory Wearables in Healthcare Access: absolutely no digital ID requirement; oppose/against biometric data collection for healthcare; oppose mandatory wearable technology; informed consent must always be the standard; everyone should have the right to be forgotten; oppose all medical mandates to access society
-- Support for Stronger Enforcement of Interoperability and Information Blocking Regulations: stress the need for enforcement; exercise will be a waste unless you ENFORCE regulations; hospitals have strong commercial incentives not to make it easy for patients to take their business elsewhere; call for stricter penalties or oversight; current rules not sufficiently enforced
-- Opposition to Regulatory Overreach and Government Accumulation of Health Data: against government accumulation of health care data; logical conclusion is government will use data for unrelated or unethical purposes; entitlements should not require data submission; opposes any government or entity right to surveil or collect personal information; concerned about constitutional rights, coercion; references Deep State, Palantir, or similar
-- Support for a National Health Identifier: single most important step is a national health identifier; CMS should issue unique IDs for all Medicare and Medicaid recipients; national patient identifier will improve efficiency; support universal identifier to streamline care
-- Support for Digital Inclusion and Equitable Access to Health Technology: ensure all populations benefit from digital health; support digital inclusion, access for underserved; calls for efforts to bridge digital divide; emphasize need for accessibility for rural or disadvantaged communities
+- Opposition to COVID-19 Vaccines (Call for Removal): remove all currently licensed COVID shots from the market; destroy the deadly vaccines; get rid of these vaccines; these vaccines cause more harm than good; deaths following COVID vaccination in the Vaccine Adverse Event Reporting System; comparing to swine flu vaccine recall; urge ACIP to take a stance for public health by pulling COVID vaccines; routine and repeated COVID shots should stop; evidence is clear, remove COVID shots; toxins knowingly placed in these injections to harm
+- Support for Continued/Broad Access to COVID-19 Vaccines: keep COVID-19 vaccines available to everyone; protect access to covid 19 vaccines; do not restrict the Covid vaccine; please don't take it away; vaccines save lives; vaccines should be covered by insurance; COVID vaccine has proven to be safe and effective; need access for high-risk/disabled/immunocompromised people; demand full access to all healthcare including vaccines; please keep all Vaccines available to whom ever would like to do so
+- Support for Science-Based, Independent ACIP Committee: grave/serious concerns about the recent termination of all 17 ACIP committee members; independent expert scientific and medical input is crucial; oppose replacement with unqualified or anti-vaccine figures; RFK Jr. must preserve an independent decision process; committee must be made up of experienced, qualified people; removal of previous members harms public health; demand restoration of former ACIP members; distrust of politically-motivated removals; platforming of pseudoscience profiteers; calls for transparency and conflict of interest disclosures
+- Opposition to Restricting Vaccine Access/Eligibility (including Children and High-Risk): oppose unnecessary restrictions placed on COVID vaccinations; do not change vaccine policies that would make vaccines more difficult to access; setting restrictions on vaccines is not only unnecessary, it's anti-science; universal or broad access is necessary; removal or restriction would endanger vulnerable groups; insurance should cover vaccines for all ages; keep covid vaccines on the recommended schedule; Novavax (non mRNA) should be approved for all ages and covered
+- Opposition to Politicization/Delegitimization of Vaccine Policy: RFK Jr. has politicized science; political shenanigans; politics should not make this decision; removal/appointment of ACIP members for political, not scientific, reasons; keep the committee apolitical; must be actual experts, not political appointees; government interference in public health
+- Support for Vaccine-Preventable Disease Protection and Broad Immunization Policy: vaccines are a proven way out of polio, measles, covid, etc.; broad access to all FDA-approved and recommended vaccines; keep access to vaccines for all vaccine-preventable diseases; importance of vaccination for community health, children, workplace, school safety; calls to keep or expand coverage through Vaccines for Children and insurance; concerns about declining vaccination rates and outbreaks
 
 2. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. Must be verbatim from the text.
 

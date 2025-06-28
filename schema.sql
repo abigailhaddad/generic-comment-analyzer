@@ -16,7 +16,6 @@ CREATE TABLE comments (
     
     -- Analysis results
     stance VARCHAR(100),
-    themes TEXT[], -- PostgreSQL array of theme strings
     key_quote TEXT,
     rationale TEXT,
     

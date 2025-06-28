@@ -265,10 +265,6 @@ def update_comment_analyzer(config: CommentAnalyzerConfig):
         if import_end > 0:
             content = content[:import_end] + "\n\n" + stance_enum + "\n" + content[import_end:]
     
-    # Remove Theme enum entirely
-    theme_pattern = r'class Theme\(str, Enum\):\n(?:    .*\n)*'
-    if re.search(theme_pattern, content):
-        content = re.sub(theme_pattern, "", content)
     
     # Now update the stance_options list in create_regulation_analyzer
     # Build the new list definitions
@@ -279,10 +275,6 @@ def update_comment_analyzer(config: CommentAnalyzerConfig):
     if re.search(stance_list_pattern, content):
         content = re.sub(stance_list_pattern, stance_list, content, count=1)
     
-    # Remove theme_options list
-    theme_list_pattern = r'    theme_options = \[[\s\S]*?\]'
-    if re.search(theme_list_pattern, content):
-        content = re.sub(theme_list_pattern, "", content)
     
     # Also update the system prompt in create_regulation_analyzer
     system_prompt_pattern = r'    system_prompt = """[\s\S]*?"""'

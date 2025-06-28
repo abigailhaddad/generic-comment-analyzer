@@ -26,7 +26,6 @@ import litellm
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Removed theme discovery - now just doing CSV column detection
 
 def extract_regulation_metadata(csv_file: str, model: str = "gpt-4o-mini") -> Dict[str, str]:
     """Use LLM to extract regulation metadata from CSV data."""
@@ -263,7 +262,6 @@ def _fallback_column_detection(columns: List[str]) -> Dict[str, str]:
     
     return column_mapping
 
-# Theme discovery functions removed - now manually create analyzer_config.json
 
 def main():
     parser = argparse.ArgumentParser(description='CSV column detection tool')

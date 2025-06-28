@@ -1,6 +1,6 @@
 # Generic Regulation Comment Analysis
 
-Analyzes public comments on federal regulations using LLMs to identify stances, themes, and key quotes.
+Analyzes public comments on federal regulations using LLMs to identify stances and key quotes.
 
 ## Data Source
 
@@ -32,7 +32,7 @@ Works with comment data from [regulations.gov bulk download](https://www.regulat
 3. Configure for your regulation:
    ```bash
    python detect_columns.py                        # Detect CSV structure
-   python discover_stances.py --sample 250         # Find stances/themes
+   python discover_stances.py --sample 250         # Find stances
    python pipeline.py --csv comments.csv --sample 10  # Test run
    ```
 
@@ -47,12 +47,10 @@ Works with comment data from [regulations.gov bulk download](https://www.regulat
 
 2. **Stance Discovery** (`discover_stances.py`): Analyzes sample comments to find:
    - Main arguments/positions people are taking
-   - Recurring themes across comments
    - Updates `comment_analyzer.py` with enum constraints to prevent invalid values
 
 3. **Comment Analysis** (`pipeline.py`): For each comment, identifies:
    - Stances: Arguments/positions expressed
-   - Themes: Topics covered
    - Key Quote: Most important excerpt
    - Rationale: Why those stances were selected
 
@@ -73,11 +71,6 @@ class Stance(str, Enum):
     CONCERNS_PROCESS = "Concerns About Process"
     # Add your custom stances here
 
-class Theme(str, Enum):
-    ECONOMIC_IMPACT = "Economic Impact"
-    ENVIRONMENTAL_CONCERNS = "Environmental Concerns"
-    PUBLIC_SAFETY = "Public Safety"
-    # Add your custom themes here
 ```
 
 ### 2. Edit the `create_regulation_analyzer` Function in `comment_analyzer.py`
@@ -93,12 +86,6 @@ def create_regulation_analyzer(model=None, timeout_seconds=None):
         "Concerns About Process"
     ]
     
-    # Hard-code your theme options  
-    theme_options = [
-        "Economic Impact",
-        "Environmental Concerns",
-        "Public Safety"
-    ]
     
     # Write your custom system prompt
     system_prompt = """You are analyzing public comments about [YOUR REGULATION].
@@ -112,17 +99,12 @@ For each comment, identify:
 - Opposition to Policy: [describe indicators] 
 - Concerns About Process: [describe indicators]
 
-2. Themes: Which topics are present?
-- Economic Impact
-- Environmental Concerns  
-- Public Safety
+2. Key Quote: Most important quote (max 100 words, verbatim from text)
 
-3. Key Quote: Most important quote (max 100 words, verbatim from text)
-
-4. Rationale: Brief explanation (1-2 sentences) of stance selection
+3. Rationale: Brief explanation (1-2 sentences) of stance selection
 
 Instructions:
-- Select all applicable stances and themes
+- Select all applicable stances
 - Be objective and avoid personal bias"""
     
     # Rest of function stays the same...
@@ -137,7 +119,7 @@ After editing `comment_analyzer.py`:
 3. **Run directly**: `python pipeline.py --csv comments.csv`
 
 **Summary**: You're editing **two parts** of `comment_analyzer.py`:
-- The `Stance` and `Theme` enum classes at the top
+- The `Stance` enum class at the top
 - The `create_regulation_analyzer` function at the bottom
 
 This gives you complete control over the analysis categories and prompt while maintaining enum validation.
@@ -145,7 +127,7 @@ This gives you complete control over the analysis categories and prompt while ma
 ## Files
 
 - **`detect_columns.py`** - Auto-detects CSV column structure → `column_mapping.json` + `regulation_metadata.json`
-- **`discover_stances.py`** - Discovers stances and themes → `analyzer_config.json` + updates enum constraints
+- **`discover_stances.py`** - Discovers stances → `analyzer_config.json` + updates enum constraints
 - **`pipeline.py`** - Main processing script (outputs Parquet format)
 - **`comment_analyzer.py`** - Configurable LLM analyzer with enum validation (auto-updated by discover_stances.py)
 - **`generate_report.py`** - HTML report generator (runs automatically)
@@ -173,7 +155,7 @@ Options:
 Generates an interactive HTML report (`index.html`) with:
 - Regulation title and link to regulations.gov
 - Summary statistics and distribution charts
-- Checkbox filtering for stances, themes, and attachments  
+- Checkbox filtering for stances and attachments  
 - Text search for IDs, dates, quotes, and content
 
 ## Database Setup
