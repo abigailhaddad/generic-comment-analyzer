@@ -290,15 +290,20 @@ def process_stance_analysis(comments: List[Dict[str, Any]], output_json: str) ->
     print("Analyzing field types...")
     field_analysis = analyze_field_types(comments)
     
-    # Always ensure new_stances is in field_analysis
-    if 'new_stances' not in field_analysis:
-        field_analysis['new_stances'] = {
-            'type': 'checkbox',
-            'is_list': True,
-            'unique_values': [],
-            'num_unique': 0,
-            'total_occurrences': 0
-        }
+    # Always ensure new_stances is in field_analysis and extract from comments
+    all_new_stances = set()
+    for comment in comments:
+        new_stances = comment.get('analysis', {}).get('new_stances', [])
+        if isinstance(new_stances, list):
+            all_new_stances.update(new_stances)
+    
+    field_analysis['new_stances'] = {
+        'type': 'checkbox',
+        'is_list': True,
+        'unique_values': sorted(list(all_new_stances)),
+        'num_unique': len(all_new_stances),
+        'total_occurrences': len([c for c in comments if c.get('analysis', {}).get('new_stances', [])])
+    }
     
     print("Calculating statistics...")
     stats = calculate_stats(comments, field_analysis)
@@ -408,7 +413,12 @@ def main():
             else:
                 print(f"Loading analyzed comments from {args.input}...")
                 with open(args.input, 'r', encoding='utf-8') as f:
-                    comments = json.load(f)
+                    data = json.load(f)
+                    # If it's a processed JSON file, extract the comments array
+                    if isinstance(data, dict) and 'comments' in data:
+                        comments = data['comments']
+                    else:
+                        comments = data
             
             print(f"Loaded {len(comments)} comments")
             

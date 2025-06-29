@@ -39,7 +39,8 @@ def analyze_field_types(comments: List[Dict[str, Any]]) -> Dict[str, Dict[str, A
     
     # Standard fields we expect - only show stats for checkbox fields
     fields = {
-        'stances': {'type': 'checkbox', 'is_list': True}
+        'stances': {'type': 'checkbox', 'is_list': True},
+        'new_stances': {'type': 'checkbox', 'is_list': True}
     }
     
     for field_name, field_info in fields.items():
