@@ -129,7 +129,7 @@ You need to identify columns for these required fields:
 - text: The main comment/text content (required)
 - id: Unique identifier for each comment (required) 
 - date: Date/timestamp when comment was submitted
-- submitter: Submitter's name field (look for existing full name field or note if separate first/last)  
+- submitter: Submitter's name field (prefer "Title" field if it contains formatted names like "Comment from John Doe", otherwise look for full name fields before separate first/last name fields)  
 - organization: Organization/company name
 - attachment_files: Files attached to comments (often contains URLs or file paths)
 
@@ -156,7 +156,7 @@ Identify which columns contain:
 1. text: Main comment/text content (REQUIRED - this is the most important field)
 2. id: Unique identifier (REQUIRED)
 3. date: Submission date/timestamp
-4. submitter: Submitter name field
+4. submitter: Submitter name field (prefer "Title" field if it contains formatted names, otherwise full name fields before separate first/last)
 5. organization: Organization/company name  
 6. attachment_files: File attachments (URLs, file paths, etc.)
 
@@ -225,8 +225,8 @@ def _fallback_column_detection(columns: List[str]) -> Dict[str, str]:
         column_mapping['date'] = date_col
         logger.info(f"Found date column: '{date_col}'")
     
-    # Submitter name field
-    submitter_candidates = ['Submitter', 'submitter', 'Name', 'name', 'Full Name', 'full_name', 'First Name', 'Last Name']
+    # Submitter name field - prioritize Title field if it exists, then full name fields
+    submitter_candidates = ['Title', 'title', 'Submitter', 'submitter', 'Name', 'name', 'Full Name', 'full_name', 'First Name', 'Last Name']
     
     submitter_col = next((col for col in columns if col in submitter_candidates), None)
     if submitter_col:

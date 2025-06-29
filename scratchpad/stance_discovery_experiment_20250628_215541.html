@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stance Discovery Experiment Results</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .results-table {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #2c3e50;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: top;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .strategy-original {
+            background: #e3f2fd;
+        }
+        
+        .strategy-mutually_exclusive {
+            background: #f3e5f5;
+        }
+        
+        .stance-list {
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        
+        .stance-item {
+            margin-bottom: 8px;
+            padding: 4px 8px;
+            background: #ffffff;
+            border-left: 3px solid #007bff;
+            border-radius: 4px;
+        }
+        
+        .error {
+            color: #dc3545;
+            font-style: italic;
+        }
+        
+        .timestamp {
+            font-size: 0.8em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Stance Discovery Experiment Results</h1>
+        <div class="subtitle">Comparing prompting strategies and target stance counts</div>
+        <div class="timestamp">Generated: 2025-06-28 21:55:41</div>
+    </div>
+    
+    <div class="results-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Strategy</th>
+                    <th>Target Count</th>
+                    <th>Actual Count</th>
+                    <th>Discovered Stances</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="strategy-original">
+                    <td><strong>Original</strong></td>
+                    <td>5</td>
+                    <td>5</td>
+                    <td><div class="stance-list"><div class="stance-item">Support for Broad COVID-19 Vaccine Access and Recommendations</div><div class="stance-item">Opposition to Continued Use of COVID-19 Vaccines</div><div class="stance-item">Opposition to ACIP Committee Purge/Support for Expert-Led Advisory Panels</div><div class="stance-item">Support for Greater Transparency and Conflict of Interest Disclosures in ACIP</div><div class="stance-item">Support for Stronger/Universal Vaccine Mandates and Schedule Recommendations</div></div></td>
+                </tr>
+                <tr class="strategy-original">
+                    <td><strong>Original</strong></td>
+                    <td>6</td>
+                    <td>6</td>
+                    <td><div class="stance-list"><div class="stance-item">Support for broad/universal access to COVID-19 and routine vaccines</div><div class="stance-item">Opposition to COVID-19 vaccines/recommendations; Support for removing COVID-19 vaccines from the market</div><div class="stance-item">Opposition to removal/termination of existing ACIP committee members (support for scientific/independent expertise on ACIP)</div><div class="stance-item">Support for continued or stronger ACIP recommendations for COVID and routine vaccinations (including for children, pregnant women, all ages)</div><div class="stance-item">Support for transparency and full disclosure regarding ACIP members and conflicts of interest</div><div class="stance-item">Opposition to politicization/anti-vaccine influence on vaccination policy</div></div></td>
+                </tr>
+                <tr class="strategy-original">
+                    <td><strong>Original</strong></td>
+                    <td>7</td>
+                    <td>7</td>
+                    <td><div class="stance-list"><div class="stance-item">Support for Universal/Unrestricted Access to COVID Vaccines</div><div class="stance-item">Opposition to Removal of ACIP Expert Members</div><div class="stance-item">Support for Ongoing/Strong CDC ACIP Recommendations for COVID Vaccines</div><div class="stance-item">Opposition to Continued Approval or Recommendation of COVID Vaccines</div><div class="stance-item">Support for Transparency, Disclosure, and Independent Oversight of ACIP Members</div><div class="stance-item">Support for the Safety and Effectiveness of COVID and Other Vaccines</div><div class="stance-item">Opposition to Politicization/Anti-Vaccine Influence in CDC/ACIP Decision-Making</div></div></td>
+                </tr>
+                <tr class="strategy-original">
+                    <td><strong>Original</strong></td>
+                    <td>8</td>
+                    <td>8</td>
+                    <td><div class="stance-list"><div class="stance-item">Support for broad/universal COVID-19 vaccine access and recommendations</div><div class="stance-item">Opposition to removal/termination of CDC ACIP committee members</div><div class="stance-item">Support for continued/expert-led CDC ACIP and evidence-based policy</div><div class="stance-item">Support for continued/expanded routine and updated vaccine recommendations</div><div class="stance-item">Opposition to COVID-19 vaccines (calls for removal from the market)</div><div class="stance-item">Demand for transparency, conflict of interest disclosure, and accountability</div><div class="stance-item">Support for prioritizing access for vulnerable, immunocompromised, or high-risk groups (within broader access)</div><div class="stance-item">Opposition to restriction of public health measures for ideological or political reasons</div></div></td>
+                </tr>
+                <tr class="strategy-original">
+                    <td><strong>Original</strong></td>
+                    <td>9</td>
+                    <td>9</td>
+                    <td><div class="stance-list"><div class="stance-item">Support for Universal COVID-19 Vaccine Access</div><div class="stance-item">Opposition to Removal of ACIP Committee Members</div><div class="stance-item">Support for Continued/Restored Expert-Based Vaccine Recommendations</div><div class="stance-item">Support for Stronger/Vaccine-Positive Measures</div><div class="stance-item">Opposition to Routine COVID-19 Vaccination (Advocate for Removal of COVID Vaccines from Market)</div><div class="stance-item">Support for Full Disclosure and Transparency in ACIP Operations</div><div class="stance-item">Opposition to Restricting Vaccine Access to Only High Risk/Vulnerable Groups</div><div class="stance-item">Support for Vaccine Choice/Autonomy</div><div class="stance-item">Opposition to Politicization/Ideological Influence on Vaccine Policy</div></div></td>
+                </tr>
+                <tr class="strategy-original">
+                    <td><strong>Original</strong></td>
+                    <td>10</td>
+                    <td>10</td>
+                    <td><div class="stance-list"><div class="stance-item">Support for broad access to all COVID-19 vaccines</div><div class="stance-item">Support for continued/reinstatement of routine COVID vaccine recommendations (all ages/pregnant/children)</div><div class="stance-item">Opposition to restriction/limitation of vaccine access or recommendations</div><div class="stance-item">Support for reinstatement/role of expert scientist-led ACIP committee</div><div class="stance-item">Opposition to current COVID-19 vaccines (call for removal from market)</div><div class="stance-item">Support for continued strong pro-vaccine public health policy (general, all vaccines)</div><div class="stance-item">Opposition to ACIP committee firing/criticisms of politicization</div><div class="stance-item">Support for vaccine access for vulnerable/immunocompromised groups (and close contacts)</div><div class="stance-item">Support for greater transparency and stricter conflict-of-interest disclosures in ACIP</div><div class="stance-item">Opposition to routine vaccines/anti-vaccine stance (not just COVID-specific)</div></div></td>
+                </tr>
+                <tr class="strategy-mutually_exclusive">
+                    <td><strong>Mutually Exclusive</strong></td>
+                    <td>5</td>
+                    <td>5</td>
+                    <td><div class="stance-list"><div class="stance-item">Support for Maintaining/Expanding Universal COVID-19 Vaccine Access and Recommendations</div><div class="stance-item">Opposition to Continued Access to COVID-19 Vaccines (Support for Removal of COVID Vaccines from Market)</div><div class="stance-item">Support for Reinstating/Retaining Prior ACIP Committee of Scientific and Medical Experts</div><div class="stance-item">Support for Enhanced Transparency and Oversight of ACIP Committee</div><div class="stance-item">Opposition to Vaccine Mandates or to ACIP/CDC Recommendations as Overreach/Erosion of Choice</div></div></td>
+                </tr>
+                <tr class="strategy-mutually_exclusive">
+                    <td><strong>Mutually Exclusive</strong></td>
+                    <td>6</td>
+                    <td>2</td>
+                    <td><div class="stance-list"><div class="stance-item">Support for Ongoing, Universal COVID-19 Vaccine Access and Recommendations</div><div class="stance-item">General Opposition to Vaccine Mandates/Promotion of Personal Choice (sometimes extending to all vaccines, not just COVID)</div></div></td>
+                </tr>
+                <tr class="strategy-mutually_exclusive">
+                    <td><strong>Mutually Exclusive</strong></td>
+                    <td>7</td>
+                    <td>7</td>
+                    <td><div class="stance-list"><div class="stance-item">Support for Universal Access to COVID-19 Vaccines</div><div class="stance-item">Support for Removing All COVID-19 Vaccines from the Market</div><div class="stance-item">Opposition to the Removal/Replacement of Expert ACIP Members</div><div class="stance-item">Support for Increased Transparency and Disclosure of Conflicts of Interest in ACIP Appointments</div><div class="stance-item">Opposition to Politicization or Ideological Interference with Vaccine Policy</div><div class="stance-item">Support for Broader Vaccine Access and Recommendations Beyond COVID-19</div><div class="stance-item">Support for Limiting or Stopping All Vaccines Due to Safety Concerns</div></div></td>
+                </tr>
+                <tr class="strategy-mutually_exclusive">
+                    <td><strong>Mutually Exclusive</strong></td>
+                    <td>8</td>
+                    <td>8</td>
+                    <td><div class="stance-list"><div class="stance-item">Support for Removal of COVID-19 Vaccines from the Market</div><div class="stance-item">Support for Continued and Universal Access to COVID-19 Vaccines</div><div class="stance-item">Opposition to ACIP Committee Member Termination/Replacements</div><div class="stance-item">Support for the New ACIP Committee and/or Calls for Transparency and Reform</div><div class="stance-item">Support for Vaccines in General (Pro-Vaccine for All Diseases)</div><div class="stance-item">Opposition to All Vaccines (General Anti-Vaccine Position)</div><div class="stance-item">Support for Prioritizing Individual Choice in Vaccination</div><div class="stance-item">Opposition to Political or Ideologically Motivated Interference in Vaccine Policy</div></div></td>
+                </tr>
+                <tr class="strategy-mutually_exclusive">
+                    <td><strong>Mutually Exclusive</strong></td>
+                    <td>9</td>
+                    <td>9</td>
+                    <td><div class="stance-list"><div class="stance-item">Support for Universal COVID-19 Vaccine Access and Strong ACIP Recommendations</div><div class="stance-item">Opposition to COVID-19 Vaccines—Support for Removal from Market</div><div class="stance-item">Support for Reinstating Previous ACIP Committee Members and Trust in Scientific Expertise</div><div class="stance-item">Support for Comprehensive Vaccine Access Beyond COVID-19</div><div class="stance-item">Demand for Increased Transparency and Disclosure of ACIP Member Conflicts of Interest</div><div class="stance-item">Opposition to Politicization of Vaccine Policy—Support for Science-Based Decisions</div><div class="stance-item">Support for Targeted/Restricted COVID-19 Vaccine Access (Limited to Vulnerable Groups)</div><div class="stance-item">Support for Individual Vaccine Choice (Including Opt-Out or Opposition to Mandates)</div><div class="stance-item">Support for Complete Ban on All Vaccines (Not Just COVID Vaccine Opposition)</div></div></td>
+                </tr>
+                <tr class="strategy-mutually_exclusive">
+                    <td><strong>Mutually Exclusive</strong></td>
+                    <td>10</td>
+                    <td>10</td>
+                    <td><div class="stance-list"><div class="stance-item">Support for Removing COVID-19 Vaccines From the Market</div><div class="stance-item">Opposition to Removing COVID-19 Vaccines / Support for Continued Access</div><div class="stance-item">Support for Keeping/Reinstating Previous ACIP Members (Expert Panel)</div><div class="stance-item">Support for the New ACIP Panel/Leadership</div><div class="stance-item">Support for Disclosing Conflicts of Interest and Transparency</div><div class="stance-item">Opposition to Politicizing Vaccine Policy / Support for Science-Based Recommendations</div><div class="stance-item">Support for Access to All Routine/Recommended Vaccines for Everyone</div><div class="stance-item">Belief That Vaccine Recommendations Should Prioritize Individual Choice Over Mandates</div><div class="stance-item">General Opposition to Vaccines (Not Just COVID-19)</div><div class="stance-item">Support for Strong Vaccine Recommendations for Vulnerable Groups</div></div></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

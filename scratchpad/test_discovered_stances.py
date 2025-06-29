@@ -358,12 +358,9 @@ def main():
         logger.info(f"Loading comments for testing from {csv_file}...")
         from stance_analysis_pipeline import load_and_standardize_csv
         
-        # Process attachments for a small sample to avoid long download times
-        process_attachments = args.analyze_sample <= 10  # Only process attachments for small samples
-        if process_attachments:
-            logger.info("Small sample detected - will process attachments")
-        
-        all_comments = load_and_standardize_csv(csv_file, process_attachments, 'test_attachments')
+        # Always process attachments
+        logger.info("Processing attachments for all comments")
+        all_comments = load_and_standardize_csv(csv_file, True, 'test_attachments')
         
         # Sample comments if needed (same logic as load_comments_sample)
         import random
