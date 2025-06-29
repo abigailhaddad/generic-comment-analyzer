@@ -355,21 +355,13 @@ def main():
             logger.info(f"  {i}. {stance['name']}")
         logger.info(f"Regulation description: {discovered['regulation_description']}")
         
-        # Load comments for testing with proper column mapping
+        # Load comments for testing using efficient sampling approach from main pipeline
         csv_file = args.csv_file
         logger.info(f"Loading comments for testing from {csv_file}...")
-        from stance_analysis_pipeline import load_and_standardize_csv
         
-        # Always process attachments
-        logger.info("Processing attachments for all comments")
-        all_comments = load_and_standardize_csv(csv_file, True, 'test_attachments')
-        
-        # Sample comments if needed (same logic as load_comments_sample)
-        import random
-        if len(all_comments) > args.analyze_sample * 2:
-            comments = random.sample(all_comments, args.analyze_sample * 2)
-        else:
-            comments = all_comments
+        # Use the same efficient approach as main pipeline: sample first, then process attachments
+        from pipeline import read_comments_from_csv
+        comments = read_comments_from_csv(csv_file, sample_size=args.analyze_sample * 2)
         
         if not comments:
             logger.error("No comments found")
