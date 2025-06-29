@@ -1,0 +1,45 @@
+1. Pharmacotherapy. 2022 Jan;42(1):58-70. doi: 10.1002/phar.2649. Epub 2021 Dec 15.
+
+Role of maternal COVID-19 vaccination in providing immunological protection to 
+the newborn.
+
+Jorgensen SCJ(1), Burry L(1)(2)(3), Tabbara N(2).
+
+Author information:
+(1)Institute of Medical Science, Faculty of Medicine, University of Toronto, 
+Toronto, Ontario, Canada.
+(2)Department of Pharmacy, Mount Sinai Hospital, Toronto, Ontario, Canada.
+(3)Leslie Dan Faculty of Pharmacy, University of Toronto, Toronto, Ontario, 
+Canada.
+
+Pregnant and postpartum individuals are known to have an elevated risk of severe 
+COVID-19 compared with their non-pregnant counterparts. Vaccination is the most 
+important intervention to protect these populations from COVID-19-related 
+morbidity and mortality. An added benefit of maternal COVID-19 vaccination is 
+transfer of maternal immunity to newborns and infants, for whom a vaccine is not 
+(yet) approved. Severe acute respiratory syndrome coronavirus 2 
+(SARS-CoV-2)-specific binding and neutralizing antibodies are present in infant 
+cord blood and breast milk following natural maternal infection and transfer of 
+maternal immunity following COVID-19 vaccination is an area of active research. 
+In this review, we synthesize the available research, discuss knowledge gaps, 
+and outline factors that should be evaluated and reported when studying the 
+transfer of maternal immunity following COVID-19 vaccination. The data reviewed 
+herein suggest that maternal SARS-CoV-2-specific binding antibodies are 
+efficiently transferred via the placenta and breast milk following maternal mRNA 
+COVID-19 vaccination. Moreover, antibodies retain strong neutralizing capacity. 
+Antibody concentrations appear to be at least as high in infant cord blood as in 
+the maternal serum, but lower in breast milk. Breast milk IgA rises rapidly 
+following maternal vaccination, whereas IgG rises later but may persist longer. 
+At least two COVID-19 vaccine doses appear to be required to reach maximal 
+antibody concentrations in cord blood and breast milk. There is no indication 
+that infants consuming breast milk from vaccinated mothers experience serious 
+adverse effects, although follow-up is limited. No clear pattern has emerged 
+regarding changes in milk supply following maternal vaccination. The 
+heterogeneity in important methodological aspects of reviewed studies 
+underscores the need to establish standard best practices related to research on 
+the transfer of maternal COVID-19 vaccine-induced immunity.
+
+© 2021 Pharmacotherapy Publications, Inc.
+
+DOI: 10.1002/phar.2649
+PMID: 34816467 [Indexed for MEDLINE]

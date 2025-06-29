@@ -1,0 +1,34 @@
+1. Infect Dis Clin North Am. 2022 Jun;36(2):423-433. doi: 
+10.1016/j.idc.2022.01.002. Epub 2022 Jan 31.
+
+COVID-19 and Pregnancy.
+
+Rasmussen SA(1), Jamieson DJ(2).
+
+Author information:
+(1)Department of Pediatrics, University of Florida College of Medicine, 1600 
+Archer Road, Box 100296, Gainesville, Florida, 32610; Department of Obstetrics 
+and Gynecology, University of Florida College of Medicine, Gainesville, FL, USA; 
+Department of Epidemiology, University of Florida College of Public Health and 
+Health Professions and College of Medicine, Gainesville, FL, USA. Electronic 
+address: sonja.rasmussen@peds.ufl.edu.
+(2)Emory University School of Medicine, Department of Gynecology and Obstetrics, 
+Woodruff Memorial Research Building, 101 Woodruff Circle, Suite 4208, Atlanta, 
+GA 30322, USA.
+
+Pregnancy seems to be a risk factor for severe disease with COVID-19. Although 
+SARS-CoV-2 intrauterine transmission seems to be rare, most studies show 
+COVID-19 during pregnancy increases the risk for pregnancy complications, with 
+higher risk among those with severe disease compared with those mildly affected. 
+Studies suggest that COVID-19 vaccination during pregnancy is safe and 
+effective. Antibodies to SARS-CoV-2 have been found in umbilical cord blood and 
+breast milk following maternal vaccination, which might provide protection to 
+the infant. However, vaccination rates during pregnancy remain low. Studies are 
+needed to understand ways to address SARS-CoV-2 vaccine hesitancy among pregnant 
+persons.
+
+Copyright © 2022 Elsevier Inc. All rights reserved.
+
+DOI: 10.1016/j.idc.2022.01.002
+PMCID: PMC8802611
+PMID: 35636908 [Indexed for MEDLINE]

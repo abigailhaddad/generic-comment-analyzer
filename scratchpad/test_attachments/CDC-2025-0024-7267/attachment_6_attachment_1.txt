@@ -1,0 +1,70 @@
+1. Pediatrics. 2024 Mar 1;153(3):e2023062570. doi: 10.1542/peds.2023-062570.
+
+
+Rao S(1), Gross RS(2)(3), Mohandas S(4)(5), Stein CR(6), Case A(7), Dreyer B(5), 
+Pajor NM(8), Bunnell HT(9), Warburton D(5), Berg E(10), Overdevest JB(10), 
+Gorelik M(10), Milner J(10), Saxena S(10), Jhaveri R(11), Wood JC(5), Rhee 
+KE(12), Letts R(3), Maughan C(3), Guthe N(3), Castro-Baucom L(3), Stockwell 
+MS(10)(13).
+
+Author information:
+(1)Department of Pediatrics, University of Colorado School of Medicine and 
+Children's Hospital Colorado, Aurora, Colorado.
+(2)Departments of Pediatrics.
+(3)Population Health, NYU Grossman School of Medicine, New York, New York.
+(4)Division of Infectious Diseases.
+(5)Department of Pediatrics and Radiology, Children's Hospital Los Angeles, Keck 
+School of Medicine, University of Southern California, Los Angeles, California.
+(6)Child and Adolescent Psychiatry, New York University Grossman School of 
+Medicine, New York, New York.
+(7)Department of Pediatrics and Rehabilitation Medicine, Children's Hospital of 
+Philadelphia, Philadelphia, Pennsylvania.
+(8)Division of Pulmonary Medicine, Cincinnati Children's Hospital Medical 
+Center, University of Cincinnati College of Medicine, Cincinnati, Ohio.
+(9)Biomedical Research Informatics Center, Nemours Children's Health, Nemours 
+Children's Hospital, Delaware, Wilmington, Delaware.
+(10)Department of Pediatrics, Columbia University Vagelos College of Physicians 
+and Surgeons, New York, New York.
+(11)Division of Infectious Diseases, Ann & Robert H. Lurie Children's Hospital 
+of Chicago, Chicago, Illinois.
+(12)Department of Pediatrics, University of California, San Diego, School of 
+Medicine, San Diego, California.
+(13)Department of Population and Family Health, Columbia University Mailman 
+School of Public Health, New York, New York.
+
+The coronavirus disease 2019 (COVID-19) pandemic has caused significant medical, 
+social, and economic impacts globally, both in the short and long term. Although 
+most individuals recover within a few days or weeks from an acute infection, 
+some experience longer lasting effects. Data regarding the postacute sequelae of 
+severe acute respiratory syndrome coronavirus 2 infection (PASC) in children, or 
+long COVID, are only just emerging in the literature. These symptoms and 
+conditions may reflect persistent symptoms from acute infection (eg, cough, 
+headaches, fatigue, and loss of taste and smell), new symptoms like dizziness, 
+or exacerbation of underlying conditions. Children may develop conditions de 
+novo, including postural orthostatic tachycardia syndrome, myalgic 
+encephalomyelitis/chronic fatigue syndrome, autoimmune conditions and 
+multisystem inflammatory syndrome in children. This state-of-the-art narrative 
+review provides a summary of our current knowledge about PASC in children, 
+including prevalence, epidemiology, risk factors, clinical characteristics, 
+underlying mechanisms, and functional outcomes, as well as a conceptual 
+framework for PASC based on the current National Institutes of Health 
+definition. We highlight the pediatric components of the National Institutes of 
+Health-funded Researching COVID to Enhance Recovery Initiative, which seeks to 
+characterize the natural history, mechanisms, and long-term health effects of 
+PASC in children and young adults to inform future treatment and prevention 
+efforts. These initiatives include electronic health record cohorts, which offer 
+rapid assessments at scale with geographical and demographic diversity, as well 
+as longitudinal prospective observational cohorts, to estimate disease burden, 
+illness trajectory, pathobiology, and clinical manifestations and outcomes.
+
+Copyright © 2024 by the American Academy of Pediatrics.
+
+DOI: 10.1542/peds.2023-062570
+PMCID: PMC10904902
+PMID: 38321938 [Indexed for MEDLINE]
+
+Conflict of interest statement: CONFLICT OF INTEREST DISCLOSURES: Dr Rao reports 
+previous grant support from GSK and Biofire, and was a former consultant for 
+Sequiris. Dr Jhaveri is a consultant for AstraZeneca, Seqirus, and Dynavax, and 
+receives an editorial stipend from Elsevier. All other authors have indicated 
+they have no conflicts of interest relevant to this article to disclose.

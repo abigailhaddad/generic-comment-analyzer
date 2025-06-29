@@ -132,6 +132,7 @@ def analyze_single_comment_custom(stance_options: List[str], system_prompt: str,
 
 Respond in JSON format with:
 - stances: list of stance names that apply (from the stance options in the system prompt)
+- new_stances: list of any additional stance names that don't fit the predefined options but are clearly expressed in the comment. IMPORTANT: Only include stances that are DRAMATICALLY different from the predefined options - not just minor variations, rewordings, or closely related positions. The new stance must represent a fundamentally different perspective that cannot reasonably be categorized under any existing stance. Examples of what should NOT qualify: slightly different wording of existing stances, more specific versions of broad existing stances, or opposing degrees of the same topic. Examples of what SHOULD qualify: completely different subject matters, entirely new regulatory approaches, or fundamentally different philosophical frameworks not represented in the predefined stances.
 - key_quote: most important quote from the comment (max 100 words)
 - rationale: brief explanation of why these stances were selected
 """
@@ -152,6 +153,7 @@ Respond in JSON format with:
         
         analysis_result = {
             'stances': result.get('stances', []),
+            'new_stances': result.get('new_stances', []),
             'key_quote': result.get('key_quote', ''),
             'rationale': result.get('rationale', '')
         }
