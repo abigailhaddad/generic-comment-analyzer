@@ -444,16 +444,26 @@ def main():
             if unique_values:
                 logger.info(f"  {field}: {list(unique_values)[:10]} (showing first 10)")
         
-        # Calculate stats
-        stats = calculate_stats(analyzed_comments, field_analysis)
+        # Save analyzed comments to JSON for pipeline processing
+        temp_json = f"temp_analyzed_comments_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        with open(temp_json, 'w', encoding='utf-8') as f:
+            json.dump(analyzed_comments, f, indent=2, ensure_ascii=False)
         
-        # Generate HTML report using main generate_report with all features
+        # Use the pipeline to process data and generate report
         output_file = f"stance_test_report_{args.strategy}_{args.count}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+        processed_json = f"processed_stance_data_{args.strategy}_{args.count}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         
-        # Import the generate_html function from parent directory
-        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        from generate_report import generate_html
-        generate_html(analyzed_comments, stats, field_analysis, output_file)
+        # Run the pipeline
+        from stance_analysis_pipeline import process_stance_analysis, generate_report_from_json
+        
+        # Process the data (calculates all statistics, co-occurrences, unusual combinations)
+        processed_data = process_stance_analysis(analyzed_comments, processed_json)
+        
+        # Generate HTML from processed data
+        generate_report_from_json(processed_json, output_file)
+        
+        # Clean up temp file
+        os.unlink(temp_json)
         
         logger.info(f"✅ Report generated: {output_file}")
         
