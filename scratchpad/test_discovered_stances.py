@@ -325,6 +325,8 @@ def main():
                        help='Number of comments to analyze with discovered stances')
     parser.add_argument('--json-file', type=str, default=None,
                        help='Specific JSON file to use (defaults to most recent)')
+    parser.add_argument('--csv-file', type=str, default='../comments.csv',
+                       help='CSV file to use for loading comments (default: ../comments.csv)')
     
     args = parser.parse_args()
     
@@ -352,10 +354,16 @@ def main():
         logger.info(f"Regulation description: {discovered['regulation_description']}")
         
         # Load comments for testing with proper column mapping
-        csv_file = '../comments.csv'
-        logger.info("Loading comments for testing...")
+        csv_file = args.csv_file
+        logger.info(f"Loading comments for testing from {csv_file}...")
         from stance_analysis_pipeline import load_and_standardize_csv
-        all_comments = load_and_standardize_csv(csv_file)
+        
+        # Process attachments for a small sample to avoid long download times
+        process_attachments = args.analyze_sample <= 10  # Only process attachments for small samples
+        if process_attachments:
+            logger.info("Small sample detected - will process attachments")
+        
+        all_comments = load_and_standardize_csv(csv_file, process_attachments, 'test_attachments')
         
         # Sample comments if needed (same logic as load_comments_sample)
         import random

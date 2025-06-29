@@ -1,0 +1,42 @@
+Improving Performance, Accountability and Responsiveness in the Civil Service
+OPM-2025-0004-0001
+
+***START of Public Comment***
+Bottom line: the new proposed act could cause future legal challenges, using the 1st, 5th, and 14th amendments, based upon OPM’s interpretation of the Administrative Procedure Act.  It may be wise to either reconsider / address, or at the very least, strength the OPM’s argument that the President should have unlimited and unrestricted control, (ie: without legal oversight), if future legal challenges wish to be prevented. 
+
+Further insight:
+Human:
+Are there any legal arguments against OPM's new proposal?
+
+AI’s Response:
+Yes, there are several potentially strong legal arguments against the OPM’s proposed rule. Here’s a breakdown:
+1.	Due Process Violations (Fifth Amendment): The most significant challenge centers on due process. Removing MSPB appeal rights for Schedule Policy/Career employees arguably violates their Fifth Amendment right to due process. While the government has some leeway in regulating employment, completely eliminating the ability to challenge adverse actions could be deemed unconstitutional.
+2.	Administrative Procedure Act (APA) Violations: Critics could argue that OPM did not adequately justify the rule under the APA, particularly regarding the significant change in employee rights. The APA requires agencies to provide a reasoned explanation for their actions, and opponents could argue that OPM’s rationale is insufficient or relies on flawed assumptions.
+3.	Separation of Powers Concerns: Some legal scholars argue that the rule encroaches on the authority of Congress, which has the power to establish the rules governing the civil service. By unilaterally altering employee rights, OPM may be exceeding its delegated authority.
+4.	Statutory Conflicts (5 U.S.C. Chapter 75): The existing statutory framework governing adverse actions (Chapter 75 of Title 5) provides significant protections for federal employees. Opponents could argue that the rule effectively nullifies those statutory protections for Schedule Policy/Career employees, creating a conflict.
+5.	First Amendment Concerns: If the rule is used to retaliate against employees for exercising their First Amendment rights (e.g., speaking out against government policies), it could be challenged as unconstitutional viewpoint discrimination.
+6.	Violation of the Civil Service Reform Act of 1978: This Act established the MSPB and aimed to protect federal employees from political interference. The proposed rule could be seen as undermining the core principles of the Act.
+7.	Arbitrary and Capricious Standard (APA): Opponents could argue the rule is “arbitrary and capricious” under the APA, meaning it lacks a rational basis or is not supported by substantial evidence. The reliance on assumptions about improved performance and reduced litigation could be challenged as unsupported.  (Human side note: Paradoxically, the lack of due process could increase legal challenges, based on constitutional claims.)
+8.	Equal Protection Concerns (Fourteenth Amendment): If the rule is applied in a discriminatory manner, it could violate the Equal Protection Clause of the Fourteenth Amendment.
+These legal challenges are not guaranteed to succeed, but they represent significant hurdles that the OPM would need to overcome if the rule were to be implemented and subsequently challenged in court. The outcome would likely depend on the specific facts of any case and the interpretation of the courts.
+***End of AI Response***
+
+Human:
+Doesn't the OPM argue that their understanding of all rules and laws now suggests that it's up to the president of the United States, and therefore not arbitrary or capricious?
+
+AI’s response:
+You are absolutely correct to identify that as a core element of the OPM’s justification. They do heavily rely on the argument that the President has broad authority over Schedule C and now, by extension, Schedule Policy/Career positions, and therefore any actions taken under this authority are not arbitrary or capricious.
+Here's how that argument manifests in the document:
+•	Executive Order Reliance: The OPM repeatedly emphasizes the basis of the rule in Executive Orders 13957 and 14171, framing these orders as legitimate exercises of presidential authority.
+•	Presidential Discretion: They assert that the President has the discretion to determine which positions are “policy-determining” or “policy-making” and therefore appropriate for Schedule Policy/Career.
+•	Rejection of Prior Interpretations: The OPM effectively argues that prior interpretations of the law limiting presidential control over these positions were incorrect. They suggest that a more deferential view of presidential authority is now warranted.
+•	“Not Arbitrary or Capricious” Claim: By asserting that the President has broad discretion, they implicitly argue that any decisions made under this authority—including designating positions and removing employees—cannot be considered arbitrary or capricious, even if they are controversial.
+However, this argument is itself open to challenge. Critics could argue:
+•	Statutory Limits: That Congress has placed limits on the President’s ability to create excepted service schedules and remove employees.
+•	Delegation Doctrine: That the President has improperly delegated legislative authority to themselves by broadly defining “policy-determining” positions without clear statutory guidance.
+•	Abuse of Discretion: That even if the President has discretion, that discretion is not unlimited and can be reviewed if it is exercised in a manner that is demonstrably unreasonable or violates constitutional principles.
+In essence, the OPM is attempting to establish a legal framework where presidential control over Schedule Policy/Career positions is paramount, effectively shielding those actions from judicial scrutiny under the “arbitrary and capricious” standard. Whether this argument will succeed is a key legal question.
+***End of AI Response***
+
+It may be helpful to avoid future legal challenges to address how the 1st, 5th, and or 14th amendment may or may not apply to Federal careerists, especially those that would fall under the Schedule Policy/Career category.  It's simply not enough to suggest that "ahh, I'm sure their boss won't fire them without cause; there's no possible way this could ever be abused..." Otherwise, legal challenges will present themselves most assuredly. Only, in this case, without the MSPB, these new legal claims will take up the time of the lower and higher courts. 
+***END OF Public Comment***

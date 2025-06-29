@@ -121,6 +121,35 @@ def calculate_stance_cooccurrence(comments: List[Dict[str, Any]], stance_list: L
     
     return cooccurrence
 
+def identify_unusual_combinations(stances: List[str], cooccurrence: Dict[str, Dict[str, int]], total_comments: int, threshold: float = 0.02) -> bool:
+    """Check if a comment has an unusual combination of stances.
+    
+    Args:
+        stances: List of stances in the comment
+        cooccurrence: Co-occurrence matrix
+        total_comments: Total number of comments
+        threshold: Consider combinations unusual if they occur in less than this fraction of comments
+    
+    Returns:
+        True if the comment has an unusual combination
+    """
+    if len(stances) < 2:
+        return False
+    
+    # Check all pairs of stances
+    for i, stance1 in enumerate(stances):
+        for stance2 in stances[i+1:]:
+            if stance1 in cooccurrence and stance2 in cooccurrence[stance1]:
+                # How often do these two stances appear together?
+                pair_count = cooccurrence[stance1][stance2]
+                pair_frequency = pair_count / total_comments if total_comments > 0 else 0
+                
+                # If this pair is very rare (appears in less than threshold of comments), it's unusual
+                if pair_count > 0 and pair_frequency < threshold:
+                    return True
+    
+    return False
+
 def calculate_stats(comments: List[Dict[str, Any]], field_analysis: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
     """Calculate summary statistics."""
     total_comments = len(comments)
@@ -1059,34 +1088,41 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                         <div class="column-visibility-item">
                             <input type="checkbox" id="col-4" checked onchange="toggleColumn(4)">
                             <label for="col-4">Stances</label>
-                        </div>
+                        </div>"""
+    
+    # Always add new_stances visibility control
+    html_template += """
                         <div class="column-visibility-item">
                             <input type="checkbox" id="col-5" checked onchange="toggleColumn(5)">
-                            <label for="col-5">Comment</label>
+                            <label for="col-5">New Stances</label>
                         </div>
                         <div class="column-visibility-item">
                             <input type="checkbox" id="col-6" checked onchange="toggleColumn(6)">
-                            <label for="col-6">Attachments</label>
+                            <label for="col-6">Comment</label>
                         </div>
                         <div class="column-visibility-item">
                             <input type="checkbox" id="col-7" checked onchange="toggleColumn(7)">
-                            <label for="col-7">Dup Count</label>
+                            <label for="col-7">Attachments</label>
                         </div>
                         <div class="column-visibility-item">
                             <input type="checkbox" id="col-8" checked onchange="toggleColumn(8)">
-                            <label for="col-8">Dup Ratio</label>
+                            <label for="col-8">Dup Count</label>
                         </div>
                         <div class="column-visibility-item">
-                            <input type="checkbox" id="col-9" onchange="toggleColumn(9)">
-                            <label for="col-9">Attachment</label>
+                            <input type="checkbox" id="col-9" checked onchange="toggleColumn(9)">
+                            <label for="col-9">Dup Ratio</label>
                         </div>
                         <div class="column-visibility-item">
                             <input type="checkbox" id="col-10" onchange="toggleColumn(10)">
-                            <label for="col-10">Key Quote (LLM)</label>
+                            <label for="col-10">Attachment</label>
                         </div>
                         <div class="column-visibility-item">
                             <input type="checkbox" id="col-11" onchange="toggleColumn(11)">
-                            <label for="col-11">Rationale (LLM)</label>
+                            <label for="col-11">Key Quote (LLM)</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-12" onchange="toggleColumn(12)">
+                            <label for="col-12">Rationale (LLM)</label>
                         </div>
                     </div>
                 </div>
@@ -1117,51 +1153,86 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                             </th>
                             <th class="filterable" data-column="4">
                                 Stances <span class="filter-arrow" onclick="toggleFilter(4)">▼</span>
-                                <div class="filter-dropdown" id="filter-4" style="display: none;">
-                                    {"".join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="{stance}" onchange="filterTable()"> {stance}</label>' for stance in field_analysis.get('stances', {}).get('unique_values', []))}
+                                <div class="filter-dropdown" id="filter-4" style="display: none;">"""
+    
+    # Build stance checkboxes
+    stance_checkboxes = ''.join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="{stance}" onchange="filterTable()"> {stance}</label>' 
+                                for stance in field_analysis.get('stances', {}).get('unique_values', []))
+    
+    html_template += stance_checkboxes
+    html_template += """
+                                    <hr style="margin: 5px 0;">
+                                    <label class="filter-checkbox"><input type="checkbox" data-filter="unusual_combo" value="yes" onchange="filterTable()"> ⚠️ Unusual Combinations</label>
                                 </div>
-                            </th>
+                            </th>"""
+    
+    # Always add new_stances column
+    html_template += """
                             <th class="filterable" data-column="5">
-                                Comment <span class="filter-arrow" onclick="toggleFilter(5)">▼</span>
-                                <div class="filter-dropdown" id="filter-5" style="display: none;">
-                                    <input type="text" class="filter-input" data-column="5" placeholder="Search comment text..." onkeyup="filterTable()">
+                                New Stances <span class="filter-arrow" onclick="toggleFilter(5)">▼</span>
+                                <div class="filter-dropdown" id="filter-5" style="display: none;">"""
+    
+    # Build new stance checkboxes
+    new_stance_checkboxes = ''.join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="new_stances" value="{stance}" onchange="filterTable()"> {stance}</label>' 
+                                    for stance in field_analysis.get('new_stances', {}).get('unique_values', []))
+    
+    html_template += new_stance_checkboxes
+    html_template += """
                                 </div>
                             </th>
                             <th class="filterable" data-column="6">
-                                📎 <span class="filter-arrow" onclick="toggleFilter(6)">▼</span>
+                                Comment <span class="filter-arrow" onclick="toggleFilter(6)">▼</span>
                                 <div class="filter-dropdown" id="filter-6" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="6" placeholder="Search comment text..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="7">
+                                📎 <span class="filter-arrow" onclick="toggleFilter(7)">▼</span>
+                                <div class="filter-dropdown" id="filter-7" style="display: none;">
                                     <label class="filter-checkbox"><input type="checkbox" data-filter="attachments" value="yes" onchange="filterTable()"> With attachments</label>
                                     <label class="filter-checkbox"><input type="checkbox" data-filter="attachments" value="no" onchange="filterTable()"> No attachments</label>
                                 </div>
                             </th>
-                            <th class="filterable" data-column="7">
-                                Dup Count <span class="filter-arrow" onclick="toggleFilter(7)">▼</span>
-                                <div class="filter-dropdown" id="filter-7" style="display: none;">
-                                    {"".join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="duplication_count" value="{count}" onchange="filterTable()"> {count}</label>' for count in sorted(field_analysis.get('duplication_count', {}).get('unique_values', []), reverse=True))}
-                                </div>
-                            </th>
                             <th class="filterable" data-column="8">
-                                Dup Ratio <span class="filter-arrow" onclick="toggleFilter(8)">▼</span>
-                                <div class="filter-dropdown" id="filter-8" style="display: none;">
-                                    {"".join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="duplication_ratio" value="{ratio}" onchange="filterTable()"> 1:{ratio}</label>' for ratio in sorted(field_analysis.get('duplication_ratio', {}).get('unique_values', []), reverse=True))}
+                                Dup Count <span class="filter-arrow" onclick="toggleFilter(8)">▼</span>
+                                <div class="filter-dropdown" id="filter-8" style="display: none;">"""
+    
+    # Build duplication count checkboxes
+    dup_count_checkboxes = ''.join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="duplication_count" value="{count}" onchange="filterTable()"> {count}</label>' 
+                                   for count in sorted(field_analysis.get('duplication_count', {}).get('unique_values', []), reverse=True))
+    
+    html_template += dup_count_checkboxes
+    html_template += """
                                 </div>
                             </th>
-                            <th class="filterable" data-column="9" style="display: none;">
-                                Attachment <span class="filter-arrow" onclick="toggleFilter(9)">▼</span>
-                                <div class="filter-dropdown" id="filter-9" style="display: none;">
-                                    <input type="text" class="filter-input" data-column="9" placeholder="Search attachment text..." onkeyup="filterTable()">
+                            <th class="filterable" data-column="9">
+                                Dup Ratio <span class="filter-arrow" onclick="toggleFilter(9)">▼</span>
+                                <div class="filter-dropdown" id="filter-9" style="display: none;">"""
+    
+    # Build duplication ratio checkboxes
+    dup_ratio_checkboxes = ''.join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="duplication_ratio" value="{ratio}" onchange="filterTable()"> 1:{ratio}</label>' 
+                                   for ratio in sorted(field_analysis.get('duplication_ratio', {}).get('unique_values', []), reverse=True))
+    
+    html_template += dup_ratio_checkboxes
+    html_template += """
                                 </div>
                             </th>
                             <th class="filterable" data-column="10" style="display: none;">
-                                Key Quote <span class="filter-arrow" onclick="toggleFilter(10)">▼</span>
+                                Attachment <span class="filter-arrow" onclick="toggleFilter(10)">▼</span>
                                 <div class="filter-dropdown" id="filter-10" style="display: none;">
-                                    <input type="text" class="filter-input" data-column="10" placeholder="Search quotes..." onkeyup="filterTable()">
+                                    <input type="text" class="filter-input" data-column="10" placeholder="Search attachment text..." onkeyup="filterTable()">
                                 </div>
                             </th>
                             <th class="filterable" data-column="11" style="display: none;">
-                                Rationale <span class="filter-arrow" onclick="toggleFilter(11)">▼</span>
+                                Key Quote <span class="filter-arrow" onclick="toggleFilter(11)">▼</span>
                                 <div class="filter-dropdown" id="filter-11" style="display: none;">
-                                    <input type="text" class="filter-input" data-column="11" placeholder="Search rationale..." onkeyup="filterTable()">
+                                    <input type="text" class="filter-input" data-column="11" placeholder="Search quotes..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="12" style="display: none;">
+                                Rationale <span class="filter-arrow" onclick="toggleFilter(12)">▼</span>
+                                <div class="filter-dropdown" id="filter-12" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="12" placeholder="Search rationale..." onkeyup="filterTable()">
                                 </div>
                             </th>
                         </tr>
@@ -1197,8 +1268,20 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
             except:
                 formatted_date = date_str[:10] if len(date_str) >= 10 else date_str
         
-        # Stances display
-        stances_html = '<div class="stances-container">' + ' '.join(f'<span class="stance-tag">{stance}</span>' for stance in stances) + '</div>' if stances else '<span style="color: #999;">None</span>'
+        # Check if this comment has unusual stance combinations
+        # Use pre-calculated flag if available, otherwise calculate it
+        has_unusual_combo = analysis.get('has_unusual_combination', False)
+        if 'has_unusual_combination' not in analysis:
+            # Fallback: calculate it if not pre-processed
+            has_unusual_combo = identify_unusual_combinations(stances, stats.get('stance_cooccurrence', {}), stats['total_comments'])
+        
+        # Stances display (add warning icon if unusual combination)
+        unusual_indicator = ' <span style="color: #ff9800; font-weight: bold;">⚠️</span>' if has_unusual_combo else ''
+        stances_html = '<div class="stances-container">' + ' '.join(f'<span class="stance-tag">{stance}</span>' for stance in stances) + unusual_indicator + '</div>' if stances else '<span style="color: #999;">None</span>'
+        
+        # New stances display
+        new_stances = analysis.get('new_stances', [])
+        new_stances_html = '<div class="stances-container">' + ' '.join(f'<span class="stance-tag" style="background: #e8f5e8; color: #2e7d32; border: 1px solid #c8e6c9;">{stance}</span>' for stance in new_stances) + '</div>' if new_stances else '<span style="color: #999;">None</span>'
         
         # Full comment text with tooltip
         full_text = comment.get('comment_text', '')
@@ -1235,6 +1318,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                                 {submitter_cell}
                                 {organization_cell}
                                 <td>{stances_html}</td>
+                                <td>{new_stances_html}</td>
                                 {comment_cell}
                                 <td>{has_attachments}</td>
                                 <td>{count_display}</td>
@@ -1285,15 +1369,20 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
     </div>
 
     <script>
-        // Column visibility state
+        // Column visibility state (13 columns with new_stances)
         const columnVisibility = {{
-            0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: true, 9: false, 10: false, 11: false
+            0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: true, 9: true, 10: false, 11: false, 12: false
         }};
 
         // Initialize column visibility on page load
         document.addEventListener('DOMContentLoaded', function() {{
             for (const [col, visible] of Object.entries(columnVisibility)) {{
                 updateColumnVisibility(parseInt(col), visible);
+                // Also update the checkbox state
+                const checkbox = document.getElementById('col-' + col);
+                if (checkbox) {{
+                    checkbox.checked = visible;
+                }}
             }}
         }});
 
@@ -1343,15 +1432,22 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
             
             // Get checkbox filters
             const stanceCheckboxes = document.querySelectorAll('input[data-filter="stances"]:checked');
+            const newStanceCheckboxes = document.querySelectorAll('input[data-filter="new_stances"]:checked');
+            const unusualComboCheckboxes = document.querySelectorAll('input[data-filter="unusual_combo"]:checked');
             const attachmentCheckboxes = document.querySelectorAll('input[data-filter="attachments"]:checked');
             const duplicationCountCheckboxes = document.querySelectorAll('input[data-filter="duplication_count"]:checked');
             const duplicationRatioCheckboxes = document.querySelectorAll('input[data-filter="duplication_ratio"]:checked');
             
             const selectedStances = Array.from(stanceCheckboxes).map(cb => cb.value.toLowerCase());
+            const selectedNewStances = Array.from(newStanceCheckboxes).map(cb => cb.value.toLowerCase());
+            const filterUnusualCombos = unusualComboCheckboxes.length > 0;
             const selectedAttachments = Array.from(attachmentCheckboxes).map(cb => cb.value);
             const selectedDuplicationCounts = Array.from(duplicationCountCheckboxes).map(cb => parseInt(cb.value));
             const selectedDuplicationRatios = Array.from(duplicationRatioCheckboxes).map(cb => parseInt(cb.value));
 
+            // Always assume new_stances column exists (column 5)
+            const hasNewStances = true;
+            
             // Filter each row
             for (let i = 1; i < rows.length; i++) {{
                 const row = rows[i];
@@ -1377,9 +1473,30 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                     }}
                 }}
                 
-                // Check attachments filter (column 6)
+                // Check unusual combination filter
+                if (showRow && filterUnusualCombos) {{
+                    const stanceCell = cells[4].innerHTML;
+                    if (!stanceCell.includes('⚠️')) {{
+                        showRow = false;
+                    }}
+                }}
+                
+                // Check new stance filter (column 5 if exists)
+                if (showRow && hasNewStances && selectedNewStances.length > 0) {{
+                    const newStanceText = cells[5].textContent.toLowerCase();
+                    if (!selectedNewStances.some(stance => newStanceText.includes(stance))) {{
+                        showRow = false;
+                    }}
+                }}
+                
+                // Column positions shift by 1 when new_stances exists
+                const attachmentCol = hasNewStances ? 7 : 6;
+                const dupCountCol = hasNewStances ? 8 : 7;
+                const dupRatioCol = hasNewStances ? 9 : 8;
+                
+                // Check attachments filter
                 if (showRow && selectedAttachments.length > 0) {{
-                    const attachmentCell = cells[6];
+                    const attachmentCell = cells[attachmentCol];
                     const hasAttachment = attachmentCell.textContent.trim() !== '';
                     
                     let attachmentMatch = false;
@@ -1399,9 +1516,9 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                     }}
                 }}
                 
-                // Check duplication count filter (column 7)
+                // Check duplication count filter
                 if (showRow && selectedDuplicationCounts.length > 0) {{
-                    const duplicationCell = cells[7];
+                    const duplicationCell = cells[dupCountCol];
                     const duplicationText = duplicationCell.textContent.trim();
                     const duplicationCount = parseInt(duplicationText);
                     
@@ -1410,9 +1527,9 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                     }}
                 }}
                 
-                // Check duplication ratio filter (column 8)
+                // Check duplication ratio filter
                 if (showRow && selectedDuplicationRatios.length > 0) {{
-                    const ratioCell = cells[8];
+                    const ratioCell = cells[dupRatioCol];
                     const ratioText = ratioCell.textContent.trim();
                     // Extract number after "1:" (e.g., "1:10" -> 10)
                     const ratioMatch = ratioText.match(/1:(\\d+)/);

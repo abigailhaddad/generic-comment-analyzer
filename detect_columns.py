@@ -129,8 +129,7 @@ You need to identify columns for these required fields:
 - text: The main comment/text content (required)
 - id: Unique identifier for each comment (required) 
 - date: Date/timestamp when comment was submitted
-- first_name: Submitter's first name (or combined name field)
-- last_name: Submitter's last name
+- submitter: Submitter's name field (look for existing full name field or note if separate first/last)  
 - organization: Organization/company name
 - attachment_files: Files attached to comments (often contains URLs or file paths)
 
@@ -141,8 +140,7 @@ Example output:
   "text": "Comment",
   "id": "Document ID", 
   "date": "Posted Date",
-  "first_name": "First Name",
-  "last_name": "Last Name",
+  "submitter": "Full Name",
   "organization": "Organization Name",
   "attachment_files": "Content Files"
 }"""
@@ -158,10 +156,9 @@ Identify which columns contain:
 1. text: Main comment/text content (REQUIRED - this is the most important field)
 2. id: Unique identifier (REQUIRED)
 3. date: Submission date/timestamp
-4. first_name: Submitter first name
-5. last_name: Submitter last name  
-6. organization: Organization/company name
-7. attachment_files: File attachments (URLs, file paths, etc.)
+4. submitter: Submitter name field
+5. organization: Organization/company name  
+6. attachment_files: File attachments (URLs, file paths, etc.)
 
 Return only the JSON mapping."""
 
@@ -228,19 +225,13 @@ def _fallback_column_detection(columns: List[str]) -> Dict[str, str]:
         column_mapping['date'] = date_col
         logger.info(f"Found date column: '{date_col}'")
     
-    # Submitter name fields
-    first_name_candidates = ['First Name', 'first_name', 'firstName', 'submitter_first']
-    last_name_candidates = ['Last Name', 'last_name', 'lastName', 'submitter_last']
+    # Submitter name field
+    submitter_candidates = ['Submitter', 'submitter', 'Name', 'name', 'Full Name', 'full_name', 'First Name', 'Last Name']
     
-    first_name_col = next((col for col in columns if col in first_name_candidates), None)
-    last_name_col = next((col for col in columns if col in last_name_candidates), None)
-    
-    if first_name_col:
-        column_mapping['first_name'] = first_name_col
-        logger.info(f"Found first name column: '{first_name_col}'")
-    if last_name_col:
-        column_mapping['last_name'] = last_name_col
-        logger.info(f"Found last name column: '{last_name_col}'")
+    submitter_col = next((col for col in columns if col in submitter_candidates), None)
+    if submitter_col:
+        column_mapping['submitter'] = submitter_col
+        logger.info(f"Found submitter column: '{submitter_col}'")
     
     # Organization field
     org_candidates = ['Organization Name', 'organization', 'Organization', 'org', 'company', 'Company']
