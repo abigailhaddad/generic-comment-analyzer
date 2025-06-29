@@ -10,6 +10,7 @@ import argparse
 import json
 import sys
 import os
+import pandas as pd
 from typing import List, Dict, Any
 from datetime import datetime
 
@@ -23,6 +24,71 @@ from generate_report import (
     identify_unusual_combinations,
     load_regulation_metadata
 )
+
+
+def load_column_mappings() -> Dict[str, str]:
+    """Load column mappings from JSON file."""
+    config_files = ['../column_mapping.json', 'column_mapping.json']
+    for config_file in config_files:
+        if os.path.exists(config_file):
+            try:
+                with open(config_file, 'r') as f:
+                    return json.load(f)
+            except:
+                pass
+    
+    # Fallback defaults
+    return {
+        'text': 'Comment',
+        'id': 'Document ID', 
+        'date': 'Posted Date',
+        'submitter': 'submitter',
+        'organization': 'organization'
+    }
+
+
+def load_and_standardize_csv(csv_file: str) -> List[Dict[str, Any]]:
+    """Load CSV and create standardized field names based on column mapping.
+    
+    Args:
+        csv_file: Path to CSV file
+        
+    Returns:
+        List of comment dictionaries with standardized field names
+    """
+    print(f"Loading CSV data from {csv_file}...")
+    
+    # Load column mappings
+    column_mappings = load_column_mappings()
+    print(f"Using column mappings: {column_mappings}")
+    
+    # Read CSV
+    df = pd.read_csv(csv_file)
+    print(f"Loaded {len(df)} rows from CSV")
+    
+    comments = []
+    for _, row in df.iterrows():
+        comment = {}
+        
+        # Map CSV columns to standardized field names
+        for standard_field, csv_column in column_mappings.items():
+            if csv_column in df.columns:
+                comment[standard_field] = str(row[csv_column]) if pd.notna(row[csv_column]) else ''
+            else:
+                comment[standard_field] = ''
+                if csv_column != 'attachment_files':  # Don't warn about optional fields
+                    print(f"Warning: Column '{csv_column}' not found in CSV for field '{standard_field}'")
+        
+        # Ensure required fields exist
+        if not comment.get('id'):
+            comment['id'] = f"row_{len(comments)}"
+        if not comment.get('text'):
+            continue  # Skip rows without text
+            
+        comments.append(comment)
+    
+    print(f"Processed {len(comments)} comments with text content")
+    return comments
 
 
 def process_stance_analysis(comments: List[Dict[str, Any]], output_json: str) -> Dict[str, Any]:
@@ -129,7 +195,9 @@ def generate_report_from_json(json_file: str, output_html: str):
 def main():
     parser = argparse.ArgumentParser(description='Process stance analysis and generate report')
     parser.add_argument('--input', type=str, required=True, 
-                       help='Input JSON file with analyzed comments')
+                       help='Input file (JSON with analyzed comments or CSV)')
+    parser.add_argument('--input-type', type=str, choices=['json', 'csv'], default='json',
+                       help='Type of input file (json or csv)')
     parser.add_argument('--output-json', type=str, default='processed_stance_data.json',
                        help='Output JSON file for processed data')
     parser.add_argument('--output-html', type=str, default='stance_analysis_report.html',
@@ -142,9 +210,13 @@ def main():
     try:
         if not args.skip_processing:
             # Load input comments
-            print(f"Loading comments from {args.input}...")
-            with open(args.input, 'r', encoding='utf-8') as f:
-                comments = json.load(f)
+            if args.input_type == 'csv':
+                print(f"Loading and standardizing CSV data from {args.input}...")
+                comments = load_and_standardize_csv(args.input)
+            else:
+                print(f"Loading analyzed comments from {args.input}...")
+                with open(args.input, 'r', encoding='utf-8') as f:
+                    comments = json.load(f)
             
             print(f"Loaded {len(comments)} comments")
             

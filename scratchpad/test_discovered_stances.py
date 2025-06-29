@@ -20,7 +20,7 @@ from tqdm import tqdm
 # Add parent directory to path to import modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from discover_stances_experiment import discover_stances_experimental, load_comments_sample
+from discover_stances_experiment import discover_stances_experimental
 from comment_analyzer import CommentAnalyzer
 from generate_report import generate_html, analyze_field_types, calculate_stats
 
@@ -156,17 +156,17 @@ Respond in JSON format with:
             'rationale': result.get('rationale', '')
         }
         
-        # Create comment record with proper submitter field
+        # Create comment record preserving original data
         analyzed_comment = {
             'id': comment.get('id', f'test-{comment_index}'),
             'text': comment['text'],
             'comment_text': comment['text'],
-            'date': datetime.now().isoformat(),
-            'submitter': f'Test User {comment_index}',  # Use submitter field instead of separate first/last
-            'organization': f'Test Org {comment_index % 3}',  # Some variety in orgs
-            'attachment_text': '',
-            'duplication_count': 1,
-            'duplication_ratio': 1,
+            'date': comment.get('date', datetime.now().isoformat()),
+            'submitter': comment.get('submitter', ''),  # Preserve original submitter data
+            'organization': comment.get('organization', ''),  # Preserve original organization data
+            'attachment_text': comment.get('attachment_text', ''),
+            'duplication_count': comment.get('duplication_count', 1),
+            'duplication_ratio': comment.get('duplication_ratio', 1),
             'analysis': analysis_result
         }
         
@@ -261,9 +261,8 @@ Instructions:
             # Submit all comments in this batch
             future_to_comment = {}
             for i, comment in enumerate(batch_comments):
-                analyzer = create_analyzer()
                 comment_index = batch_start + i
-                future = executor.submit(analyze_single_comment, analyzer, comment, comment_index)
+                future = executor.submit(analyze_single_comment_custom, stance_options, system_prompt, comment, comment_index)
                 future_to_comment[future] = comment
             
             # Collect results as they complete
@@ -352,10 +351,18 @@ def main():
             logger.info(f"  {i}. {stance['name']}")
         logger.info(f"Regulation description: {discovered['regulation_description']}")
         
-        # Load comments for testing
+        # Load comments for testing with proper column mapping
         csv_file = '../comments.csv'
         logger.info("Loading comments for testing...")
-        comments = load_comments_sample(csv_file, args.analyze_sample * 2)
+        from stance_analysis_pipeline import load_and_standardize_csv
+        all_comments = load_and_standardize_csv(csv_file)
+        
+        # Sample comments if needed (same logic as load_comments_sample)
+        import random
+        if len(all_comments) > args.analyze_sample * 2:
+            comments = random.sample(all_comments, args.analyze_sample * 2)
+        else:
+            comments = all_comments
         
         if not comments:
             logger.error("No comments found")
@@ -363,12 +370,10 @@ def main():
         
         # Create analyzer with discovered stances
         logger.info("Creating analyzer with discovered stances...")
-        analyzer = create_analyzer_from_discovered_stances(discovered)
         
-        # Analyze test comments using fixed function
+        # Analyze test comments using updated function that preserves real data
         logger.info(f"Analyzing {args.analyze_sample} test comments...")
-        from analyze_comments_fixed import analyze_comments_sample_fixed
-        analyzed_comments = analyze_comments_sample_fixed(comments, discovered, args.analyze_sample)
+        analyzed_comments = analyze_comments_sample(comments, discovered, args.analyze_sample)
         
         if not analyzed_comments:
             logger.error("No comments were successfully analyzed")
