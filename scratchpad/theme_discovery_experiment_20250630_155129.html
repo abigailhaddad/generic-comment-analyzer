@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stance Discovery Experiment Results</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .results-table {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #2c3e50;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: top;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .strategy-original {
+            background: #e3f2fd;
+        }
+        
+        .strategy-mutually_exclusive {
+            background: #f3e5f5;
+        }
+        
+        .stance-list {
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        
+        .stance-item {
+            margin-bottom: 8px;
+            padding: 4px 8px;
+            background: #ffffff;
+            border-left: 3px solid #007bff;
+            border-radius: 4px;
+        }
+        
+        .error {
+            color: #dc3545;
+            font-style: italic;
+        }
+        
+        .timestamp {
+            font-size: 0.8em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Theme Discovery Experiment Results</h1>
+        <div class="subtitle">Comparing prompting strategies and target theme counts</div>
+        <div class="timestamp">Generated: 2025-06-30 15:51:29</div>
+    </div>
+    
+    <div class="results-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Strategy</th>
+                    <th>Target Count</th>
+                    <th>Actual Count</th>
+                    <th>Discovered Themes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="strategy-mutually_exclusive">
+                    <td><strong>Mutually Exclusive</strong></td>
+                    <td>10</td>
+                    <td>10</td>
+                    <td><div class="stance-list"><div class="stance-item"><strong>COVID Vaccine Market Status</strong><ul><li>Support for Removal of COVID Vaccines from Market</li><li>Support for Continued or Expanded COVID Vaccine Access</li></ul></div><div class="stance-item"><strong>Universal Vaccine Access</strong><ul><li>Support for Universal Vaccine Access</li><li>Opposition to Universal Access (Support for Restricting Vaccine Availability)</li></ul></div><div class="stance-item"><strong>Vaccine Safety and Harms</strong><ul><li>Vaccines Are Unsafe</li><li>Vaccines Are Safe and Effective</li></ul></div><div class="stance-item"><strong>Public Health vs. Personal Autonomy</strong><ul><li>Emphasis on Public Health Responsibility</li><li>Emphasis on Individual Choice/Bodily Autonomy</li></ul></div><div class="stance-item"><strong>Committee Independence and Expertise</strong><ul><li>Support for Former (or Traditional) ACIP Expert Panel</li><li>Support for New/Current ACIP Panel or Increased Scrutiny</li></ul></div><div class="stance-item"><strong>Policy Transparency and Conflicts of Interest</strong><ul><li>Concern About Conflicts of Interest and Lack of Transparency</li><li>Confidence in Existing Safeguards or Opposition to Transparency as Distraction</li></ul></div><div class="stance-item"><strong>Committee Member Qualifications and Nominations</strong><ul><li>Opposition to New ACIP Member Nominations</li><li>Demand for Qualified, Experienced Members (Implied or Unspecified)</li></ul></div><div class="stance-item"><strong>Importance of Vaccine Recommendations for Insurance and Coverage</strong><ul><li>Support for Maintaining Recommendations to Guarantee Coverage</li><li>No Special Priority for Coverage via Recommendations</li></ul></div><div class="stance-item"><strong>Vaccine Schedule and Types</strong><ul><li>Support for Updated/Expanded Vaccine Schedule (All Types)</li><li>Opposition to mRNA Vaccines/Specific Types</li></ul></div><div class="stance-item"><strong>Restoring and Building Public Trust</strong><ul><li>Trust Depends on Transparency and Safety</li><li>Trust Built on Continuity and Expertise</li></ul></div></div></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

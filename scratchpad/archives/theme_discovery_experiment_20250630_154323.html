@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stance Discovery Experiment Results</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .results-table {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #2c3e50;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: top;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .strategy-original {
+            background: #e3f2fd;
+        }
+        
+        .strategy-mutually_exclusive {
+            background: #f3e5f5;
+        }
+        
+        .stance-list {
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        
+        .stance-item {
+            margin-bottom: 8px;
+            padding: 4px 8px;
+            background: #ffffff;
+            border-left: 3px solid #007bff;
+            border-radius: 4px;
+        }
+        
+        .error {
+            color: #dc3545;
+            font-style: italic;
+        }
+        
+        .timestamp {
+            font-size: 0.8em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Theme Discovery Experiment Results</h1>
+        <div class="subtitle">Comparing prompting strategies and target theme counts</div>
+        <div class="timestamp">Generated: 2025-06-30 15:43:23</div>
+    </div>
+    
+    <div class="results-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Strategy</th>
+                    <th>Target Count</th>
+                    <th>Actual Count</th>
+                    <th>Discovered Themes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="strategy-original">
+                    <td><strong>Original</strong></td>
+                    <td>6</td>
+                    <td>6</td>
+                    <td><div class="stance-list"><div class="stance-item"><strong>COVID-19 Vaccine Access and Recommendations</strong><ul><li>Support for Preserving or Expanding Access/Recommendation</li><li>Opposition to Continued Recommendation or Access</li></ul></div><div class="stance-item"><strong>Vaccine Safety and Efficacy (COVID-19 and General)</strong><ul><li>Confidence in Vaccine Safety and Efficacy</li><li>Concerns or Allegations of Vaccine Harm and Ineffectiveness</li></ul></div><div class="stance-item"><strong>Regulatory Oversight and ACIP Committee Changes</strong><ul><li>Support for Expert, Independent, Transparent Committee</li><li>Support for Restructuring or Conflict Disclosure</li></ul></div><div class="stance-item"><strong>Trust in Public Health Institutions and Leadership</strong><ul><li>Support for Maintaining/Rebuilding Trust in Public Health</li><li>Distrust in CDC/ACIP Due to Vaccine Policy or Perceived Conflicts</li></ul></div><div class="stance-item"><strong>Individual Choice and Medical Freedom</strong><ul><li>Support for Individual Choice with Vaccine Access</li><li>Opposition to Mandatory Vaccines/Perceived Coercion</li></ul></div><div class="stance-item"><strong>Scope and Science of Immunization Policy</strong><ul><li>Support for Science-Based, Broad Vaccine Schedules</li><li>Skepticism of Broad Immunization Schedules/Policies</li></ul></div></div></td>
+                </tr>
+                <tr class="strategy-original">
+                    <td><strong>Original</strong></td>
+                    <td>8</td>
+                    <td>8</td>
+                    <td><div class="stance-list"><div class="stance-item"><strong>COVID Vaccine Safety and Efficacy</strong><ul><li>Support for COVID Vaccine Use</li><li>Opposition to COVID Vaccine Use</li></ul></div><div class="stance-item"><strong>Vaccine Accessibility and Availability</strong><ul><li>Support for Broad Vaccine Access</li><li>Support for Limiting or Removing Vaccine Access</li></ul></div><div class="stance-item"><strong>Regulatory Oversight and Committee Independence</strong><ul><li>Support for Independent, Expert-Led Oversight</li><li>Support for Replacing Existing Committee Members</li></ul></div><div class="stance-item"><strong>Public Trust in Vaccine Policy</strong><ul><li>Concern about Loss of Public Trust</li><li>Claims of Already Lost Trust Due to Vaccines or Agencies</li></ul></div><div class="stance-item"><strong>Conflict of Interest and Transparency</strong><ul><li>Demand for Greater Transparency/Disclosure</li><li>Defense of Current Transparency Standards</li></ul></div><div class="stance-item"><strong>Impacts on Vulnerable Populations</strong><ul><li>Support for Protecting Vulnerable Groups via Vaccines</li><li>Dismissal of Benefits or Risks to These Groups</li></ul></div><div class="stance-item"><strong>Role of Science and Evidence in Policy</strong><ul><li>Advocacy for Science-Based Policy</li><li>Skepticism of Existing Science/Call for More Scrutiny</li></ul></div><div class="stance-item"><strong>Individual Choice and Mandates</strong><ul><li>Support for Individual Choice (with Access)</li><li>Advocacy for Vaccine Policies or Requirements</li></ul></div></div></td>
+                </tr>
+                <tr class="strategy-original">
+                    <td><strong>Original</strong></td>
+                    <td>10</td>
+                    <td>11</td>
+                    <td><div class="stance-list"><div class="stance-item"><strong>Vaccine Safety and Efficacy</strong><ul><li>Support for Vaccine Safety and Efficacy</li><li>Opposition/Concern about Vaccine Safety</li><li>Call for More Transparency/Research on Safety</li></ul></div><div class="stance-item"><strong>COVID-19 Vaccine Policy and Recommendations</strong><ul><li>Support for Continued COVID-19 Vaccine Access and Recommendation</li><li>Opposition to Further COVID-19 Vaccination</li><li>Support for Individual Choice</li></ul></div><div class="stance-item"><strong>Access and Equity in Vaccination</strong><ul><li>Support for Broad and Unhindered Access</li><li>Concern about Restrictions Limiting Access</li></ul></div><div class="stance-item"><strong>Regulatory Oversight and Independence</strong><ul><li>Support for Independent, Expert-led ACIP</li><li>Opposition to Composition/Expertise of New ACIP</li><li>Support for Change/Accountability in ACIP</li></ul></div><div class="stance-item"><strong>Public Trust in Health Institutions</strong><ul><li>Concern over Loss of Trust Due to ACIP Changes</li><li>Belief That Removing Vaccines or Restricting Access Erodes Trust</li></ul></div><div class="stance-item"><strong>Conflicts of Interest and Transparency</strong><ul><li>Support for Full Disclosure and Transparency</li><li>Allegations of Inadequate or Misleading Disclosures</li></ul></div><div class="stance-item"><strong>Role and Qualifications of ACIP/Policy Makers</strong><ul><li>Support for Qualified, Neutral, Scientific Members</li><li>Opposition to Newly Appointed or Alleged Anti-Vaccine Members</li></ul></div><div class="stance-item"><strong>Individual Rights, Mandates, and Choice</strong><ul><li>Support for Individual Choice, Opposition to Mandates</li><li>Support for Public Health Recommendations</li></ul></div><div class="stance-item"><strong>Comparisons to Past Vaccine Events/Policies</strong><ul><li>Use of Swine Flu Precedent to Argue for COVID Vaccine Removal</li><li>Opposition to Overly Reactive Policy Changes</li></ul></div><div class="stance-item"><strong>Impacts on Vulnerable Populations</strong><ul><li>Support for Protection/Access for Vulnerable Groups</li><li>Concern That Policy Changes Endanger Vulnerable</li></ul></div><div class="stance-item"><strong>Political Interference and Science-Based Policy</strong><ul><li>Opposition to Political Interference in Vaccine Policy</li><li>Support for Science-Based, Non-Political Decision Making</li></ul></div></div></td>
+                </tr>
+                <tr class="strategy-original">
+                    <td><strong>Original</strong></td>
+                    <td>12</td>
+                    <td>13</td>
+                    <td><div class="stance-list"><div class="stance-item"><strong>COVID-19 Vaccine Safety and Efficacy</strong><ul><li>Support for COVID-19 Vaccine Access and Recommendation</li><li>Opposition to COVID-19 Vaccines / Calls for Removal</li></ul></div><div class="stance-item"><strong>Access to Vaccines</strong><ul><li>Support for Broad and Unhindered Access</li><li>Support for Limiting Access</li></ul></div><div class="stance-item"><strong>Composition and Independence of ACIP</strong><ul><li>Support for Experienced, Scientific, and Independent ACIP</li><li>Support for New Appointees / Criticism of Past Members</li></ul></div><div class="stance-item"><strong>Conflicts of Interest and Transparency</strong><ul><li>Support for Disclosure and Transparency</li><li>Skepticism of Conflict Claims/Focus on Expertise</li></ul></div><div class="stance-item"><strong>Public Trust in Health Agencies and Policy</strong><ul><li>Concern Over Erosion of Trust</li><li>Calls to Regain or Restore Public Trust</li></ul></div><div class="stance-item"><strong>Role of Science vs. Politics in Vaccine Policy</strong><ul><li>Support for Science-Driven Policy</li><li>Criticism of Scientific Establishment</li></ul></div><div class="stance-item"><strong>Vaccine Mandates and Individual Choice</strong><ul><li>Support for Individual Choice</li><li>Support for Public Health-Based Mandates</li></ul></div><div class="stance-item"><strong>Vaccines for Special Populations (Children, Elderly, Immunocompromised)</strong><ul><li>Support for Continued Protection of Vulnerable Groups</li><li>Questioning Universal Application</li></ul></div><div class="stance-item"><strong>Adverse Events and Vaccine Injury Reporting</strong><ul><li>Concerns about Undercounting/Underreporting Harms</li><li>Support for Established Safety Profiles</li></ul></div><div class="stance-item"><strong>Changes to U.S. Vaccine Schedule and Recommendations</strong><ul><li>Support for Current Vaccine Schedule</li><li>Opposition to Existing or Proposed Schedules</li></ul></div><div class="stance-item"><strong>Insurance Coverage and Financial Barriers</strong><ul><li>Advocate for Insurance Coverage/Removal of Financial Barriers</li><li>No Express Opposition Noted</li></ul></div><div class="stance-item"><strong>Breadth of Vaccine Access (Range and Scope)</strong><ul><li>Support for Wide Range of Vaccine Access</li><li>Favor Limited Range or Restrictions</li></ul></div><div class="stance-item"><strong>Comparisons to Historical Precedent</strong><ul><li>Support Historical Precedent for Withdrawal</li><li>Rejection of Comparisons to the Past</li></ul></div></div></td>
+                </tr>
+                <tr class="strategy-mutually_exclusive">
+                    <td><strong>Mutually Exclusive</strong></td>
+                    <td>6</td>
+                    <td>6</td>
+                    <td><div class="stance-list"><div class="stance-item"><strong>COVID-19 Vaccine Access and Policy</strong><ul><li>Support for Removal/Restriction of COVID-19 Vaccines</li><li>Support for Continued/Widespread COVID-19 Vaccine Access</li></ul></div><div class="stance-item"><strong>Trust in ACIP and Regulatory Process</strong><ul><li>Support for Current/Expert ACIP Process</li><li>Distrust of ACIP; Demand for Overhaul</li></ul></div><div class="stance-item"><strong>Leadership and Appointment of ACIP Members</strong><ul><li>Opposition to RFK Jr.'s Removal/Replacement of ACIP Members</li><li>Support for RFK Jr.'s Action to Overhaul ACIP</li></ul></div><div class="stance-item"><strong>Vaccine Safety and Effectiveness</strong><ul><li>Vaccines are Safe and Effective</li><li>Vaccines are Unsafe/Insufficiently Tested</li></ul></div><div class="stance-item"><strong>Transparency, Conflicts of Interest, and Committee Integrity</strong><ul><li>Demand for Full Transparency/Independence</li><li>Concern About Politicization or Erosion of Integrity</li></ul></div><div class="stance-item"><strong>Vaccine Mandates, Choice, and Public Health</strong><ul><li>Support for Universal Access and Optionality</li><li>Implied Support for Restriction/Removal (Opposition to Universal Access)</li></ul></div></div></td>
+                </tr>
+                <tr class="strategy-mutually_exclusive">
+                    <td><strong>Mutually Exclusive</strong></td>
+                    <td>8</td>
+                    <td>8</td>
+                    <td><div class="stance-list"><div class="stance-item"><strong>COVID Vaccine Market Status</strong><ul><li>Support for Immediate Removal of COVID Vaccines</li><li>Support for Continued/Universal Access to COVID Vaccines</li></ul></div><div class="stance-item"><strong>ACIP Committee Leadership and Composition</strong><ul><li>Opposition to ACIP Member Removal/Replacements</li><li>Support for ACIP Member Removal/Replacements</li></ul></div><div class="stance-item"><strong>Vaccine Safety and Efficacy</strong><ul><li>Vaccines are Safe and Effective</li><li>Vaccines are Unsafe or Ineffective</li></ul></div><div class="stance-item"><strong>Vaccine Access and Mandates</strong><ul><li>Support for Universal/Broad Vaccine Access</li><li>Support for Restricting Vaccine Access</li></ul></div><div class="stance-item"><strong>Trust in Regulatory Process and Evidence</strong><ul><li>Trust in Established Regulatory Process and Experts</li><li>Distrust in Current Regulatory Process/Expertise</li></ul></div><div class="stance-item"><strong>Role of Science vs. Politics in Vaccine Decisions</strong><ul><li>Support for Science-based Decision-making (Oppose Political Interference)</li><li>Support for Political/Populist Reforms or Distrust of Science Establishment</li></ul></div><div class="stance-item"><strong>Transparency and Conflicts of Interest</strong><ul><li>Satisfaction with Current Disclosure/Conflict Policy</li><li>Demand for Increased Disclosure/Conflict-of-Interest Reforms</li></ul></div><div class="stance-item"><strong>ACIP Authority Over Non-COVID Vaccines and Schedule</strong><ul><li>Support for Broad Vaccine Recommendations (All Ages/Groups)</li><li>Support for Revising/Restricting Vaccine Schedules</li></ul></div></div></td>
+                </tr>
+                <tr class="strategy-mutually_exclusive">
+                    <td><strong>Mutually Exclusive</strong></td>
+                    <td>10</td>
+                    <td>10</td>
+                    <td><div class="stance-list"><div class="stance-item"><strong>COVID-19 Vaccine Market Status</strong><ul><li>Support for Immediate Removal of COVID-19 Vaccines</li><li>Support for Continued Access to COVID-19 Vaccines</li></ul></div><div class="stance-item"><strong>Composition and Independence of ACIP Committee</strong><ul><li>Opposition to Removal/Replacement of ACIP Members</li><li>Support for the Removal/Replacement</li></ul></div><div class="stance-item"><strong>Scientific Integrity and Expertise</strong><ul><li>Support for Expert-Only, Evidence-Based ACIP</li><li>Concerns about Scientist Bias or Conflicts</li></ul></div><div class="stance-item"><strong>Vaccine Safety</strong><ul><li>Vaccines and Especially COVID Vaccines Are Unsafe</li><li>Vaccines Are Safe and Adverse Effects Are Rare</li></ul></div><div class="stance-item"><strong>Vaccine Access and Insurance Coverage</strong><ul><li>Support for Unhindered, Universal Vaccine Access</li><li>Support for Limiting Vaccine Access</li></ul></div><div class="stance-item"><strong>Transparency and Conflict of Interest</strong><ul><li>Demand Full Transparency/Conflict Disclosure</li><li>Asserting No Conflict Exists/Minimal Concern</li></ul></div><div class="stance-item"><strong>Role of Political Influence in Public Health</strong><ul><li>Opposition to Political Interference in ACIP/CDC</li><li>Support for Political Restructuring</li></ul></div><div class="stance-item"><strong>Broader Vaccine Policy (Beyond COVID)</strong><ul><li>Support for Maintaining Full Vaccine Schedule</li><li>Support for Revisiting/Restricting Vaccine Schedule</li></ul></div><div class="stance-item"><strong>Use and Interpretation of Safety Data (e.g. VAERS)</strong><ul><li>VAERS Data Shows Danger/Justifies Removal</li><li>VAERS Data Misinterpreted / Not Causal</li></ul></div><div class="stance-item"><strong>Public Trust in Health Authorities</strong><ul><li>Trust in Established Health Institutions</li><li>Distrust in Health Institutions/New Leadership</li></ul></div></div></td>
+                </tr>
+                <tr class="strategy-mutually_exclusive">
+                    <td><strong>Mutually Exclusive</strong></td>
+                    <td>12</td>
+                    <td>12</td>
+                    <td><div class="stance-list"><div class="stance-item"><strong>COVID-19 Vaccine Market Status</strong><ul><li>Support for Immediate Removal of COVID-19 Vaccines</li><li>Support for Continued or Expanded COVID-19 Vaccine Access</li></ul></div><div class="stance-item"><strong>ACIP Committee Membership and Independence</strong><ul><li>Opposition to Firing and Replacement of ACIP Members</li><li>Support for New ACIP Members or Clean Slate</li></ul></div><div class="stance-item"><strong>Trust in ACIP and CDC Leadership</strong><ul><li>Distrust in Current/Future ACIP or CDC Leadership</li><li>Trust or Conditional Trust in the CDC/ACIP</li></ul></div><div class="stance-item"><strong>Vaccine Safety and Risk Perception</strong><ul><li>Perceives Vaccines as Unsafe or High-Risk</li><li>Perceives Vaccines as Safe and Beneficial</li></ul></div><div class="stance-item"><strong>Vaccine Access and Availability</strong><ul><li>Support for Broad, Unhindered Access</li><li>Support for Restricting or Limiting Access</li></ul></div><div class="stance-item"><strong>Vaccine Mandates and Individual Choice</strong><ul><li>Support for Medical Informed Choice/No Mandates</li><li>Support for Mandates or Recommendations</li></ul></div><div class="stance-item"><strong>Role of Science and Expertise in Policy</strong><ul><li>Emphasis on Science-Based/Expert Decision-Making</li><li>Distrust in Current Science or Committee's Science</li></ul></div><div class="stance-item"><strong>Transparency and Conflict of Interest</strong><ul><li>Demand for Full Transparency and Conflict of Interest Disclosure</li><li>Content with Existing Disclosure Procedures</li></ul></div><div class="stance-item"><strong>Insurance Coverage and Cost Barriers</strong><ul><li>Support for Insurance Coverage and Removal of Financial Barriers</li><li>Indifferent or Opposed to Mandated Coverage</li></ul></div><div class="stance-item"><strong>Committee Member Qualifications and Vetting</strong><ul><li>Believe New Appointees are Unqualified or Lack Expertise</li><li>Support for New Appointees or Satisfied with Qualifications</li></ul></div><div class="stance-item"><strong>Review/Reconsideration of Other Vaccines</strong><ul><li>Opposition to Revisiting Approved Vaccines</li><li>Support for Reconsidering or Restricting Vaccines</li></ul></div><div class="stance-item"><strong>Protection of Vulnerable Populations</strong><ul><li>Emphasis on Vaccine Protection for Vulnerable Groups</li><li>Question or Downplay Specific Protection Needs</li></ul></div></div></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

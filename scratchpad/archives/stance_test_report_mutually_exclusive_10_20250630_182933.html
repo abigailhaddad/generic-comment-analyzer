@@ -520,15 +520,15 @@
         <!-- Summary Statistics -->
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-number">10</div>
+                <div class="stat-number">5</div>
                 <div class="stat-label">Total Comments</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">3</div>
+                <div class="stat-number">0</div>
                 <div class="stat-label">With Attachments</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">7,635</div>
+                <div class="stat-number">887</div>
                 <div class="stat-label">Avg. Characters</div>
             </div>
             <div class="stat-card">
@@ -540,156 +540,364 @@
 
         <!-- Analysis Field Distributions -->
         
-        <div class="section">
-            <h2>📊 Stances Distribution</h2>
-            <p style="color: #666; margin-bottom: 20px; font-style: italic;">Click on any stance to see how it relates to others</p>
-            <div class="expandable-stances">
-                
-                <div class="expandable-stance-card">
-                    <div class="stance-header" onclick="toggleStanceDetails(0)">
-                        <span class="stance-count">5</span>
-                        <span class="stance-name">Support for Maintaining/Expanding Universal COVID-19 Vaccine Access and Recommendations</span>
-                        <span class="expand-icon" id="icon-0">▼</span>
+            <div class="section">
+                <h2>📊 Themes Distribution</h2>
+                <p style="color: #666; margin-bottom: 20px; font-style: italic;">Click on any theme to see positions, then click positions to see relationships</p>
+                <div class="theme-stances">
+                    
+                    <div class="theme-card">
+                        <div class="theme-header" onclick="toggleThemeDetails(0)">
+                            <span class="theme-name">🔹 COVID Vaccine Market Status</span>
+                            <span class="theme-count">(2 positions)</span>
+                            <span class="expand-icon" id="theme-icon-0">▼</span>
+                        </div>
+                        <div class="theme-details" id="theme-details-0" style="display: none;">
+                            
+                        <div class="position-card">
+                            <div class="position-header" onclick="togglePositionDetails(0_0)">
+                                <span class="position-count">4</span>
+                                <span class="position-name">Support for Removal of COVID Vaccines from Market</span>
+                                <span class="agreement-badge">80.0%</span>
+                                <span class="expand-icon" id="pos-icon-0_0">▼</span>
+                            </div>
+                            <div class="position-details" id="pos-details-0_0" style="display: none;">
+                                <div class="agreement-score">📊 Agreement: <strong>80.0%</strong> of comments express this position</div><div class="connections-header">🔗 Often appears with:</div><div class="connection-item">100% also: Vaccine Safety and Harms: Vaccines Are Unsafe</div><div class="connection-item">100% also: Restoring and Building Public Trust: Trust Depends on Transparency and Safety</div>
+                            </div>
+                        </div>
+                        <div class="position-card">
+                            <div class="position-header" onclick="togglePositionDetails(0_1)">
+                                <span class="position-count">1</span>
+                                <span class="position-name">Support for Continued or Expanded COVID Vaccine Access</span>
+                                <span class="agreement-badge">20.0%</span>
+                                <span class="expand-icon" id="pos-icon-0_1">▼</span>
+                            </div>
+                            <div class="position-details" id="pos-details-0_1" style="display: none;">
+                                <div class="agreement-score">📊 Agreement: <strong>20.0%</strong> of comments express this position</div><div class="connections-header">🔗 Often appears with:</div><div class="connection-item">100% also: Vaccine Safety and Harms: Vaccines Are Safe and Effective</div><div class="connection-item">100% also: Universal Vaccine Access: Support for Universal Vaccine Access</div><div class="connection-item">100% also: Public Health vs. Personal Autonomy: Emphasis on Public Health Responsibility</div><div class="connection-item">100% also: Public Health vs. Personal Autonomy: Emphasis on Individual Choice/Bodily Autonomy</div><div class="connection-item">100% also: Policy Transparency and Conflicts of Interest: Concern About Conflicts of Interest and Lack of Transparency</div><div class="connection-item">100% also: Importance of Vaccine Recommendations for Insurance and Coverage: Support for Maintaining Recommendations to Guarantee Coverage</div>
+                            </div>
+                        </div>
+                        </div>
                     </div>
-                    <div class="stance-details" id="details-0" style="display: none;">
-                        <div class="connection-item">40% also: Support for Reinstating/Retaining Prior ACIP Committee of Scientific and Medical Experts</div><div class="connection-item">20% also: Support for Enhanced Transparency and Oversight of ACIP Committee</div><div class="connection-item">20% also: Opposition to Vaccine Mandates or to ACIP/CDC Recommendations as Overreach/Erosion of Choice</div>
+                    <div class="theme-card">
+                        <div class="theme-header" onclick="toggleThemeDetails(1)">
+                            <span class="theme-name">🔹 Vaccine Safety and Harms</span>
+                            <span class="theme-count">(2 positions)</span>
+                            <span class="expand-icon" id="theme-icon-1">▼</span>
+                        </div>
+                        <div class="theme-details" id="theme-details-1" style="display: none;">
+                            
+                        <div class="position-card">
+                            <div class="position-header" onclick="togglePositionDetails(1_0)">
+                                <span class="position-count">4</span>
+                                <span class="position-name">Vaccines Are Unsafe</span>
+                                <span class="agreement-badge">80.0%</span>
+                                <span class="expand-icon" id="pos-icon-1_0">▼</span>
+                            </div>
+                            <div class="position-details" id="pos-details-1_0" style="display: none;">
+                                <div class="agreement-score">📊 Agreement: <strong>80.0%</strong> of comments express this position</div><div class="connections-header">🔗 Often appears with:</div><div class="connection-item">100% also: Restoring and Building Public Trust: Trust Depends on Transparency and Safety</div><div class="connection-item">100% also: COVID Vaccine Market Status: Support for Removal of COVID Vaccines from Market</div>
+                            </div>
+                        </div>
+                        <div class="position-card">
+                            <div class="position-header" onclick="togglePositionDetails(1_1)">
+                                <span class="position-count">1</span>
+                                <span class="position-name">Vaccines Are Safe and Effective</span>
+                                <span class="agreement-badge">20.0%</span>
+                                <span class="expand-icon" id="pos-icon-1_1">▼</span>
+                            </div>
+                            <div class="position-details" id="pos-details-1_1" style="display: none;">
+                                <div class="agreement-score">📊 Agreement: <strong>20.0%</strong> of comments express this position</div><div class="connections-header">🔗 Often appears with:</div><div class="connection-item">100% also: Universal Vaccine Access: Support for Universal Vaccine Access</div><div class="connection-item">100% also: Public Health vs. Personal Autonomy: Emphasis on Public Health Responsibility</div><div class="connection-item">100% also: Public Health vs. Personal Autonomy: Emphasis on Individual Choice/Bodily Autonomy</div><div class="connection-item">100% also: Policy Transparency and Conflicts of Interest: Concern About Conflicts of Interest and Lack of Transparency</div><div class="connection-item">100% also: Importance of Vaccine Recommendations for Insurance and Coverage: Support for Maintaining Recommendations to Guarantee Coverage</div><div class="connection-item">100% also: COVID Vaccine Market Status: Support for Continued or Expanded COVID Vaccine Access</div>
+                            </div>
+                        </div>
+                        </div>
                     </div>
-                </div>
-                <div class="expandable-stance-card">
-                    <div class="stance-header" onclick="toggleStanceDetails(1)">
-                        <span class="stance-count">5</span>
-                        <span class="stance-name">Opposition to Continued Access to COVID-19 Vaccines (Support for Removal of COVID Vaccines from Market)</span>
-                        <span class="expand-icon" id="icon-1">▼</span>
+                    <div class="theme-card">
+                        <div class="theme-header" onclick="toggleThemeDetails(2)">
+                            <span class="theme-name">🔹 Restoring and Building Public Trust</span>
+                            <span class="theme-count">(1 positions)</span>
+                            <span class="expand-icon" id="theme-icon-2">▼</span>
+                        </div>
+                        <div class="theme-details" id="theme-details-2" style="display: none;">
+                            
+                        <div class="position-card">
+                            <div class="position-header" onclick="togglePositionDetails(2_0)">
+                                <span class="position-count">4</span>
+                                <span class="position-name">Trust Depends on Transparency and Safety</span>
+                                <span class="agreement-badge">80.0%</span>
+                                <span class="expand-icon" id="pos-icon-2_0">▼</span>
+                            </div>
+                            <div class="position-details" id="pos-details-2_0" style="display: none;">
+                                <div class="agreement-score">📊 Agreement: <strong>80.0%</strong> of comments express this position</div><div class="connections-header">🔗 Often appears with:</div><div class="connection-item">100% also: Vaccine Safety and Harms: Vaccines Are Unsafe</div><div class="connection-item">100% also: COVID Vaccine Market Status: Support for Removal of COVID Vaccines from Market</div>
+                            </div>
+                        </div>
+                        </div>
                     </div>
-                    <div class="stance-details" id="details-1" style="display: none;">
-                        <div class="connection-item">60% also: Support for Enhanced Transparency and Oversight of ACIP Committee</div><div class="connection-item">40% also: Support for Reinstating/Retaining Prior ACIP Committee of Scientific and Medical Experts</div>
+                    <div class="theme-card">
+                        <div class="theme-header" onclick="toggleThemeDetails(3)">
+                            <span class="theme-name">🔹 Universal Vaccine Access</span>
+                            <span class="theme-count">(1 positions)</span>
+                            <span class="expand-icon" id="theme-icon-3">▼</span>
+                        </div>
+                        <div class="theme-details" id="theme-details-3" style="display: none;">
+                            
+                        <div class="position-card">
+                            <div class="position-header" onclick="togglePositionDetails(3_0)">
+                                <span class="position-count">1</span>
+                                <span class="position-name">Support for Universal Vaccine Access</span>
+                                <span class="agreement-badge">20.0%</span>
+                                <span class="expand-icon" id="pos-icon-3_0">▼</span>
+                            </div>
+                            <div class="position-details" id="pos-details-3_0" style="display: none;">
+                                <div class="agreement-score">📊 Agreement: <strong>20.0%</strong> of comments express this position</div><div class="connections-header">🔗 Often appears with:</div><div class="connection-item">100% also: Vaccine Safety and Harms: Vaccines Are Safe and Effective</div><div class="connection-item">100% also: Public Health vs. Personal Autonomy: Emphasis on Public Health Responsibility</div><div class="connection-item">100% also: Public Health vs. Personal Autonomy: Emphasis on Individual Choice/Bodily Autonomy</div><div class="connection-item">100% also: Policy Transparency and Conflicts of Interest: Concern About Conflicts of Interest and Lack of Transparency</div><div class="connection-item">100% also: Importance of Vaccine Recommendations for Insurance and Coverage: Support for Maintaining Recommendations to Guarantee Coverage</div><div class="connection-item">100% also: COVID Vaccine Market Status: Support for Continued or Expanded COVID Vaccine Access</div>
+                            </div>
+                        </div>
+                        </div>
                     </div>
-                </div>
-                <div class="expandable-stance-card">
-                    <div class="stance-header" onclick="toggleStanceDetails(2)">
-                        <span class="stance-count">4</span>
-                        <span class="stance-name">Support for Enhanced Transparency and Oversight of ACIP Committee</span>
-                        <span class="expand-icon" id="icon-2">▼</span>
+                    <div class="theme-card">
+                        <div class="theme-header" onclick="toggleThemeDetails(4)">
+                            <span class="theme-name">🔹 Policy Transparency and Conflicts of Interest</span>
+                            <span class="theme-count">(1 positions)</span>
+                            <span class="expand-icon" id="theme-icon-4">▼</span>
+                        </div>
+                        <div class="theme-details" id="theme-details-4" style="display: none;">
+                            
+                        <div class="position-card">
+                            <div class="position-header" onclick="togglePositionDetails(4_0)">
+                                <span class="position-count">1</span>
+                                <span class="position-name">Concern About Conflicts of Interest and Lack of Transparency</span>
+                                <span class="agreement-badge">20.0%</span>
+                                <span class="expand-icon" id="pos-icon-4_0">▼</span>
+                            </div>
+                            <div class="position-details" id="pos-details-4_0" style="display: none;">
+                                <div class="agreement-score">📊 Agreement: <strong>20.0%</strong> of comments express this position</div><div class="connections-header">🔗 Often appears with:</div><div class="connection-item">100% also: Vaccine Safety and Harms: Vaccines Are Safe and Effective</div><div class="connection-item">100% also: Universal Vaccine Access: Support for Universal Vaccine Access</div><div class="connection-item">100% also: Public Health vs. Personal Autonomy: Emphasis on Public Health Responsibility</div><div class="connection-item">100% also: Public Health vs. Personal Autonomy: Emphasis on Individual Choice/Bodily Autonomy</div><div class="connection-item">100% also: Importance of Vaccine Recommendations for Insurance and Coverage: Support for Maintaining Recommendations to Guarantee Coverage</div><div class="connection-item">100% also: COVID Vaccine Market Status: Support for Continued or Expanded COVID Vaccine Access</div>
+                            </div>
+                        </div>
+                        </div>
                     </div>
-                    <div class="stance-details" id="details-2" style="display: none;">
-                        <div class="connection-item">75% also: Opposition to Continued Access to COVID-19 Vaccines (Support for Removal of COVID Vaccines from Market)</div><div class="connection-item">25% also: Support for Maintaining/Expanding Universal COVID-19 Vaccine Access and Recommendations</div>
+                    <div class="theme-card">
+                        <div class="theme-header" onclick="toggleThemeDetails(5)">
+                            <span class="theme-name">🔹 Importance of Vaccine Recommendations for Insurance and Coverage</span>
+                            <span class="theme-count">(1 positions)</span>
+                            <span class="expand-icon" id="theme-icon-5">▼</span>
+                        </div>
+                        <div class="theme-details" id="theme-details-5" style="display: none;">
+                            
+                        <div class="position-card">
+                            <div class="position-header" onclick="togglePositionDetails(5_0)">
+                                <span class="position-count">1</span>
+                                <span class="position-name">Support for Maintaining Recommendations to Guarantee Coverage</span>
+                                <span class="agreement-badge">20.0%</span>
+                                <span class="expand-icon" id="pos-icon-5_0">▼</span>
+                            </div>
+                            <div class="position-details" id="pos-details-5_0" style="display: none;">
+                                <div class="agreement-score">📊 Agreement: <strong>20.0%</strong> of comments express this position</div><div class="connections-header">🔗 Often appears with:</div><div class="connection-item">100% also: Vaccine Safety and Harms: Vaccines Are Safe and Effective</div><div class="connection-item">100% also: Universal Vaccine Access: Support for Universal Vaccine Access</div><div class="connection-item">100% also: Public Health vs. Personal Autonomy: Emphasis on Public Health Responsibility</div><div class="connection-item">100% also: Public Health vs. Personal Autonomy: Emphasis on Individual Choice/Bodily Autonomy</div><div class="connection-item">100% also: Policy Transparency and Conflicts of Interest: Concern About Conflicts of Interest and Lack of Transparency</div><div class="connection-item">100% also: COVID Vaccine Market Status: Support for Continued or Expanded COVID Vaccine Access</div>
+                            </div>
+                        </div>
+                        </div>
                     </div>
-                </div>
-                <div class="expandable-stance-card">
-                    <div class="stance-header" onclick="toggleStanceDetails(3)">
-                        <span class="stance-count">4</span>
-                        <span class="stance-name">Support for Reinstating/Retaining Prior ACIP Committee of Scientific and Medical Experts</span>
-                        <span class="expand-icon" id="icon-3">▼</span>
-                    </div>
-                    <div class="stance-details" id="details-3" style="display: none;">
-                        <div class="connection-item">50% also: Support for Maintaining/Expanding Universal COVID-19 Vaccine Access and Recommendations</div><div class="connection-item">50% also: Opposition to Continued Access to COVID-19 Vaccines (Support for Removal of COVID Vaccines from Market)</div>
-                    </div>
-                </div>
-                <div class="expandable-stance-card">
-                    <div class="stance-header" onclick="toggleStanceDetails(4)">
-                        <span class="stance-count">1</span>
-                        <span class="stance-name">Opposition to Vaccine Mandates or to ACIP/CDC Recommendations as Overreach/Erosion of Choice</span>
-                        <span class="expand-icon" id="icon-4">▼</span>
-                    </div>
-                    <div class="stance-details" id="details-4" style="display: none;">
-                        <div class="connection-item">100% also: Support for Maintaining/Expanding Universal COVID-19 Vaccine Access and Recommendations</div>
+                    <div class="theme-card">
+                        <div class="theme-header" onclick="toggleThemeDetails(6)">
+                            <span class="theme-name">🔹 Public Health vs. Personal Autonomy</span>
+                            <span class="theme-count">(2 positions)</span>
+                            <span class="expand-icon" id="theme-icon-6">▼</span>
+                        </div>
+                        <div class="theme-details" id="theme-details-6" style="display: none;">
+                            
+                        <div class="position-card">
+                            <div class="position-header" onclick="togglePositionDetails(6_0)">
+                                <span class="position-count">1</span>
+                                <span class="position-name">Emphasis on Public Health Responsibility</span>
+                                <span class="agreement-badge">20.0%</span>
+                                <span class="expand-icon" id="pos-icon-6_0">▼</span>
+                            </div>
+                            <div class="position-details" id="pos-details-6_0" style="display: none;">
+                                <div class="agreement-score">📊 Agreement: <strong>20.0%</strong> of comments express this position</div><div class="connections-header">🔗 Often appears with:</div><div class="connection-item">100% also: Vaccine Safety and Harms: Vaccines Are Safe and Effective</div><div class="connection-item">100% also: Universal Vaccine Access: Support for Universal Vaccine Access</div><div class="connection-item">100% also: Public Health vs. Personal Autonomy: Emphasis on Individual Choice/Bodily Autonomy</div><div class="connection-item">100% also: Policy Transparency and Conflicts of Interest: Concern About Conflicts of Interest and Lack of Transparency</div><div class="connection-item">100% also: Importance of Vaccine Recommendations for Insurance and Coverage: Support for Maintaining Recommendations to Guarantee Coverage</div><div class="connection-item">100% also: COVID Vaccine Market Status: Support for Continued or Expanded COVID Vaccine Access</div>
+                            </div>
+                        </div>
+                        <div class="position-card">
+                            <div class="position-header" onclick="togglePositionDetails(6_1)">
+                                <span class="position-count">1</span>
+                                <span class="position-name">Emphasis on Individual Choice/Bodily Autonomy</span>
+                                <span class="agreement-badge">20.0%</span>
+                                <span class="expand-icon" id="pos-icon-6_1">▼</span>
+                            </div>
+                            <div class="position-details" id="pos-details-6_1" style="display: none;">
+                                <div class="agreement-score">📊 Agreement: <strong>20.0%</strong> of comments express this position</div><div class="connections-header">🔗 Often appears with:</div><div class="connection-item">100% also: Vaccine Safety and Harms: Vaccines Are Safe and Effective</div><div class="connection-item">100% also: Universal Vaccine Access: Support for Universal Vaccine Access</div><div class="connection-item">100% also: Public Health vs. Personal Autonomy: Emphasis on Public Health Responsibility</div><div class="connection-item">100% also: Policy Transparency and Conflicts of Interest: Concern About Conflicts of Interest and Lack of Transparency</div><div class="connection-item">100% also: Importance of Vaccine Recommendations for Insurance and Coverage: Support for Maintaining Recommendations to Guarantee Coverage</div><div class="connection-item">100% also: COVID Vaccine Market Status: Support for Continued or Expanded COVID Vaccine Access</div>
+                            </div>
+                        </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <style>
-        .expandable-stances {
-            display: grid;
-            gap: 12px;
-        }
-        
-        .expandable-stance-card {
-            background: white;
-            border-radius: 8px;
-            border-left: 4px solid #3498db;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        
-        .stance-header {
-            display: flex;
-            align-items: flex-start;
-            gap: 15px;
-            padding: 15px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        
-        .stance-header:hover {
-            background-color: #f8f9fa;
-        }
-        
-        .stance-count {
-            font-size: 1.6em;
-            font-weight: bold;
-            color: #2c3e50;
-            min-width: 80px;
-            flex-shrink: 0;
-        }
-        
-        .stance-name {
-            font-size: 1em;
-            color: #2c3e50;
-            line-height: 1.3;
-            font-weight: 500;
-            flex-grow: 1;
-        }
-        
-        .expand-icon {
-            font-size: 1.2em;
-            color: #7f8c8d;
-            transition: transform 0.3s;
-            flex-shrink: 0;
-        }
-        
-        .expand-icon.expanded {
-            transform: rotate(180deg);
-        }
-        
-        .stance-details {
-            padding: 0 15px 15px 15px;
-            border-top: 1px solid #ecf0f1;
-            background: #f8f9fa;
-        }
-        
-        .connection-item {
-            padding: 8px 10px;
-            margin: 8px 0;
-            background: white;
-            border-radius: 4px;
-            border-left: 3px solid #e67e22;
-            font-size: 0.9em;
-            color: #2c3e50;
-        }
-        
-        .no-connections {
-            padding: 15px;
-            text-align: center;
-            color: #888;
-            font-style: italic;
-        }
-        </style>
-        
-        <script>
-        function toggleStanceDetails(index) {
-            const details = document.getElementById('details-' + index);
-            const icon = document.getElementById('icon-' + index);
             
-            if (details.style.display === 'none' || details.style.display === '') {
-                details.style.display = 'block';
-                icon.classList.add('expanded');
-            } else {
-                details.style.display = 'none';
-                icon.classList.remove('expanded');
+            <style>
+            .theme-stances {
+                display: grid;
+                gap: 15px;
             }
-        }
-        </script>
+            
+            .theme-card {
+                background: white;
+                border-radius: 8px;
+                border-left: 4px solid #2c3e50;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                overflow: hidden;
+            }
+            
+            .theme-header {
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                padding: 15px;
+                cursor: pointer;
+                transition: background-color 0.2s;
+                background: #f8f9fa;
+                font-weight: 600;
+            }
+            
+            .theme-header:hover {
+                background-color: #e9ecef;
+            }
+            
+            .theme-name {
+                font-size: 1.1em;
+                color: #2c3e50;
+                flex: 1;
+            }
+            
+            .theme-count {
+                color: #666;
+                font-size: 0.9em;
+            }
+            
+            .theme-details {
+                padding: 0 15px 15px 15px;
+            }
+            
+            .position-card {
+                background: #f8f9fa;
+                border-radius: 6px;
+                margin: 8px 0;
+                border-left: 3px solid #3498db;
+            }
+            
+            .position-header {
+                display: flex;
+                align-items: flex-start;
+                gap: 12px;
+                padding: 12px;
+                cursor: pointer;
+                transition: background-color 0.2s;
+            }
+            
+            .position-header:hover {
+                background-color: #ffffff;
+            }
+            
+            .position-count {
+                font-size: 1.4em;
+                font-weight: bold;
+                color: #3498db;
+                min-width: 40px;
+            }
+            
+            .position-name {
+                flex: 1;
+                font-weight: 500;
+                color: #2c3e50;
+            }
+            
+            .agreement-badge {
+                background: #e74c3c;
+                color: white;
+                padding: 4px 8px;
+                border-radius: 12px;
+                font-size: 0.8em;
+                font-weight: 600;
+                margin: 0 8px;
+            }
+            
+            .position-details {
+                padding: 0 12px 12px 12px;
+                background: white;
+                margin: 0 12px 12px 12px;
+                border-radius: 4px;
+            }
+            
+            .agreement-score {
+                padding: 10px 0;
+                background: #e8f5e8;
+                border-radius: 4px;
+                padding: 8px 12px;
+                margin-bottom: 8px;
+                font-size: 0.9em;
+                color: #27ae60;
+                border-left: 3px solid #27ae60;
+            }
+            
+            .connections-header {
+                font-weight: 600;
+                color: #2c3e50;
+                margin: 12px 0 8px 0;
+                font-size: 0.9em;
+            }
+            
+            .expand-icon {
+                font-size: 0.8em;
+                color: #666;
+                transition: transform 0.2s;
+                min-width: 20px;
+                text-align: center;
+            }
+            
+            .expand-icon.expanded {
+                transform: rotate(180deg);
+            }
+            
+            .connection-item {
+                padding: 6px 0;
+                border-bottom: 1px solid #eee;
+                color: #555;
+                font-size: 0.9em;
+            }
+            
+            .connection-item:last-child {
+                border-bottom: none;
+            }
+            
+            .no-connections {
+                padding: 10px 0;
+                color: #999;
+                font-style: italic;
+                font-size: 0.9em;
+            }
+            </style>
+            
+            <script>
+            function toggleThemeDetails(themeId) {
+                const details = document.getElementById('theme-details-' + themeId);
+                const icon = document.getElementById('theme-icon-' + themeId);
+                
+                if (details.style.display === 'none' || details.style.display === '') {
+                    details.style.display = 'block';
+                    icon.classList.add('expanded');
+                } else {
+                    details.style.display = 'none';
+                    icon.classList.remove('expanded');
+                }
+            }
+            
+            function togglePositionDetails(positionId) {
+                const details = document.getElementById('pos-details-' + positionId);
+                const icon = document.getElementById('pos-icon-' + positionId);
+                
+                if (details.style.display === 'none' || details.style.display === '') {
+                    details.style.display = 'block';
+                    icon.classList.add('expanded');
+                } else {
+                    details.style.display = 'none';
+                    icon.classList.remove('expanded');
+                }
+            }
+            </script>
 
         <!-- Comments Table -->
         <div class="section">
@@ -780,7 +988,7 @@
                             </th>
                             <th class="filterable" data-column="4">
                                 Stances <span class="filter-arrow" onclick="toggleFilter(4)">▼</span>
-                                <div class="filter-dropdown" id="filter-4" style="display: none;"><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Opposition to Continued Access to COVID-19 Vaccines (Support for Removal of COVID Vaccines from Market)" onchange="filterTable()"> Opposition to Continued Access to COVID-19 Vaccines (Support for Removal of COVID Vaccines from Market)</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Opposition to Vaccine Mandates or to ACIP/CDC Recommendations as Overreach/Erosion of Choice" onchange="filterTable()"> Opposition to Vaccine Mandates or to ACIP/CDC Recommendations as Overreach/Erosion of Choice</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Support for Enhanced Transparency and Oversight of ACIP Committee" onchange="filterTable()"> Support for Enhanced Transparency and Oversight of ACIP Committee</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Support for Maintaining/Expanding Universal COVID-19 Vaccine Access and Recommendations" onchange="filterTable()"> Support for Maintaining/Expanding Universal COVID-19 Vaccine Access and Recommendations</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Support for Reinstating/Retaining Prior ACIP Committee of Scientific and Medical Experts" onchange="filterTable()"> Support for Reinstating/Retaining Prior ACIP Committee of Scientific and Medical Experts</label>
+                                <div class="filter-dropdown" id="filter-4" style="display: none;"><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="COVID Vaccine Market Status: Support for Continued or Expanded COVID Vaccine Access" onchange="filterTable()"> COVID Vaccine Market Status: Support for Continued or Expanded COVID Vaccine Access</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="COVID Vaccine Market Status: Support for Removal of COVID Vaccines from Market" onchange="filterTable()"> COVID Vaccine Market Status: Support for Removal of COVID Vaccines from Market</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Importance of Vaccine Recommendations for Insurance and Coverage: Support for Maintaining Recommendations to Guarantee Coverage" onchange="filterTable()"> Importance of Vaccine Recommendations for Insurance and Coverage: Support for Maintaining Recommendations to Guarantee Coverage</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Policy Transparency and Conflicts of Interest: Concern About Conflicts of Interest and Lack of Transparency" onchange="filterTable()"> Policy Transparency and Conflicts of Interest: Concern About Conflicts of Interest and Lack of Transparency</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Public Health vs. Personal Autonomy: Emphasis on Individual Choice/Bodily Autonomy" onchange="filterTable()"> Public Health vs. Personal Autonomy: Emphasis on Individual Choice/Bodily Autonomy</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Public Health vs. Personal Autonomy: Emphasis on Public Health Responsibility" onchange="filterTable()"> Public Health vs. Personal Autonomy: Emphasis on Public Health Responsibility</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Restoring and Building Public Trust: Trust Depends on Transparency and Safety" onchange="filterTable()"> Restoring and Building Public Trust: Trust Depends on Transparency and Safety</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Universal Vaccine Access: Support for Universal Vaccine Access" onchange="filterTable()"> Universal Vaccine Access: Support for Universal Vaccine Access</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Vaccine Safety and Harms: Vaccines Are Safe and Effective" onchange="filterTable()"> Vaccine Safety and Harms: Vaccines Are Safe and Effective</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Vaccine Safety and Harms: Vaccines Are Unsafe" onchange="filterTable()"> Vaccine Safety and Harms: Vaccines Are Unsafe</label>
                                     <hr style="margin: 5px 0;">
                                     <label class="filter-checkbox"><input type="checkbox" data-filter="unusual_combo" value="yes" onchange="filterTable()"> ⚠️ Unusual Combinations</label>
                                 </div>
@@ -836,70 +1044,11 @@
                         <tbody>
 
                             <tr>
-                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-9801" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-9801</a></span></td>
-                                <td class="date-cell">2025-06-23</td>
-                                <td class="char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="Comment from National Association of Hispanic Nurses">Comment from National Association of Hispanic Nurs...</td>
-                                <td>National Association of Hispanic Nurses</td>
-                                <td><div class="stances-container"><span class="stance-tag">Support for Maintaining/Expanding Universal COVID-19 Vaccine Access and Recommendations</span> <span class="stance-tag">Support for Enhanced Transparency and Oversight of ACIP Committee</span></div></td>
-                                <td><span style="color: #999;">None</span></td>
-                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="See attached file(s)
-
---- ATTACHMENT CONTENT ---
-Position Statement from the National Association of Hispanic Nurses (NAHN) to the 
-Advisory Committee on Immunization Practices (ACIP)  
-Re: In Support of Maintaining a Universal COVID -19 Vaccine Policy for All Individuals 
-Aged 6 Months and Older  
-As a leading voice in the advancement of health equity and the representation of Hispanic nurses nationwide, the National Association of Hispanic Nurses (NAHN) strongly supports 
-the continued recommendation of a universal COVID -19 vaccine policy for all in dividuals 
-aged 6 months and older. We urge the Advisory Committee on Immunization Practices 
-(ACIP) to maintain and reinforce this universal policy as a cornerstone of primary 
-prevention and public health equity. 
-Rationale and Evidence-Based Support  
-Over the past three years, racial and ethnic minorities in the United States have 
-experienced signiﬁcantly higher rates of COVID -19 infection, hospitalization, and mortality 
-than their white counterparts. Early in the pandemic, Black, Latino, Asian, and N ative 
-American individuals faced disproportionately high rates of hospitalization and intensive care unit (ICU) admissions. For example, the COVID -19 hospitalization rate among Latino 
-individuals was four times greater than that of white patients. Alarming ly, as of August 
-2021, Latinos had a COVID -19 mortality rate 9.2 times that of white patients.  
-Despite the rollout of vaccines beginning in late 2020 and the expan... [truncated]">See attached file(s)
-
---- ATTACHMENT CONTENT ---
-Position Statement from the National Association of Hispanic Nurses (NAHN) to the 
-Advisory Committee on Immunization Practices (ACIP)  
-Re: In Support of Maintaining a Universal COVID -19 Vaccine Policy for All Individuals 
-Aged 6 Months and Older  
-...</td>
-                                <td><span class="attachment-indicator">📎</span></td>
-                                <td><span class="unique-indicator">1</span></td>
-                                <td><span class="unique-indicator">1:1</span></td>
-                                <td style="display: none;" class="char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="Position Statement from the National Association of Hispanic Nurses (NAHN) to the 
-Advisory Committee on Immunization Practices (ACIP)  
-Re: In Support of Maintaining a Universal COVID -19 Vaccine Policy for All Individuals 
-Aged 6 Months and Older  
-As a leading voice in the advancement of health equity and the representation of Hispanic nurses nationwide, the National Association of Hispanic Nurses (NAHN) strongly supports 
-the continued recommendation of a universal COVID -19 vaccine policy for all in dividuals 
-aged 6 months and older. We urge the Advisory Committee on Immunization Practices 
-(ACIP) to maintain and reinforce this universal policy as a cornerstone of primary 
-prevention and public health equity. 
-Rationale and Evidence-Based Support  
-Over the past three years, racial and ethnic minorities in the United States have 
-experienced signiﬁcantly higher rates of COVID -19 infection, hospitalization, and mortality 
-than their white counterparts. Early in the pandemic, Black, Latino, Asian, and N ative 
-American individuals faced disproportionately high rates of hospitalization and intensive care unit (ICU) admissions. For example, the COVID -19 hospitalization rate amo... [truncated]">Position Statement from the National Association of Hispanic Nurses (NAHN) to the 
-Advisory Committee on Immunization Practices (ACIP)  
-Re: In Support of Maintaining a Universal COVID -19 Vaccine Policy for All Individuals 
-Aged 6 Months and Older  
-As a leading voice in the advancement of health e...</td>
-                                <td style="display: none;">The National Association of Hispanic Nurses (NAHN) strongly supports the continued recommendation of a universal COVID -19 vaccine policy for all individuals aged 6 months and older.</td>
-                                <td style="display: none;">The comment clearly expresses support for maintaining a universal vaccine policy for all individuals aged 6 months and older, emphasizing the importance of public health equity and access. Additionally, it highlights disparities in vaccine access, indicating a need for enhanced transparency and oversight to address inequalities in vaccination rates.</td>
-                            </tr>
-
-                            <tr>
-                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-2909" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-2909</a></span></td>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-3462" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-3462</a></span></td>
                                 <td class="date-cell">2025-06-18</td>
-                                <td>Comment from Best, Julie</td>
+                                <td>Linda Yoder</td>
                                 <td></td>
-                                <td><div class="stances-container"><span class="stance-tag">Opposition to Continued Access to COVID-19 Vaccines (Support for Removal of COVID Vaccines from Market)</span> <span class="stance-tag">Support for Reinstating/Retaining Prior ACIP Committee of Scientific and Medical Experts</span></div></td>
+                                <td><div class="stances-container"><span class="stance-tag">COVID Vaccine Market Status: Support for Removal of COVID Vaccines from Market</span> <span class="stance-tag">Vaccine Safety and Harms: Vaccines Are Unsafe</span> <span class="stance-tag">Restoring and Building Public Trust: Trust Depends on Transparency and Safety</span></div></td>
                                 <td><span style="color: #999;">None</span></td>
                                 <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
 I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
@@ -909,201 +1058,32 @@ I urge ACIP members to take a firm stance for public health and remove all curre
                                 <td><span class="unique-indicator">1:1</span></td>
                                 <td style="display: none;"></td>
                                 <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
-                                <td style="display: none;">The commenter clearly expresses opposition to the continued availability of COVID-19 vaccines, urging their removal from the market due to safety concerns. Additionally, the reference to the need for rigorous and transparent studies before vaccine approval implies support for reinstating a scientifically rigorous approach to ACIP's recommendations.</td>
+                                <td style="display: none;">The commenter explicitly calls for the removal of COVID vaccines from the market, citing safety concerns and referencing death counts from the Vaccine Adverse Event Reporting System. Additionally, the emphasis on the need for rigorous research before vaccine licensing indicates a belief that current vaccines are unsafe and undermines public trust in the vaccine process.</td>
                             </tr>
 
                             <tr>
-                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-10184" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-10184</a></span></td>
-                                <td class="date-cell">2025-06-23</td>
-                                <td>Comment from May, Mavis</td>
-                                <td></td>
-                                <td><div class="stances-container"><span class="stance-tag">Support for Maintaining/Expanding Universal COVID-19 Vaccine Access and Recommendations</span> <span class="stance-tag">Opposition to Vaccine Mandates or to ACIP/CDC Recommendations as Overreach/Erosion of Choice</span></div></td>
-                                <td><span style="color: #999;">None</span></td>
-                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="Reducing or removing vaccine access will cause tens of thousands of preventable deaths. Vaccines are a key part of disease control, and limiting access runs counter to the entire purpose of the CDC. It takes away individual choice; allow vaccine access, and those who choose not to get vaccinated can make that choice. Limit vaccine access, and all of us are forced to forgo key disease protection because of the objection of a few loud actors.">Reducing or removing vaccine access will cause tens of thousands of preventable deaths. Vaccines are a key part of disease control, and limiting access runs counter to the entire purpose of the CDC. It takes away individual choice; allow vaccine access, and those who choose not to get vaccinated can...</td>
-                                <td></td>
-                                <td><span class="unique-indicator">1</span></td>
-                                <td><span class="unique-indicator">1:1</span></td>
-                                <td style="display: none;"></td>
-                                <td style="display: none;">Reducing or removing vaccine access will cause tens of thousands of preventable deaths.</td>
-                                <td style="display: none;">The comment emphasizes the importance of maintaining access to vaccines for public health and the potential consequences of limiting this access. It also advocates for individual choice regarding vaccination, opposing any mandate that restricts access.</td>
-                            </tr>
-
-                            <tr>
-                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-1385" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-1385</a></span></td>
-                                <td class="date-cell">2025-06-18</td>
-                                <td>Comment from Llanos, Maria Jose</td>
-                                <td></td>
-                                <td><div class="stances-container"><span class="stance-tag">Opposition to Continued Access to COVID-19 Vaccines (Support for Removal of COVID Vaccines from Market)</span> <span class="stance-tag">Support for Enhanced Transparency and Oversight of ACIP Committee</span></div></td>
-                                <td><span style="color: #999;">None</span></td>
-                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
-I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing. Please care about human health!! money gains cannot be more important that real health!">ACIP – Want to Regain the Public’s Trust?
-I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
-                                <td></td>
-                                <td><span class="unique-indicator">1</span></td>
-                                <td><span class="unique-indicator">1:1</span></td>
-                                <td style="display: none;"></td>
-                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
-                                <td style="display: none;">The commenter clearly expresses a desire to remove COVID vaccines from the market due to reported deaths and calls for rigorous research and transparency in vaccine approval processes, indicating both opposition to current vaccines and a demand for better oversight.</td>
-                            </tr>
-
-                            <tr>
-                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-10440" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-10440</a></span></td>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-10543" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-10543</a></span></td>
                                 <td class="date-cell">2025-06-24</td>
-                                <td>Comment from Anonymous</td>
+                                <td>Anonymous Anonymous</td>
                                 <td></td>
-                                <td><div class="stances-container"><span class="stance-tag">Support for Maintaining/Expanding Universal COVID-19 Vaccine Access and Recommendations</span></div></td>
+                                <td><div class="stances-container"><span class="stance-tag">COVID Vaccine Market Status: Support for Continued or Expanded COVID Vaccine Access</span> <span class="stance-tag">Universal Vaccine Access: Support for Universal Vaccine Access</span> <span class="stance-tag">Vaccine Safety and Harms: Vaccines Are Safe and Effective</span> <span class="stance-tag">Policy Transparency and Conflicts of Interest: Concern About Conflicts of Interest and Lack of Transparency</span> <span class="stance-tag">Importance of Vaccine Recommendations for Insurance and Coverage: Support for Maintaining Recommendations to Guarantee Coverage</span> <span class="stance-tag">Public Health vs. Personal Autonomy: Emphasis on Public Health Responsibility</span> <span class="stance-tag">Public Health vs. Personal Autonomy: Emphasis on Individual Choice/Bodily Autonomy</span></div></td>
                                 <td><span style="color: #999;">None</span></td>
-                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I am writing this comment in support of universal access to all COVID vaccines.
-
-Two decades ago, when I was in my sophomore year of high school, I got sick with a minor cough. It went away in a few days, but I was left with unrelenting fatigue and wide-ranging systemic symptoms. Eventually I was forced to drop out of high school, despite being a straight-A student before falling ill. Many years later I now have diagnoses for my post-viral illnesses, but there are no cures. I have never been able to work or go to school full time. Now I can&#039;t work at all.
-
-The research shows that COVID can cause many disabling post-viral illnesses like mine. We also know these conditions affect children as much as adults, including healthy children like I was. But vaccines can help reduce the chance of post-viral health conditions. We must allow (and encourage) ALL kids to get vaccinated to reduce the risk of becoming sick and disabled from repeated COVID infections. They deserve protection. 
-
-I&#039;ll never know what virus caused my permanent disabilities. But we know COVID is causing devastating chronic illness in kids now, and we know how to help prevent it, or at least reduce the risk. Please.
-
---- ATTACHMENT CONTENT ---
-I am writing this comment in support of universal access to all COVID 
-vaccines.
-Two decades ago, when I was in my sophomore year of high school, I got 
-sick with a minor cough. It went away in a few days, but I was left with 
-unrelenting fatigue and wide-ranging systemic sym... [truncated]">I am writing this comment in support of universal access to all COVID vaccines.
-
-Two decades ago, when I was in my sophomore year of high school, I got sick with a minor cough. It went away in a few days, but I was left with unrelenting fatigue and wide-ranging systemic symptoms. Eventually I was fo...</td>
-                                <td><span class="attachment-indicator">📎</span></td>
-                                <td><span class="unique-indicator">1</span></td>
-                                <td><span class="unique-indicator">1:1</span></td>
-                                <td style="display: none;" class="char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I am writing this comment in support of universal access to all COVID 
-vaccines.
-Two decades ago, when I was in my sophomore year of high school, I got 
-sick with a minor cough. It went away in a few days, but I was left with 
-unrelenting fatigue and wide-ranging systemic symptoms. Eventually I was 
-forced to drop out of high school, despite being a straight-A student 
-before falling ill. Many years later I now have diagnoses for my post-
-viral illnesses, but there are no cures. I have never been able to work or 
-go to school full time. Now I can&#039;t work at all.
-The research shows that COVID can cause many disabling post-viral 
-illnesses like mine. We also know these conditions affect children as much 
-as adults, including healthy children like I was. But vaccines can help 
-reduce the chance of post-viral health conditions. We must allow (and 
-encourage) ALL kids to get vaccinated to reduce the risk of becoming sick 
-and disabled from repeated COVID infections. They deserve protection.
-I&#039;ll never know what virus caused my permanent disabilities. But we know 
-COVID is causing devastating chronic illness in kids now, and we know how 
-to help prevent it, or at least reduce the risk. Pl... [truncated]">I am writing this comment in support of universal access to all COVID 
-vaccines.
-Two decades ago, when I was in my sophomore year of high school, I got 
-sick with a minor cough. It went away in a few days, but I was left with 
-unrelenting fatigue and wide-ranging systemic symptoms. Eventually I was ...</td>
-                                <td style="display: none;">We must allow (and encourage) ALL kids to get vaccinated to reduce the risk of becoming sick and disabled from repeated COVID infections.</td>
-                                <td style="display: none;">The commenter advocates for universal access to COVID vaccines, highlighting the importance of vaccination in preventing long-term health issues associated with COVID-19, particularly for children.</td>
-                            </tr>
-
-                            <tr>
-                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-5189" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-5189</a></span></td>
-                                <td class="date-cell">2025-06-19</td>
-                                <td>Comment from Gee, Janice</td>
-                                <td></td>
-                                <td><div class="stances-container"><span class="stance-tag">Opposition to Continued Access to COVID-19 Vaccines (Support for Removal of COVID Vaccines from Market)</span> <span class="stance-tag">Support for Reinstating/Retaining Prior ACIP Committee of Scientific and Medical Experts</span></div></td>
-                                <td><span style="color: #999;">None</span></td>
-                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
-I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
-I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I’m a soon to be mom and immune compromised individual (due to necessary medication) access to vaccines for me and my family are literally life or death even from “simple” illnesses like the flu. It’s my opinion that members of ACIP must disclose all financial and other conflicts of interest. That the
+ACIP must understand that currently available FDA-approved vaccines are safe and effective, and children, adults, and pregnant people all of whom rely on CDC ACIP vaccine recommendations for access to vaccines and insurance coverage. And that the ACIP must continue to recommend widespread and unhindered access to a wide range of vaccines to protect people of all ages in the US. Bodily autonomy is an integral right that all people should have and losing access to vaccines that are proven to be safe strips millions of people of their bodily autonomy and right to choose how they vaccinate themselves and their families.">I’m a soon to be mom and immune compromised individual (due to necessary medication) access to vaccines for me and my family are literally life or death even from “simple” illnesses like the flu. It’s my opinion that members of ACIP must disclose all financial and other conflicts of interest. That t...</td>
                                 <td></td>
                                 <td><span class="unique-indicator">1</span></td>
                                 <td><span class="unique-indicator">1:1</span></td>
                                 <td style="display: none;"></td>
-                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
-                                <td style="display: none;">The commenter clearly expresses opposition to the continued availability of COVID vaccines, calling for their removal due to reported deaths. Additionally, the mention of the need for stringent research protocols for vaccines suggests a desire for expertise and accountability from the ACIP committee.</td>
+                                <td style="display: none;">Losing access to vaccines that are proven to be safe strips millions of people of their bodily autonomy and right to choose how they vaccinate themselves and their families.</td>
+                                <td style="display: none;" class="char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="These selected theme:position combinations reflect the commenter&#039;s emphasis on the critical need for continued access to vaccines, both for public health reasons and individual rights. The commenter expresses a clear stance that supports vaccine safety, widespread access, transparency regarding conflicts of interest within ACIP, and the importance of maintaining recommendations for insurance coverage. There is also a strong emphasis on personal autonomy in health decisions, which is articulated ... [truncated]">These selected theme:position combinations reflect the commenter's emphasis on the critical need for continued access to vaccines, both for public health reasons and individual rights. The commenter expresses a clear stance that supports vaccine safety, widespread access, transparency regarding conflicts of interest within ACIP, and the importance of maintaining recommendations for insurance coverage. There is also a strong emphasis on personal autonomy in health decisions, which is articulated ...</td>
                             </tr>
 
                             <tr>
-                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-9908" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-9908</a></span></td>
-                                <td class="date-cell">2025-06-23</td>
-                                <td>Comment from Anonymous</td>
-                                <td></td>
-                                <td><div class="stances-container"><span class="stance-tag">Support for Maintaining/Expanding Universal COVID-19 Vaccine Access and Recommendations</span> <span class="stance-tag">Support for Reinstating/Retaining Prior ACIP Committee of Scientific and Medical Experts</span></div></td>
-                                <td><span style="color: #999;">None</span></td>
-                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="
-
-Docket: CDC-2025-0024
-
-Public Comment for the June 25-27, 2025, CDC ACIP Committee Meeting
-
-To RFK Jr. and Members of the CDC ACIP committee:
-
-I am an individual with a chronic illness who relies on vaccination one of many vital layers to keep myself safe from COVID reinfection- especially after a harrowing experience with Long COVID where I was unable to function for the better part of a year. The recent termination of all 17 members of the CDC ACIP committee announced on June 9 by Robert F. Kennedy, Jr. is extremely alarming to me. These former members have an important role as independent expert scientists or clinicians on the ACIP committee with a crucial role in providing their understanding of the safety and efficacy of FDA-approved and authorized vaccines while also guiding insurance coverage and coverage for uninsured children through the Vaccines for Children program. Currently, vaccination rates for many infectious diseases are very low, and many communities across the US are directly affected by outbreaks of vaccine-preventable diseases such as measles, pertussis, and COVID. Many of these infections can cause serious and potentially lifelong consequences on their health. Children in 2025 should not die or become disabled from infectious diseases because of a lack of access to affordable and effective vaccines.
-
-Access to COVID vaccines in particular must be expanded, not restricted, as COVID continues to evolve and harm public health during this ongoing pandemic.... [truncated]">
-
-Docket: CDC-2025-0024
-
-Public Comment for the June 25-27, 2025, CDC ACIP Committee Meeting
-
-To RFK Jr. and Members of the CDC ACIP committee:
-
-I am an individual with a chronic illness who relies on vaccination one of many vital layers to keep myself safe from COVID reinfection- especially after a...</td>
-                                <td><span class="attachment-indicator">📎</span></td>
-                                <td><span class="unique-indicator">1</span></td>
-                                <td><span class="unique-indicator">1:1</span></td>
-                                <td style="display: none;" class="char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="Effect of COVID-19 vaccination on the risk of developing post-COVID 
-conditions: The VENUS study
-Sung-a Kima,b, Megumi Maedaa, Fumiko Murataa, Haruhisa Fukudaa,c,*
-aDepartment of Health Care Administration and Management, Graduate School of Medical Sciences, Kyushu University, Fukuoka, Japan
-bSt. Mary ’s Research Center, Kurume, Japan
-cCenter for Cohort Studies, Graduate School of Medical Sciences, Kyushu University, Fukuoka, Japan
-ARTICLE INFO
-Keywords:
-Long COVID
-Post-COVID-19 conditions
-SARS-CoV-2
-COVID-19 vaccineABSTRACT
-Introduction: Post-COVID-19 conditions have emerged as a global health challenge. This study examined the long- 
-term effects of COVID-19 vaccination on the incidence and risk of post-COVID-19 conditions in Japan.
-Methods: This retrospective cohort study was conducted using a database comprising medical claims, COVID-19 
-case information, and vaccination records of persons residing in four Japanese municipalities. The cohort 
-included COVID-19 cases diagnosed between August 2020 and December 2022. Participants were classified 
-according to the duration between their most recent COVID-19 vaccination and COVID-19 occurrence (≽365 
-days, 150–364 days, and 14–149 d... [truncated]">Effect of COVID-19 vaccination on the risk of developing post-COVID 
-conditions: The VENUS study
-Sung-a Kima,b, Megumi Maedaa, Fumiko Murataa, Haruhisa Fukudaa,c,*
-aDepartment of Health Care Administration and Management, Graduate School of Medical Sciences, Kyushu University, Fukuoka, Japan
-bSt. Ma...</td>
-                                <td style="display: none;">Access to COVID vaccines in particular must be expanded, not restricted, as COVID continues to evolve and harm public health during this ongoing pandemic.</td>
-                                <td style="display: none;">The commenter expresses a clear need for expanded access to COVID vaccines and emphasizes the importance of the prior ACIP members in providing expert guidance on vaccine safety and efficacy, indicating a strong support for both vaccine accessibility and the expertise of the previous advisory committee.</td>
-                            </tr>
-
-                            <tr>
-                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-9295" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-9295</a></span></td>
-                                <td class="date-cell">2025-06-23</td>
-                                <td>Comment from Seehra, Amrita</td>
-                                <td></td>
-                                <td><div class="stances-container"><span class="stance-tag">Support for Maintaining/Expanding Universal COVID-19 Vaccine Access and Recommendations</span> <span class="stance-tag">Support for Reinstating/Retaining Prior ACIP Committee of Scientific and Medical Experts</span></div></td>
-                                <td><span style="color: #999;">None</span></td>
-                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="To RFK Jr. and Members of the CDC ACIP committee:
-
-I have no conflicts of interest to disclose.
-
-Today, I am writing to express grave concerns about the recent termination of all 17 members of the CDC ACIP committee announced on June 9 by Robert F. Kennedy, Jr. These former members have an important role as independent expert scientists or clinicians on the ACIP committee with a crucial role in providing their understanding of the safety and efficacy of FDA-approved and authorized vaccines while also guiding insurance coverage and coverage for uninsured children through the Vaccines for Children program. Currently, vaccination rates for many infectious diseases are very low, and many communities across the US are directly affected by outbreaks of vaccine-preventable diseases such as measles, pertussis, and COVID. Many of these infections can cause serious and potentially lifelong consequences on their health. Children in 2025 should not die or become disabled from infectious diseases because of a lack of access to affordable and effective vaccines.
-
-RFK Jr., Marty Makary, and Vinay Prasad have recently established policies that limit access to COVID vaccinations.. Creating such barriers is harmful to the public’s health. Everyone must have regular access to updated COVID vaccines and widely available with full coverage by health insurance. The scientific evidence is irrefutable and it is a waste of precious resources and time to conduct additional efficacy studies, which only... [truncated]">To RFK Jr. and Members of the CDC ACIP committee:
-
-I have no conflicts of interest to disclose.
-
-Today, I am writing to express grave concerns about the recent termination of all 17 members of the CDC ACIP committee announced on June 9 by Robert F. Kennedy, Jr. These former members have an important...</td>
-                                <td></td>
-                                <td><span class="unique-indicator">1</span></td>
-                                <td><span class="unique-indicator">1:1</span></td>
-                                <td style="display: none;"></td>
-                                <td style="display: none;">Everyone must have regular access to updated COVID vaccines and widely available with full coverage by health insurance.</td>
-                                <td style="display: none;">The commenter expresses strong support for maintaining and expanding access to COVID-19 vaccines, emphasizing the importance of vaccines in preventing serious health consequences. Additionally, they voice concerns about the removal of the ACIP members, highlighting the critical role of these experts in guiding vaccine safety and efficacy, which reflects a clear stance for retaining the prior committee.</td>
-                            </tr>
-
-                            <tr>
-                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-3692" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-3692</a></span></td>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-4149" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-4149</a></span></td>
                                 <td class="date-cell">2025-06-18</td>
-                                <td>Comment from Jadrejcic, Marina</td>
+                                <td>Rebecca Cervantes</td>
                                 <td></td>
-                                <td><div class="stances-container"><span class="stance-tag">Opposition to Continued Access to COVID-19 Vaccines (Support for Removal of COVID Vaccines from Market)</span> <span class="stance-tag">Support for Enhanced Transparency and Oversight of ACIP Committee</span></div></td>
+                                <td><div class="stances-container"><span class="stance-tag">COVID Vaccine Market Status: Support for Removal of COVID Vaccines from Market</span> <span class="stance-tag">Vaccine Safety and Harms: Vaccines Are Unsafe</span> <span class="stance-tag">Restoring and Building Public Trust: Trust Depends on Transparency and Safety</span></div></td>
                                 <td><span style="color: #999;">None</span></td>
                                 <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
 I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
@@ -1113,15 +1093,15 @@ I urge ACIP members to take a firm stance for public health and remove all curre
                                 <td><span class="unique-indicator">1:1</span></td>
                                 <td style="display: none;"></td>
                                 <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
-                                <td style="display: none;">The commenter clearly opposes the continued access to COVID-19 vaccines, advocating for their removal from the market due to reported deaths. They also call for enhanced transparency and oversight regarding vaccine studies and approvals, indicating a desire for rigorous research before vaccine licensing.</td>
+                                <td style="display: none;">The comment clearly advocates for the removal of COVID vaccines from the market, citing safety concerns and referencing negative data from the Vaccine Adverse Event Reporting System. It expresses distrust in the current ACIP recommendations, linking the need for transparency and rigorous research to restoring public trust.</td>
                             </tr>
 
                             <tr>
-                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-5134" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-5134</a></span></td>
-                                <td class="date-cell">2025-06-19</td>
-                                <td>Comment from McLean, Julie</td>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-7042" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-7042</a></span></td>
+                                <td class="date-cell">2025-06-20</td>
+                                <td>Lynn Chodur</td>
                                 <td></td>
-                                <td><div class="stances-container"><span class="stance-tag">Opposition to Continued Access to COVID-19 Vaccines (Support for Removal of COVID Vaccines from Market)</span> <span class="stance-tag">Support for Enhanced Transparency and Oversight of ACIP Committee</span></div></td>
+                                <td><div class="stances-container"><span class="stance-tag">COVID Vaccine Market Status: Support for Removal of COVID Vaccines from Market</span> <span class="stance-tag">Vaccine Safety and Harms: Vaccines Are Unsafe</span> <span class="stance-tag">Restoring and Building Public Trust: Trust Depends on Transparency and Safety</span></div></td>
                                 <td><span style="color: #999;">None</span></td>
                                 <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
 I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
@@ -1131,7 +1111,25 @@ I urge ACIP members to take a firm stance for public health and remove all curre
                                 <td><span class="unique-indicator">1:1</span></td>
                                 <td style="display: none;"></td>
                                 <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
-                                <td style="display: none;">The commenter explicitly calls for the removal of COVID-19 vaccines from the market due to safety concerns, reflecting an opposition to their continued access. Additionally, the request for rigorous research and transparency prior to marketing suggests a need for enhanced oversight of the ACIP committee.</td>
+                                <td style="display: none;">The comment expresses a clear demand for the removal of COVID vaccines from the market, citing safety concerns and referencing significant death counts. It also emphasizes the need for rigorous scientific studies and transparency to rebuild public trust, thus aligning with the identified themes and positions.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-6381" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-6381</a></span></td>
+                                <td class="date-cell">2025-06-20</td>
+                                <td>Laura Bouten</td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">COVID Vaccine Market Status: Support for Removal of COVID Vaccines from Market</span> <span class="stance-tag">Vaccine Safety and Harms: Vaccines Are Unsafe</span> <span class="stance-tag">Restoring and Building Public Trust: Trust Depends on Transparency and Safety</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The commenter clearly advocates for the removal of COVID vaccines from the market, citing safety concerns and historical comparisons to the 1976 swine flu vaccine incident. Additionally, they emphasize the need for rigorous research to regain public trust, aligning with concerns about transparency and vaccine safety.</td>
                             </tr>
 
                         </tbody>
@@ -1146,7 +1144,7 @@ I urge ACIP members to take a firm stance for public health and remove all curre
             <div class="meta-grid">
                 <div class="meta-item">
                     <div class="meta-label">Generated</div>
-                    <div class="meta-value">2025-06-28 22:51:25</div>
+                    <div class="meta-value">2025-06-30 18:29:33</div>
                 </div>
                 <div class="meta-item">
                     <div class="meta-label">Model Used</div>
@@ -1154,15 +1152,15 @@ I urge ACIP members to take a firm stance for public health and remove all curre
                 </div>
                 <div class="meta-item">
                     <div class="meta-label">Total Comments</div>
-                    <div class="meta-value">10</div>
+                    <div class="meta-value">5</div>
                 </div>
                 <div class="meta-item">
                     <div class="meta-label">With Attachments</div>
-                    <div class="meta-value">3</div>
+                    <div class="meta-value">0</div>
                 </div>
                 <div class="meta-item">
                     <div class="meta-label">Average Length</div>
-                    <div class="meta-value">7,635 chars</div>
+                    <div class="meta-value">887 chars</div>
                 </div>
                 <div class="meta-item">
                     <div class="meta-label">Date Range</div>

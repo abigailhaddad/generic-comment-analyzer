@@ -151,6 +151,43 @@ def identify_unusual_combinations(stances: List[str], cooccurrence: Dict[str, Di
     
     return False
 
+def calculate_agreement_scores(comments: List[Dict[str, Any]], field_analysis: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
+    """Calculate agreement scores matrix for themes and positions.
+    
+    Agreement scores = co-occurrence percentages between every pair of positions.
+    For each position A, shows what percentage of comments with A also have position B.
+    """
+    agreement_scores = {}
+    
+    if 'stances' in field_analysis:
+        stance_list = field_analysis['stances'].get('unique_values', [])
+        
+        # Calculate co-occurrence matrix
+        stance_cooccurrence = calculate_stance_cooccurrence(comments, stance_list)
+        
+        # Calculate agreement scores for each stance pair
+        for stance1 in stance_list:
+            if stance1 in stance_cooccurrence:
+                total_with_stance1 = stance_cooccurrence[stance1][stance1]  # How many comments have this stance
+                agreement_scores[stance1] = {}
+                
+                for stance2 in stance_list:
+                    if stance2 in stance_cooccurrence[stance1]:
+                        if stance1 == stance2:
+                            # Self-agreement is always 100%
+                            agreement_scores[stance1][stance2] = 100.0
+                        elif total_with_stance1 > 0:
+                            # Calculate percentage of stance1 comments that also have stance2
+                            overlap_count = stance_cooccurrence[stance1][stance2]
+                            agreement_percentage = (overlap_count / total_with_stance1) * 100
+                            agreement_scores[stance1][stance2] = agreement_percentage
+                        else:
+                            agreement_scores[stance1][stance2] = 0.0
+                    else:
+                        agreement_scores[stance1][stance2] = 0.0
+    
+    return agreement_scores
+
 def calculate_stats(comments: List[Dict[str, Any]], field_analysis: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
     """Calculate summary statistics."""
     total_comments = len(comments)
@@ -182,6 +219,9 @@ def calculate_stats(comments: List[Dict[str, Any]], field_analysis: Dict[str, Di
         if stance_list:
             stance_cooccurrence = calculate_stance_cooccurrence(comments, stance_list)
     
+    # Calculate agreement scores
+    agreement_scores = calculate_agreement_scores(comments, field_analysis)
+    
     # Comments with attachments
     with_attachments = sum(1 for c in comments if c.get('attachment_text', '').strip())
     
@@ -193,6 +233,7 @@ def calculate_stats(comments: List[Dict[str, Any]], field_analysis: Dict[str, Di
         'total_comments': total_comments,
         'field_counts': field_counts,
         'stance_cooccurrence': stance_cooccurrence,
+        'agreement_scores': agreement_scores,
         'with_attachments': with_attachments,
         'avg_text_length': int(avg_length),
         'date_range': get_date_range(comments)
@@ -289,14 +330,282 @@ def generate_field_distribution_html(field_name: str, field_info: Dict[str, Any]
         </div>'''
 
 def generate_stance_cooccurrence_html(sorted_items, stats, field_info):
-    """Generate expandable stance cards with co-occurrence details."""
+    """Generate expandable stance cards with co-occurrence details, grouped by themes."""
     try:
-        percentages, stance_to_num = calculate_cooccurrence_percentages(stats, {'stances': field_info})
+        # Check if we have theme-formatted stances (contain ':')
+        has_themes = any(':' in stance for stance, _ in sorted_items)
         
-        stance_cards = []
-        for i, (stance, count) in enumerate(sorted_items[:6]):
-            # Build all connections for this stance
-            connections = []
+        if has_themes:
+            # Group stances by theme
+            themes = {}
+            for stance, count in sorted_items:
+                if ':' in stance:
+                    theme, position = stance.split(':', 1)
+                    theme = theme.strip()
+                    position = position.strip()
+                    if theme not in themes:
+                        themes[theme] = []
+                    themes[theme].append((position, count, stance))
+                else:
+                    # Fallback for stances without theme
+                    if 'Other' not in themes:
+                        themes['Other'] = []
+                    themes['Other'].append((stance, count, stance))
+            
+            # Calculate co-occurrence percentages
+            percentages, stance_to_num = calculate_cooccurrence_percentages(stats, {'stances': field_info})
+            
+            theme_cards = []
+            theme_id = 0
+            for theme_name, positions in themes.items():
+                # Sort positions by count
+                positions.sort(key=lambda x: x[1], reverse=True)
+                
+                # Create position cards for this theme
+                position_cards = []
+                for position, count, full_stance in positions:
+                    # Get agreement scores for this stance
+                    agreement_scores = stats.get('agreement_scores', {})
+                    stance_agreement_scores = agreement_scores.get(full_stance, {})
+                    
+                    # Build connections for this position
+                    connections = []
+                    if full_stance in percentages:
+                        for other_stance, _ in sorted_items:  # Check all items, not just first 6
+                            if other_stance != full_stance:
+                                for other_num, pct in percentages[full_stance].items():
+                                    if stance_to_num.get(other_stance) == other_num and pct >= 5:
+                                        connections.append((pct, other_stance))
+                    
+                    connections.sort(reverse=True)
+                    
+                    # Build the details content including agreement scores and connections
+                    details_content = []
+                    
+                    # Show agreement scores with all other positions that have overlap
+                    agreement_items = []
+                    for other_stance, agreement_pct in stance_agreement_scores.items():
+                        if other_stance != full_stance and agreement_pct > 0:
+                            agreement_items.append(f'<div class="agreement-item">📊 {agreement_pct:.0f}% agreement with: {other_stance}</div>')
+                    
+                    if agreement_items:
+                        details_content.append('<div class="agreements-header">📊 Agreement scores:</div>')
+                        details_content.extend(agreement_items)
+                    else:
+                        details_content.append('<div class="no-agreements">📊 No overlaps with other positions</div>')
+                    
+                    connections_html = "".join(details_content)
+                    
+                    position_cards.append(f'''
+                        <div class="position-card">
+                            <div class="position-header" onclick="togglePositionDetails('{theme_id}_{len(position_cards)}')">
+                                <span class="position-count">{count:,}</span>
+                                <span class="position-name">{position}</span>
+                                <span class="expand-icon" id="pos-icon-{theme_id}_{len(position_cards)}">▼</span>
+                            </div>
+                            <div class="position-details" id="pos-details-{theme_id}_{len(position_cards)}" style="display: none;">
+                                {connections_html}
+                            </div>
+                        </div>''')
+                
+                theme_cards.append(f'''
+                    <div class="theme-card">
+                        <div class="theme-header" onclick="toggleThemeDetails('{theme_id}')">
+                            <span class="theme-name">🔹 {theme_name}</span>
+                            <span class="theme-count">({len(positions)} positions)</span>
+                            <span class="expand-icon" id="theme-icon-{theme_id}">▼</span>
+                        </div>
+                        <div class="theme-details" id="theme-details-{theme_id}" style="display: none;">
+                            {"".join(position_cards)}
+                        </div>
+                    </div>''')
+                theme_id += 1
+            
+            return f'''
+            <div class="section">
+                <h2>📊 Themes Distribution</h2>
+                <p style="color: #666; margin-bottom: 20px; font-style: italic;">Click on any theme to see positions, then click positions to see relationships</p>
+                <div class="theme-stances">
+                    {"".join(theme_cards)}
+                </div>
+            </div>
+            
+            <style>
+            .theme-stances {{
+                display: grid;
+                gap: 15px;
+            }}
+            
+            .theme-card {{
+                background: white;
+                border-radius: 8px;
+                border-left: 4px solid #2c3e50;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                overflow: hidden;
+            }}
+            
+            .theme-header {{
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                padding: 15px;
+                cursor: pointer;
+                transition: background-color 0.2s;
+                background: #f8f9fa;
+                font-weight: 600;
+            }}
+            
+            .theme-header:hover {{
+                background-color: #e9ecef;
+            }}
+            
+            .theme-name {{
+                font-size: 1.1em;
+                color: #2c3e50;
+                flex: 1;
+            }}
+            
+            .theme-count {{
+                color: #666;
+                font-size: 0.9em;
+            }}
+            
+            .theme-details {{
+                padding: 0 15px 15px 15px;
+            }}
+            
+            .position-card {{
+                background: #f8f9fa;
+                border-radius: 6px;
+                margin: 8px 0;
+                border-left: 3px solid #3498db;
+            }}
+            
+            .position-header {{
+                display: flex;
+                align-items: flex-start;
+                gap: 12px;
+                padding: 12px;
+                cursor: pointer;
+                transition: background-color 0.2s;
+            }}
+            
+            .position-header:hover {{
+                background-color: #ffffff;
+            }}
+            
+            .position-count {{
+                font-size: 1.4em;
+                font-weight: bold;
+                color: #3498db;
+                min-width: 40px;
+            }}
+            
+            .position-name {{
+                flex: 1;
+                font-weight: 500;
+                color: #2c3e50;
+            }}
+            
+            .position-details {{
+                padding: 0 12px 12px 12px;
+                background: white;
+                margin: 0 12px 12px 12px;
+                border-radius: 4px;
+            }}
+            
+            .agreements-header {{
+                font-weight: 600;
+                color: #2c3e50;
+                margin: 12px 0 8px 0;
+                font-size: 0.9em;
+            }}
+            
+            .agreement-item {{
+                padding: 6px 0;
+                border-bottom: 1px solid #eee;
+                color: #555;
+                font-size: 0.9em;
+            }}
+            
+            .agreement-item:last-child {{
+                border-bottom: none;
+            }}
+            
+            .no-agreements {{
+                padding: 10px 0;
+                color: #999;
+                font-style: italic;
+                font-size: 0.9em;
+            }}
+            
+            .expand-icon {{
+                font-size: 0.8em;
+                color: #666;
+                transition: transform 0.2s;
+                min-width: 20px;
+                text-align: center;
+            }}
+            
+            .expand-icon.expanded {{
+                transform: rotate(180deg);
+            }}
+            
+            .connection-item {{
+                padding: 6px 0;
+                border-bottom: 1px solid #eee;
+                color: #555;
+                font-size: 0.9em;
+            }}
+            
+            .connection-item:last-child {{
+                border-bottom: none;
+            }}
+            
+            .no-connections {{
+                padding: 10px 0;
+                color: #999;
+                font-style: italic;
+                font-size: 0.9em;
+            }}
+            </style>
+            
+            <script>
+            function toggleThemeDetails(themeId) {{
+                const details = document.getElementById('theme-details-' + themeId);
+                const icon = document.getElementById('theme-icon-' + themeId);
+                
+                if (details.style.display === 'none' || details.style.display === '') {{
+                    details.style.display = 'block';
+                    icon.classList.add('expanded');
+                }} else {{
+                    details.style.display = 'none';
+                    icon.classList.remove('expanded');
+                }}
+            }}
+            
+            function togglePositionDetails(positionId) {{
+                const details = document.getElementById('pos-details-' + positionId);
+                const icon = document.getElementById('pos-icon-' + positionId);
+                
+                if (details.style.display === 'none' || details.style.display === '') {{
+                    details.style.display = 'block';
+                    icon.classList.add('expanded');
+                }} else {{
+                    details.style.display = 'none';
+                    icon.classList.remove('expanded');
+                }}
+            }}
+            </script>'''
+        
+        else:
+            # Fallback to original behavior if no themes detected
+            percentages, stance_to_num = calculate_cooccurrence_percentages(stats, {'stances': field_info})
+            
+            stance_cards = []
+            for i, (stance, count) in enumerate(sorted_items[:6]):
+                # Build all connections for this stance
+                connections = []
             if stance in percentages and percentages[stance]:
                 for other_stance, _ in sorted_items[:6]:
                     if other_stance != stance:
@@ -435,7 +744,7 @@ def generate_stance_cooccurrence_html(sorted_items, stats, field_info):
         # Fallback to simple display if co-occurrence fails
         return f'''
         <div class="section">
-            <h2>📊 Stances Distribution</h2>
+            <h2>📊 Themes Distribution</h2>
             <div class="stats-grid">
                 {"".join(f'''
                 <div class="stat-card">

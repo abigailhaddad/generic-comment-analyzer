@@ -21,10 +21,10 @@ from datetime import datetime
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-class DiscoveredStances(BaseModel):
-    """Model for discovered positions/stances in comments."""
-    stances: List[Dict[str, Any]] = Field(
-        description="List of 5-7 main POSITIONS people are taking (supporting or opposing specific aspects). Each should have 'name' (clear support/opposition label) and 'indicators' (specific phrases, keywords, or arguments that signal someone holds this position)"
+class DiscoveredThemes(BaseModel):
+    """Model for discovered themes and positions in comments."""
+    themes: List[Dict[str, Any]] = Field(
+        description="List of main THEMES (topics) being discussed. Each theme should have 'name' (topic name), 'description' (brief description), and 'positions' (list of 2-3 positions/stances people take on this theme). Each position should have 'name' (clear support/opposition label) and 'indicators' (specific phrases, keywords, or arguments that signal someone holds this position)"
     )
     regulation_name: str = Field(
         description="A concise name for what these comments are about"
@@ -87,9 +87,9 @@ def load_comments_sample(csv_file: str, sample_size: int = 500) -> List[Dict[str
     logger.info(f"Loaded {len(comments)} comments with text content")
     return comments
 
-def discover_stances_experimental(comments: List[Dict[str, Any]], model: str = "gpt-4.1", target_count: int = 6, prompt_strategy: str = "original") -> Dict[str, Any]:
-    """Use LLM to discover main stances/arguments from comments with experimental prompting."""
-    logger.info(f"Analyzing {len(comments)} comments using {prompt_strategy} strategy, targeting {target_count} stances")
+def discover_themes_experimental(comments: List[Dict[str, Any]], model: str = "gpt-4.1", target_count: int = 6, prompt_strategy: str = "original") -> Dict[str, Any]:
+    """Use LLM to discover main themes and positions from comments with experimental prompting."""
+    logger.info(f"Analyzing {len(comments)} comments using {prompt_strategy} strategy, targeting {target_count} themes")
     
     # Prepare text sample for analysis
     comment_texts = []
@@ -101,63 +101,84 @@ def discover_stances_experimental(comments: List[Dict[str, Any]], model: str = "
     
     # Choose system prompt based on strategy
     if prompt_strategy == "original":
-        system_prompt = f"""You are analyzing public comments to identify the main POSITIONS people are taking - specifically whether they SUPPORT or OPPOSE different aspects of the regulation/policy.
+        system_prompt = f"""You are analyzing public comments to identify the main THEMES (topics) being discussed and the POSITIONS people take on each theme.
 
 Your task is to:
-1. Identify exactly {target_count} distinct POSITIONS that people are taking (support/opposition stances)
-2. For each position, provide specific indicators that help identify when someone holds that stance
-3. Determine what regulation/issue is being discussed
+1. Identify exactly {target_count} distinct THEMES (topics/subjects) that people are discussing
+2. For each theme, identify 2-3 distinct POSITIONS that people are taking (support/opposition stances)
+3. For each position, provide specific indicators that help identify when someone holds that stance
+4. Determine what regulation/issue is being discussed
 
-Focus on POSITIONS like:
-- "Support for [specific policy aspect]" with indicators like: endorses the approach, calls for implementation, praises benefits
-- "Opposition to [specific policy aspect]" with indicators like: criticizes the approach, calls for removal/changes, highlights problems
-- "Support for stronger measures" with indicators like: current proposal insufficient, calls for more robust action
-- "Opposition to regulatory overreach" with indicators like: government interference, burden on business, individual rights
+Themes are topics like:
+- "Vaccine safety and efficacy"
+- "Regulatory oversight and authority" 
+- "Individual choice and rights"
+- "Economic impact"
+
+Positions are stances people take on themes like:
+- "Support for continued vaccine access" with indicators: endorses safety data, supports availability
+- "Opposition to vaccine requirements" with indicators: emphasizes personal choice, questions mandates
+- "Support for stronger oversight" with indicators: calls for more regulation, wants additional safeguards
+
+Each theme should:
+- Be a clear topic/subject area that people discuss
+- Have 2-3 distinct positions that people actually take on this theme
+- Be actually present in multiple comments
 
 Each position should:
-- Be clearly framed as SUPPORT or OPPOSITION to something specific
-- Have specific indicators: phrases, keywords, concepts, or argument patterns that signal this position
-- Be distinct from other positions
-- Be actually present in multiple comments
-- Focus on what people are FOR or AGAINST, not just topics they mention
+- Be clearly framed as SUPPORT or OPPOSITION to something specific within the theme
+- Have specific indicators: phrases, keywords, concepts, or argument patterns
+- Be distinct from other positions within the same theme
 
 Output as structured JSON."""
 
     elif prompt_strategy == "mutually_exclusive":
-        system_prompt = f"""You are analyzing public comments to identify the main POSITIONS people are taking - specifically whether they SUPPORT or OPPOSE different aspects of the regulation/policy.
+        system_prompt = f"""You are analyzing public comments to identify the main THEMES (topics) being discussed and the POSITIONS people take on each theme.
 
-IMPORTANT: Focus on identifying positions that are MUTUALLY EXCLUSIVE or at least distinct enough that individual commenters would typically hold only one of these positions. People who strongly support one position are unlikely to also strongly support an opposing position.
+IMPORTANT: Focus on identifying themes with positions that are MUTUALLY EXCLUSIVE or at least distinct enough that individual commenters would typically hold only one position per theme. People who strongly support one position are unlikely to also strongly support an opposing position on the same theme.
 
 Your task is to:
-1. Identify exactly {target_count} distinct POSITIONS that people are taking (support/opposition stances)
-2. Ensure these positions represent different sides of debates or different priorities that don't typically overlap
+1. Identify exactly {target_count} distinct THEMES (topics/subjects) that people are discussing
+2. For each theme, identify 2-3 distinct POSITIONS that represent different sides of debates or different priorities that don't typically overlap
 3. For each position, provide specific indicators that help identify when someone holds that stance
 4. Determine what regulation/issue is being discussed
 
-Think of positions as representing different "camps" or "sides" in the debate:
-- People in Camp A are unlikely to also be in Camp B if they're opposing positions
-- People might have nuanced views, but typically align more strongly with one position
+Think of positions as representing different "camps" or "sides" within each theme:
+- People in Camp A are unlikely to also be in Camp B if they're opposing positions on the same theme
+- People might have nuanced views, but typically align more strongly with one position per theme
 - Look for natural divisions and conflicts in the comments
 
-Examples of mutually exclusive positions:
-- "Support for immediate vaccine removal" vs "Support for continued vaccine access"
-- "Trust in current committee" vs "Distrust in current committee leadership"
-- "Prioritize individual choice" vs "Prioritize public health mandates"
+Examples of themes with mutually exclusive positions:
+- Theme: "Vaccine Access" 
+  - Position: "Support for immediate vaccine removal"
+  - Position: "Support for continued vaccine access"
+- Theme: "Regulatory Authority"
+  - Position: "Trust in current committee"
+  - Position: "Distrust in current committee leadership"
+
+Each theme should:
+- Be a clear topic/subject area that people discuss
+- Have 2-3 distinct positions that represent different viewpoints
+- Be actually present in multiple comments
 
 Each position should:
-- Represent a distinct viewpoint that commenters typically hold exclusively
+- Represent a distinct viewpoint that commenters typically hold exclusively within that theme
 - Be clearly framed as SUPPORT or OPPOSITION to something specific
 - Have specific indicators: phrases, keywords, concepts, or argument patterns
-- Be actually present in multiple comments
-- Not significantly overlap with other identified positions
+- Not significantly overlap with other positions within the same theme
 
 Output as structured JSON."""
 
-    user_prompt = f"""Analyze these public comments and identify the main POSITIONS people are taking (what they SUPPORT or OPPOSE):
+    user_prompt = f"""Analyze these public comments and identify the main THEMES (topics) and POSITIONS people are taking:
 
 {combined_text}
 
-For each position, provide:
+For each theme, provide:
+1. Name: Clear topic name (e.g., "Vaccine Safety", "Regulatory Authority")
+2. Description: Brief description of what this theme covers
+3. Positions: 2-3 distinct positions people take on this theme
+
+For each position within a theme, provide:
 1. Name: Clear support/opposition label (e.g., "Support for X", "Opposition to Y")
 2. Indicators: Specific phrases, keywords, concepts, or argument patterns that signal someone holds this position
 
@@ -176,8 +197,8 @@ Focus on creating actionable indicators that an AI can use to detect these suppo
             response_format={
                 "type": "json_schema",
                 "json_schema": {
-                    "name": "discovered_stances",
-                    "schema": DiscoveredStances.model_json_schema()
+                    "name": "discovered_themes",
+                    "schema": DiscoveredThemes.model_json_schema()
                 }
             },
             timeout=120
@@ -191,15 +212,26 @@ Focus on creating actionable indicators that an AI can use to detect these suppo
             actual_data = result_data['properties']
             result_data = actual_data
         
-        result = DiscoveredStances(**result_data)
+        result = DiscoveredThemes(**result_data)
+        
+        # Flatten themes and positions for backward compatibility
+        all_positions = []
+        for theme in result.themes:
+            for position in theme.get('positions', []):
+                all_positions.append({
+                    "name": position["name"],
+                    "indicators": position["indicators"],
+                    "theme": theme["name"]
+                })
         
         return {
             "strategy": prompt_strategy,
             "target_count": target_count,
-            "actual_count": len(result.stances),
+            "actual_count": len(result.themes),
             "regulation_name": result.regulation_name,
             "regulation_description": result.regulation_description,
-            "stances": [{"name": stance["name"], "indicators": stance["indicators"]} for stance in result.stances],
+            "themes": result.themes,
+            "positions": all_positions,  # For backward compatibility
             "timestamp": datetime.now().isoformat()
         }
         
@@ -213,22 +245,25 @@ Focus on creating actionable indicators that an AI can use to detect these suppo
             "timestamp": datetime.now().isoformat()
         }
 
-def generate_analyzer_config(discovered: DiscoveredStances) -> CommentAnalyzerConfig:
+def generate_analyzer_config(discovered: DiscoveredThemes) -> CommentAnalyzerConfig:
     """Generate complete analyzer configuration from discovered stances."""
     
-    # Extract stance names and create indicators
-    stance_options = [stance['name'] for stance in discovered.stances]
+    # Extract position names and create indicators from all themes
+    stance_options = []
     stance_indicators = {}
     
-    # Convert indicators to strings if they're lists
-    for stance in discovered.stances:
-        name = stance['name']
-        indicators = stance['indicators']
-        if isinstance(indicators, list):
-            # Join list items with semicolons
-            stance_indicators[name] = "; ".join(indicators)
-        else:
-            stance_indicators[name] = indicators
+    # Flatten positions from all themes
+    for theme in discovered.themes:
+        for position in theme.get('positions', []):
+            name = position['name']
+            indicators = position['indicators']
+            stance_options.append(name)
+            
+            if isinstance(indicators, list):
+                # Join list items with semicolons
+                stance_indicators[name] = "; ".join(indicators)
+            else:
+                stance_indicators[name] = indicators
     
     # Create system prompt
     stance_list = "\n".join([f"- {name}: {indicators}" for name, indicators in stance_indicators.items()])
@@ -329,7 +364,7 @@ def update_comment_analyzer(config: CommentAnalyzerConfig):
     
     logger.info(f"✅ Updated comment_analyzer.py with {len(config.stance_options)} stances")
 
-def print_results(discovered: DiscoveredStances, config: CommentAnalyzerConfig):
+def print_results(discovered: DiscoveredThemes, config: CommentAnalyzerConfig):
     """Print discovered positions and configuration."""
     print("\n" + "="*80)
     print("DISCOVERED POSITIONS AND STANCES")
@@ -338,16 +373,20 @@ def print_results(discovered: DiscoveredStances, config: CommentAnalyzerConfig):
     print(f"\nRegulation: {discovered.regulation_name}")
     print(f"Description: {discovered.regulation_description}")
     
-    print(f"\nPositions/Stances ({len(discovered.stances)}):")
-    for i, stance in enumerate(discovered.stances, 1):
-        print(f"\n  {i}. {stance['name']}")
-        indicators = stance['indicators']
-        if isinstance(indicators, list):
-            print(f"     Indicators:")
-            for indicator in indicators:
-                print(f"       • {indicator}")
-        else:
-            print(f"     Indicators: {indicators}")
+    print(f"\nThemes ({len(discovered.themes)}):")
+    for i, theme in enumerate(discovered.themes, 1):
+        print(f"\n  {i}. {theme['name']}")
+        print(f"     Description: {theme.get('description', 'N/A')}")
+        print(f"     Positions ({len(theme.get('positions', []))}):") 
+        for j, position in enumerate(theme.get('positions', []), 1):
+            print(f"       {j}. {position['name']}")
+            indicators = position['indicators']
+            if isinstance(indicators, list):
+                print(f"          Indicators:")
+                for indicator in indicators:
+                    print(f"            • {indicator}")
+            else:
+                print(f"          Indicators: {indicators}")
     
     
     print("\n" + "="*80)
@@ -356,9 +395,10 @@ def print_results(discovered: DiscoveredStances, config: CommentAnalyzerConfig):
     print("✅ analyzer_config.json has been created")
     print("✅ comment_analyzer.py has been updated with enum definitions")
     print("✅ The comment analyzer will now identify support/opposition positions per comment")
+    print(f"✅ Found {len(discovered.themes)} themes with {sum(len(theme.get('positions', [])) for theme in discovered.themes)} total positions")
     print("✅ Ready to run: python pipeline.py --csv comments.csv")
 
-def generate_experiment_html(results: List[Dict[str, Any]], output_file: str = "stance_discovery_experiment.html"):
+def generate_experiment_html(results: List[Dict[str, Any]], output_file: str = "theme_discovery_experiment.html"):
     """Generate HTML table showing experimental results."""
     
     html_content = f"""<!DOCTYPE html>
@@ -460,8 +500,8 @@ def generate_experiment_html(results: List[Dict[str, Any]], output_file: str = "
 </head>
 <body>
     <div class="header">
-        <h1>Stance Discovery Experiment Results</h1>
-        <div class="subtitle">Comparing prompting strategies and target stance counts</div>
+        <h1>Theme Discovery Experiment Results</h1>
+        <div class="subtitle">Comparing prompting strategies and target theme counts</div>
         <div class="timestamp">Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</div>
     </div>
     
@@ -472,7 +512,7 @@ def generate_experiment_html(results: List[Dict[str, Any]], output_file: str = "
                     <th>Strategy</th>
                     <th>Target Count</th>
                     <th>Actual Count</th>
-                    <th>Discovered Stances</th>
+                    <th>Discovered Themes</th>
                 </tr>
             </thead>
             <tbody>"""
@@ -483,10 +523,16 @@ def generate_experiment_html(results: List[Dict[str, Any]], output_file: str = "
         if 'error' in result:
             stances_html = f'<div class="error">Error: {result["error"]}</div>'
         else:
-            stance_items = []
-            for stance in result.get('stances', []):
-                stance_items.append(f'<div class="stance-item">{stance["name"]}</div>')
-            stances_html = f'<div class="stance-list">{"".join(stance_items)}</div>'
+            theme_items = []
+            for theme in result.get('themes', []):
+                theme_name = theme.get('name', 'Unknown Theme')
+                positions = theme.get('positions', [])
+                position_list = []
+                for position in positions:
+                    position_list.append(f'<li>{position.get("name", "Unknown Position")}</li>')
+                positions_html = f'<ul>{"".join(position_list)}</ul>' if position_list else '<p>No positions</p>'
+                theme_items.append(f'<div class="stance-item"><strong>{theme_name}</strong>{positions_html}</div>')
+            stances_html = f'<div class="stance-list">{"".join(theme_items)}</div>'
         
         html_content += f"""
                 <tr class="{strategy_class}">
@@ -518,8 +564,8 @@ def archive_old_files():
     os.makedirs(archives_dir, exist_ok=True)
     
     # Find files to archive
-    json_files = glob.glob("stance_discovery_experiment_*.json")
-    html_files = glob.glob("stance_discovery_experiment_*.html")
+    json_files = glob.glob("*_discovery_experiment_*.json")
+    html_files = glob.glob("*_discovery_experiment_*.html")
     
     files_moved = 0
     for file_path in json_files + html_files:
@@ -536,11 +582,11 @@ def archive_old_files():
         logger.info("📁 No old experiment files to archive")
 
 def main():
-    parser = argparse.ArgumentParser(description='Run stance discovery experiments')
+    parser = argparse.ArgumentParser(description='Run theme discovery experiments')
     parser.add_argument('--sample', type=int, default=500, help='Number of comments to analyze (default: 500)')
     parser.add_argument('--model', type=str, default='gpt-4.1', help='LLM model to use (default: gpt-4.1)')
-    parser.add_argument('--counts', nargs='+', type=int, default=[5, 6, 7, 8, 9, 10], 
-                       help='Target stance counts to test (default: 5 6 7 8 9 10)')
+    parser.add_argument('--counts', nargs='+', type=int, default=[6, 8, 10, 12], 
+                       help='Target theme counts to test (default: 6 8 10 12)')
     parser.add_argument('--strategies', nargs='+', choices=['original', 'mutually_exclusive'], 
                        default=['original', 'mutually_exclusive'],
                        help='Strategies to test (default: original mutually_exclusive)')
@@ -571,7 +617,7 @@ def main():
             for target_count in target_counts:
                 logger.info(f"Running {strategy} strategy with target count {target_count}")
                 
-                result = discover_stances_experimental(
+                result = discover_themes_experimental(
                     comments=comments,
                     model=args.model,
                     target_count=target_count,
@@ -584,17 +630,17 @@ def main():
                 if 'error' in result:
                     logger.warning(f"❌ {strategy}/{target_count}: Error - {result['error']}")
                 else:
-                    logger.info(f"✅ {strategy}/{target_count}: Found {result['actual_count']} stances")
+                    logger.info(f"✅ {strategy}/{target_count}: Found {result['actual_count']} themes")
         
         # Save results to JSON
-        json_output = f"stance_discovery_experiment_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        json_output = f"theme_discovery_experiment_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         with open(json_output, 'w', encoding='utf-8') as f:
             json.dump(all_results, f, indent=2, ensure_ascii=False)
         
         logger.info(f"✅ JSON results saved to {json_output}")
         
         # Generate HTML table
-        html_output = f"stance_discovery_experiment_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+        html_output = f"theme_discovery_experiment_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
         generate_experiment_html(all_results, html_output)
         
         # Print summary
@@ -610,7 +656,7 @@ def main():
         successful_results = [r for r in all_results if 'error' not in r]
         if successful_results:
             avg_count = sum(r['actual_count'] for r in successful_results) / len(successful_results)
-            print(f"Average stances discovered: {avg_count:.1f}")
+            print(f"Average themes discovered: {avg_count:.1f}")
         
         print("="*80)
         

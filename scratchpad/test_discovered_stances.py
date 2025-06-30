@@ -20,7 +20,7 @@ from tqdm import tqdm
 # Add parent directory to path to import modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from discover_stances_experiment import discover_stances_experimental
+from discover_stances_experiment import discover_themes_experimental
 from comment_analyzer import CommentAnalyzer
 from generate_report import generate_html, analyze_field_types, calculate_stats
 
@@ -35,19 +35,57 @@ def create_analyzer_from_discovered_stances(discovered_stances: Dict[str, Any]) 
     logger.info("Creating analyzer with discovered stances...")
     logger.info(f"Creating analyzer for regulation: {discovered_stances['regulation_name']}")
     
-    # Build stance options list
-    stance_options = [stance["name"] for stance in discovered_stances["stances"]]
-    logger.info(f"Stance options being configured: {stance_options}")
+    # Build theme:position options list from all positions across themes
+    theme_position_options = []
+    position_to_theme_map = {}
     
-    # Build stance indicators text for system prompt
-    stance_indicators_text = []
-    for stance in discovered_stances["stances"]:
-        indicators = stance["indicators"]
-        if isinstance(indicators, list):
-            indicators_str = "; ".join(indicators)
-        else:
-            indicators_str = indicators
-        stance_indicators_text.append(f"- {stance['name']}: {indicators_str}")
+    if "positions" in discovered_stances:
+        # Use flattened positions if available
+        for pos in discovered_stances["positions"]:
+            theme_name = pos.get("theme", "Unknown Theme")
+            position_name = pos["name"]
+            formatted_theme_position = f"{theme_name}: {position_name}"
+            theme_position_options.append(formatted_theme_position)
+            position_to_theme_map[formatted_theme_position] = theme_name
+    else:
+        # Fallback to extracting from themes
+        for theme in discovered_stances.get("themes", []):
+            theme_name = theme.get("name", "Unknown Theme")
+            for position in theme.get("positions", []):
+                position_name = position["name"]
+                formatted_theme_position = f"{theme_name}: {position_name}"
+                theme_position_options.append(formatted_theme_position)
+                position_to_theme_map[formatted_theme_position] = theme_name
+    
+    logger.info(f"Theme:position options being configured: {theme_position_options}")
+    
+    # Build theme:position indicators text for system prompt
+    theme_position_indicators_text = []
+    if "positions" in discovered_stances:
+        # Use flattened positions if available
+        for pos in discovered_stances["positions"]:
+            theme_name = pos.get("theme", "Unknown Theme")
+            position_name = pos["name"]
+            formatted_theme_position = f"{theme_name}: {position_name}"
+            indicators = pos["indicators"]
+            if isinstance(indicators, list):
+                indicators_str = "; ".join(indicators)
+            else:
+                indicators_str = indicators
+            theme_position_indicators_text.append(f"- {formatted_theme_position}: {indicators_str}")
+    else:
+        # Fallback to extracting from themes
+        for theme in discovered_stances.get("themes", []):
+            theme_name = theme.get("name", "Unknown Theme")
+            for position in theme.get("positions", []):
+                position_name = position["name"]
+                formatted_theme_position = f"{theme_name}: {position_name}"
+                indicators = position["indicators"]
+                if isinstance(indicators, list):
+                    indicators_str = "; ".join(indicators)
+                else:
+                    indicators_str = indicators
+                theme_position_indicators_text.append(f"- {formatted_theme_position}: {indicators_str}")
     
     # Create system prompt
     system_prompt = f"""You are analyzing public comments about {discovered_stances['regulation_name']}.
@@ -56,12 +94,12 @@ def create_analyzer_from_discovered_stances(discovered_stances: Dict[str, Any]) 
 
 For each comment, identify:
 
-1. Stances: Which of these positions/arguments does the commenter express? Look for the indicators listed below. (Select ALL that apply, or none if none apply)
-{chr(10).join(stance_indicators_text)}
+1. Themes and Positions: Which of these theme:position combinations does the commenter express? Look for the indicators listed below. (Select ALL that apply, or none if none apply)
+{chr(10).join(theme_position_indicators_text)}
 
 2. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. Must be verbatim from the text.
 
-3. Rationale: Briefly explain (1-2 sentences) why you selected these stances.
+3. Rationale: Briefly explain (1-2 sentences) why you selected these theme:position combinations.
 
 Instructions:
 - A comment may express multiple stances or no clear stance
@@ -97,7 +135,7 @@ Instructions:
         )
         
         # Manually override the configuration to bypass hardcoded enums
-        analyzer.stance_options = stance_options
+        analyzer.stance_options = theme_position_options
         analyzer.system_prompt = system_prompt
         analyzer.regulation_name = discovered_stances['regulation_name']
         analyzer.regulation_description = discovered_stances['regulation_description']
@@ -114,7 +152,7 @@ Instructions:
         os.unlink(temp_config_file)
 
 
-def analyze_single_comment_custom(stance_options: List[str], system_prompt: str, comment: Dict[str, Any], comment_index: int, truncate_chars: int = 2000) -> Dict[str, Any]:
+def analyze_single_comment_custom(theme_position_options: List[str], system_prompt: str, comment: Dict[str, Any], comment_index: int, truncate_chars: int = 2000) -> Dict[str, Any]:
     """Analyze a single comment using direct LLM call to bypass hardcoded enums."""
     import litellm
     
@@ -126,15 +164,15 @@ def analyze_single_comment_custom(stance_options: List[str], system_prompt: str,
             logger.debug(f"Truncated comment {comment_index} from {len(comment['text'])} to {truncate_chars} characters")
         
         # Direct LLM call without constrained response format
-        user_prompt = f"""Analyze this comment and identify stances/positions:
+        user_prompt = f"""Analyze this comment and identify theme:position combinations:
 
 {comment_text}
 
 Respond in JSON format with:
-- stances: list of stance names that apply (from the stance options in the system prompt)
-- new_stances: list of any additional stance names that don't fit the predefined options but are clearly expressed in the comment. IMPORTANT: Only include stances that are DRAMATICALLY different from the predefined options - not just minor variations, rewordings, or closely related positions. The new stance must represent a fundamentally different perspective that cannot reasonably be categorized under any existing stance. Examples of what should NOT qualify: slightly different wording of existing stances, more specific versions of broad existing stances, or opposing degrees of the same topic. Examples of what SHOULD qualify: completely different subject matters, entirely new regulatory approaches, or fundamentally different philosophical frameworks not represented in the predefined stances. If in doubt, do NOT include it as a new stance.
+- stances: list of theme:position names that apply (from the theme:position options in the system prompt)
+- new_stances: list of any additional theme:position names that don't fit the predefined options but are clearly expressed in the comment. IMPORTANT: Only include combinations that are DRAMATICALLY different from the predefined options - not just minor variations, rewordings, or closely related positions. The new combination must represent a fundamentally different perspective that cannot reasonably be categorized under any existing theme:position. Examples of what should NOT qualify: slightly different wording of existing combinations, more specific versions of broad existing positions, or opposing degrees of the same topic. Examples of what SHOULD qualify: completely different subject matters, entirely new regulatory approaches, or fundamentally different philosophical frameworks not represented in the predefined themes. If in doubt, do NOT include it as a new combination.
 - key_quote: most important quote from the comment (max 100 words)
-- rationale: brief explanation of why these stances were selected
+- rationale: brief explanation of why these theme:position combinations were selected
 """
 
         response = litellm.completion(
@@ -201,18 +239,47 @@ def analyze_comments_sample(comments: List[Dict[str, Any]], discovered_stances: 
         
         # Use ThreadPoolExecutor for parallel API calls
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # Get stance configuration
-            stance_options = [stance['name'] for stance in discovered_stances['stances']]
+            # Get theme:position configuration from positions with theme formatting
+            theme_position_options = []
+            if "positions" in discovered_stances:
+                for pos in discovered_stances["positions"]:
+                    theme_name = pos.get("theme", "Unknown Theme")
+                    position_name = pos["name"]
+                    formatted_theme_position = f"{theme_name}: {position_name}"
+                    theme_position_options.append(formatted_theme_position)
+            else:
+                for theme in discovered_stances.get("themes", []):
+                    theme_name = theme.get("name", "Unknown Theme")
+                    for position in theme.get("positions", []):
+                        position_name = position["name"]
+                        formatted_theme_position = f"{theme_name}: {position_name}"
+                        theme_position_options.append(formatted_theme_position)
             
-            # Build system prompt
-            stance_indicators_text = []
-            for stance in discovered_stances['stances']:
-                indicators = stance['indicators']
-                if isinstance(indicators, list):
-                    indicators_str = "; ".join(indicators)
-                else:
-                    indicators_str = indicators
-                stance_indicators_text.append(f"- {stance['name']}: {indicators_str}")
+            # Build system prompt using formatted theme:position names
+            theme_position_indicators_text = []
+            if "positions" in discovered_stances:
+                for pos in discovered_stances["positions"]:
+                    theme_name = pos.get("theme", "Unknown Theme")
+                    position_name = pos["name"]
+                    formatted_theme_position = f"{theme_name}: {position_name}"
+                    indicators = pos["indicators"]
+                    if isinstance(indicators, list):
+                        indicators_str = "; ".join(indicators)
+                    else:
+                        indicators_str = indicators
+                    theme_position_indicators_text.append(f"- {formatted_theme_position}: {indicators_str}")
+            else:
+                for theme in discovered_stances.get("themes", []):
+                    theme_name = theme.get("name", "Unknown Theme")
+                    for position in theme.get("positions", []):
+                        position_name = position["name"]
+                        formatted_theme_position = f"{theme_name}: {position_name}"
+                        indicators = position["indicators"]
+                        if isinstance(indicators, list):
+                            indicators_str = "; ".join(indicators)
+                        else:
+                            indicators_str = indicators
+                        theme_position_indicators_text.append(f"- {formatted_theme_position}: {indicators_str}")
             
             system_prompt = f"""You are analyzing public comments about {discovered_stances['regulation_name']}.
 
@@ -220,12 +287,12 @@ def analyze_comments_sample(comments: List[Dict[str, Any]], discovered_stances: 
 
 For each comment, identify:
 
-1. Stances: Which of these positions/arguments does the commenter express? Look for the indicators listed below. (Select ALL that apply, or none if none apply)
-{chr(10).join(stance_indicators_text)}
+1. Themes and Positions: Which of these theme:position combinations does the commenter express? Look for the indicators listed below. (Select ALL that apply, or none if none apply)
+{chr(10).join(theme_position_indicators_text)}
 
 2. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. Must be verbatim from the text.
 
-3. Rationale: Briefly explain (1-2 sentences) why you selected these stances.
+3. Rationale: Briefly explain (1-2 sentences) why you selected these theme:position combinations.
 
 Instructions:
 - A comment may express multiple stances or no clear stance
@@ -264,7 +331,7 @@ Instructions:
             future_to_comment = {}
             for i, comment in enumerate(batch_comments):
                 comment_index = batch_start + i
-                future = executor.submit(analyze_single_comment_custom, stance_options, system_prompt, comment, comment_index)
+                future = executor.submit(analyze_single_comment_custom, theme_position_options, system_prompt, comment, comment_index)
                 future_to_comment[future] = comment
             
             # Collect results as they complete
@@ -290,10 +357,11 @@ Instructions:
 
 
 def find_latest_experiment_json():
-    """Find the most recent stance discovery experiment JSON file."""
+    """Find the most recent theme discovery experiment JSON file."""
     import glob
     
-    json_files = glob.glob("stance_discovery_experiment_*.json")
+    # Look for both old stance and new theme experiment files
+    json_files = glob.glob("theme_discovery_experiment_*.json") + glob.glob("stance_discovery_experiment_*.json")
     if not json_files:
         return None
     
@@ -348,11 +416,19 @@ def main():
         logger.info(f"Looking for {args.strategy} strategy with {args.count} target stances...")
         discovered = extract_discovered_stances_from_experiment(experiment_file, args.strategy, args.count)
         
-        logger.info(f"Found experiment: {discovered['actual_count']} stances discovered")
+        logger.info(f"Found experiment: {discovered['actual_count']} themes discovered")
         logger.info(f"Regulation: {discovered['regulation_name']}")
-        logger.info("Using the following stances:")
-        for i, stance in enumerate(discovered['stances'], 1):
-            logger.info(f"  {i}. {stance['name']}")
+        logger.info("Using the following positions:")
+        if "positions" in discovered:
+            for i, pos in enumerate(discovered['positions'], 1):
+                logger.info(f"  {i}. {pos['name']}")
+        else:
+            pos_count = 1
+            for theme in discovered.get('themes', []):
+                logger.info(f"  Theme: {theme.get('name', 'Unknown')}")
+                for position in theme.get('positions', []):
+                    logger.info(f"    {pos_count}. {position['name']}")
+                    pos_count += 1
         logger.info(f"Regulation description: {discovered['regulation_description']}")
         
         # Load comments for testing using efficient sampling approach from main pipeline
@@ -386,16 +462,30 @@ def main():
         # Analyze field types
         field_analysis = analyze_field_types(analyzed_comments)
         
-        # Override stance information with discovered stances (fix for correct stance display)
-        discovered_stance_names = [stance['name'] for stance in discovered['stances']]
+        # Override theme information with discovered themes and positions (fix for correct display)
+        discovered_theme_positions = []
+        if "positions" in discovered:
+            for pos in discovered['positions']:
+                theme_name = pos.get('theme', 'Unknown Theme')
+                position_name = pos['name']
+                formatted_theme_position = f"{theme_name}: {position_name}"
+                discovered_theme_positions.append(formatted_theme_position)
+        else:
+            for theme in discovered.get('themes', []):
+                theme_name = theme.get('name', 'Unknown Theme')
+                for position in theme.get('positions', []):
+                    position_name = position['name']
+                    formatted_theme_position = f"{theme_name}: {position_name}"
+                    discovered_theme_positions.append(formatted_theme_position)
+        
         logger.info(f"DEBUG: Original field analysis stances: {field_analysis.get('stances', {}).get('unique_values', [])}")
-        logger.info(f"DEBUG: Overriding field analysis with discovered stance names: {discovered_stance_names}")
+        logger.info(f"DEBUG: Overriding field analysis with discovered theme:position names: {discovered_theme_positions}")
         
         field_analysis['stances'] = {
             'type': 'checkbox',
             'is_list': True,
-            'unique_values': discovered_stance_names,
-            'count': len(discovered_stance_names)
+            'unique_values': discovered_theme_positions,
+            'count': len(discovered_theme_positions)
         }
         
         # Always add new_stances to field_analysis (even if empty)
@@ -460,8 +550,30 @@ def main():
         # Run the pipeline
         from stance_analysis_pipeline import process_stance_analysis, generate_report_from_json
         
-        # Process the data (calculates all statistics, co-occurrences, unusual combinations)
+        # Process the data but add theme information
         processed_data = process_stance_analysis(analyzed_comments, processed_json)
+        
+        # Add theme information to the processed data
+        with open(processed_json, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        # Parse themes from theme:position names and add theme metadata
+        themes = {}
+        for theme_position_name in discovered_theme_positions:
+            if ': ' in theme_position_name:
+                theme, position = theme_position_name.split(': ', 1)
+                if theme not in themes:
+                    themes[theme] = []
+                themes[theme].append(theme_position_name)
+        
+        data['themes'] = themes
+        logger.info(f"DEBUG: Detected themes: {list(themes.keys())}")
+        for theme, positions in themes.items():
+            logger.info(f"  {theme}: {len(positions)} positions")
+        
+        # Save updated data
+        with open(processed_json, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
         
         # Generate HTML from processed data
         generate_report_from_json(processed_json, output_file)
@@ -480,9 +592,17 @@ def main():
         print(f"Actual stances discovered: {discovered['actual_count']}")
         print(f"Comments analyzed: {len(analyzed_comments)}")
         print(f"Report saved to: {output_file}")
-        print("\nDiscovered stances:")
-        for i, stance in enumerate(discovered['stances'], 1):
-            print(f"  {i}. {stance['name']}")
+        print("\nDiscovered positions:")
+        if "positions" in discovered:
+            for i, pos in enumerate(discovered['positions'], 1):
+                print(f"  {i}. {pos['name']} (Theme: {pos.get('theme', 'Unknown')})")
+        else:
+            pos_count = 1
+            for theme in discovered.get('themes', []):
+                print(f"  Theme: {theme.get('name', 'Unknown')}")
+                for position in theme.get('positions', []):
+                    print(f"    {pos_count}. {position['name']}")
+                    pos_count += 1
         print("="*80)
         
     except Exception as e:

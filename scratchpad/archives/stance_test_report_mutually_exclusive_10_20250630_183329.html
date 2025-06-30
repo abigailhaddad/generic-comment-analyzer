@@ -520,19 +520,19 @@
         <!-- Summary Statistics -->
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-number">3</div>
+                <div class="stat-number">5</div>
                 <div class="stat-label">Total Comments</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">3</div>
+                <div class="stat-number">0</div>
                 <div class="stat-label">With Attachments</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">11,903</div>
+                <div class="stat-number">631</div>
                 <div class="stat-label">Avg. Characters</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">2025-05-08 to 2025-05-29</div>
+                <div class="stat-number">2025-06-19 to 2025-06-23</div>
                 <div class="stat-label">Date Range</div>
             </div>
         </div>
@@ -540,126 +540,353 @@
 
         <!-- Analysis Field Distributions -->
         
-        <div class="section">
-            <h2>📊 Stances Distribution</h2>
-            <p style="color: #666; margin-bottom: 20px; font-style: italic;">Click on any stance to see how it relates to others</p>
-            <div class="expandable-stances">
-                
-                <div class="expandable-stance-card">
-                    <div class="stance-header" onclick="toggleStanceDetails(0)">
-                        <span class="stance-count">3</span>
-                        <span class="stance-name">Opposition to Politicization of the Civil Service/Schedule F</span>
-                        <span class="expand-icon" id="icon-0">▼</span>
+            <div class="section">
+                <h2>📊 Themes Distribution</h2>
+                <p style="color: #666; margin-bottom: 20px; font-style: italic;">Click on any theme to see positions, then click positions to see relationships</p>
+                <div class="theme-stances">
+                    
+                    <div class="theme-card">
+                        <div class="theme-header" onclick="toggleThemeDetails(0)">
+                            <span class="theme-name">🔹 COVID Vaccine Market Status</span>
+                            <span class="theme-count">(2 positions)</span>
+                            <span class="expand-icon" id="theme-icon-0">▼</span>
+                        </div>
+                        <div class="theme-details" id="theme-details-0" style="display: none;">
+                            
+                        <div class="position-card">
+                            <div class="position-header" onclick="togglePositionDetails(0_0)">
+                                <span class="position-count">3</span>
+                                <span class="position-name">Support for Removal of COVID Vaccines from Market</span>
+                                <span class="agreement-badge">77.8%</span>
+                                <span class="expand-icon" id="pos-icon-0_0">▼</span>
+                            </div>
+                            <div class="position-details" id="pos-details-0_0" style="display: none;">
+                                <div class="agreement-score">📊 Agreement Score: <strong>77.8%</strong> (average overlap with other positions)</div><div class="connections-header">🔗 Often appears with:</div><div class="connection-item">100% also: Vaccine Safety and Harms: Vaccines Are Unsafe</div><div class="connection-item">100% also: Restoring and Building Public Trust: Trust Depends on Transparency and Safety</div><div class="connection-item">33% also: Public Health vs. Personal Autonomy: Emphasis on Public Health Responsibility</div>
+                            </div>
+                        </div>
+                        <div class="position-card">
+                            <div class="position-header" onclick="togglePositionDetails(0_1)">
+                                <span class="position-count">1</span>
+                                <span class="position-name">Support for Continued or Expanded COVID Vaccine Access</span>
+                                <span class="agreement-badge">100.0%</span>
+                                <span class="expand-icon" id="pos-icon-0_1">▼</span>
+                            </div>
+                            <div class="position-details" id="pos-details-0_1" style="display: none;">
+                                <div class="agreement-score">📊 Agreement Score: <strong>100.0%</strong> (average overlap with other positions)</div><div class="connections-header">🔗 Often appears with:</div><div class="connection-item">100% also: Importance of Vaccine Recommendations for Insurance and Coverage: Support for Maintaining Recommendations to Guarantee Coverage</div>
+                            </div>
+                        </div>
+                        </div>
                     </div>
-                    <div class="stance-details" id="details-0" style="display: none;">
-                        <div class="connection-item">100% also: Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</div>
+                    <div class="theme-card">
+                        <div class="theme-header" onclick="toggleThemeDetails(1)">
+                            <span class="theme-name">🔹 Vaccine Safety and Harms</span>
+                            <span class="theme-count">(1 positions)</span>
+                            <span class="expand-icon" id="theme-icon-1">▼</span>
+                        </div>
+                        <div class="theme-details" id="theme-details-1" style="display: none;">
+                            
+                        <div class="position-card">
+                            <div class="position-header" onclick="togglePositionDetails(1_0)">
+                                <span class="position-count">3</span>
+                                <span class="position-name">Vaccines Are Unsafe</span>
+                                <span class="agreement-badge">77.8%</span>
+                                <span class="expand-icon" id="pos-icon-1_0">▼</span>
+                            </div>
+                            <div class="position-details" id="pos-details-1_0" style="display: none;">
+                                <div class="agreement-score">📊 Agreement Score: <strong>77.8%</strong> (average overlap with other positions)</div><div class="connections-header">🔗 Often appears with:</div><div class="connection-item">100% also: Restoring and Building Public Trust: Trust Depends on Transparency and Safety</div><div class="connection-item">100% also: COVID Vaccine Market Status: Support for Removal of COVID Vaccines from Market</div><div class="connection-item">33% also: Public Health vs. Personal Autonomy: Emphasis on Public Health Responsibility</div>
+                            </div>
+                        </div>
+                        </div>
                     </div>
-                </div>
-                <div class="expandable-stance-card">
-                    <div class="stance-header" onclick="toggleStanceDetails(1)">
-                        <span class="stance-count">3</span>
-                        <span class="stance-name">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span>
-                        <span class="expand-icon" id="icon-1">▼</span>
+                    <div class="theme-card">
+                        <div class="theme-header" onclick="toggleThemeDetails(2)">
+                            <span class="theme-name">🔹 Restoring and Building Public Trust</span>
+                            <span class="theme-count">(1 positions)</span>
+                            <span class="expand-icon" id="theme-icon-2">▼</span>
+                        </div>
+                        <div class="theme-details" id="theme-details-2" style="display: none;">
+                            
+                        <div class="position-card">
+                            <div class="position-header" onclick="togglePositionDetails(2_0)">
+                                <span class="position-count">3</span>
+                                <span class="position-name">Trust Depends on Transparency and Safety</span>
+                                <span class="agreement-badge">77.8%</span>
+                                <span class="expand-icon" id="pos-icon-2_0">▼</span>
+                            </div>
+                            <div class="position-details" id="pos-details-2_0" style="display: none;">
+                                <div class="agreement-score">📊 Agreement Score: <strong>77.8%</strong> (average overlap with other positions)</div><div class="connections-header">🔗 Often appears with:</div><div class="connection-item">100% also: Vaccine Safety and Harms: Vaccines Are Unsafe</div><div class="connection-item">100% also: COVID Vaccine Market Status: Support for Removal of COVID Vaccines from Market</div><div class="connection-item">33% also: Public Health vs. Personal Autonomy: Emphasis on Public Health Responsibility</div>
+                            </div>
+                        </div>
+                        </div>
                     </div>
-                    <div class="stance-details" id="details-1" style="display: none;">
-                        <div class="connection-item">100% also: Opposition to Politicization of the Civil Service/Schedule F</div>
+                    <div class="theme-card">
+                        <div class="theme-header" onclick="toggleThemeDetails(3)">
+                            <span class="theme-name">🔹 Importance of Vaccine Recommendations for Insurance and Coverage</span>
+                            <span class="theme-count">(1 positions)</span>
+                            <span class="expand-icon" id="theme-icon-3">▼</span>
+                        </div>
+                        <div class="theme-details" id="theme-details-3" style="display: none;">
+                            
+                        <div class="position-card">
+                            <div class="position-header" onclick="togglePositionDetails(3_0)">
+                                <span class="position-count">1</span>
+                                <span class="position-name">Support for Maintaining Recommendations to Guarantee Coverage</span>
+                                <span class="agreement-badge">100.0%</span>
+                                <span class="expand-icon" id="pos-icon-3_0">▼</span>
+                            </div>
+                            <div class="position-details" id="pos-details-3_0" style="display: none;">
+                                <div class="agreement-score">📊 Agreement Score: <strong>100.0%</strong> (average overlap with other positions)</div><div class="connections-header">🔗 Often appears with:</div><div class="connection-item">100% also: COVID Vaccine Market Status: Support for Continued or Expanded COVID Vaccine Access</div>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                    <div class="theme-card">
+                        <div class="theme-header" onclick="toggleThemeDetails(4)">
+                            <span class="theme-name">🔹 Committee Independence and Expertise</span>
+                            <span class="theme-count">(1 positions)</span>
+                            <span class="expand-icon" id="theme-icon-4">▼</span>
+                        </div>
+                        <div class="theme-details" id="theme-details-4" style="display: none;">
+                            
+                        <div class="position-card">
+                            <div class="position-header" onclick="togglePositionDetails(4_0)">
+                                <span class="position-count">1</span>
+                                <span class="position-name">Support for New/Current ACIP Panel or Increased Scrutiny</span>
+                                <span class="agreement-badge">100.0%</span>
+                                <span class="expand-icon" id="pos-icon-4_0">▼</span>
+                            </div>
+                            <div class="position-details" id="pos-details-4_0" style="display: none;">
+                                <div class="agreement-score">📊 Agreement Score: <strong>100.0%</strong> (average overlap with other positions)</div><div class="connections-header">🔗 Often appears with:</div><div class="connection-item">100% also: Public Health vs. Personal Autonomy: Emphasis on Individual Choice/Bodily Autonomy</div><div class="connection-item">100% also: Policy Transparency and Conflicts of Interest: Concern About Conflicts of Interest and Lack of Transparency</div>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                    <div class="theme-card">
+                        <div class="theme-header" onclick="toggleThemeDetails(5)">
+                            <span class="theme-name">🔹 Policy Transparency and Conflicts of Interest</span>
+                            <span class="theme-count">(1 positions)</span>
+                            <span class="expand-icon" id="theme-icon-5">▼</span>
+                        </div>
+                        <div class="theme-details" id="theme-details-5" style="display: none;">
+                            
+                        <div class="position-card">
+                            <div class="position-header" onclick="togglePositionDetails(5_0)">
+                                <span class="position-count">1</span>
+                                <span class="position-name">Concern About Conflicts of Interest and Lack of Transparency</span>
+                                <span class="agreement-badge">100.0%</span>
+                                <span class="expand-icon" id="pos-icon-5_0">▼</span>
+                            </div>
+                            <div class="position-details" id="pos-details-5_0" style="display: none;">
+                                <div class="agreement-score">📊 Agreement Score: <strong>100.0%</strong> (average overlap with other positions)</div><div class="connections-header">🔗 Often appears with:</div><div class="connection-item">100% also: Public Health vs. Personal Autonomy: Emphasis on Individual Choice/Bodily Autonomy</div><div class="connection-item">100% also: Committee Independence and Expertise: Support for New/Current ACIP Panel or Increased Scrutiny</div>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                    <div class="theme-card">
+                        <div class="theme-header" onclick="toggleThemeDetails(6)">
+                            <span class="theme-name">🔹 Public Health vs. Personal Autonomy</span>
+                            <span class="theme-count">(2 positions)</span>
+                            <span class="expand-icon" id="theme-icon-6">▼</span>
+                        </div>
+                        <div class="theme-details" id="theme-details-6" style="display: none;">
+                            
+                        <div class="position-card">
+                            <div class="position-header" onclick="togglePositionDetails(6_0)">
+                                <span class="position-count">1</span>
+                                <span class="position-name">Emphasis on Individual Choice/Bodily Autonomy</span>
+                                <span class="agreement-badge">100.0%</span>
+                                <span class="expand-icon" id="pos-icon-6_0">▼</span>
+                            </div>
+                            <div class="position-details" id="pos-details-6_0" style="display: none;">
+                                <div class="agreement-score">📊 Agreement Score: <strong>100.0%</strong> (average overlap with other positions)</div><div class="connections-header">🔗 Often appears with:</div><div class="connection-item">100% also: Policy Transparency and Conflicts of Interest: Concern About Conflicts of Interest and Lack of Transparency</div><div class="connection-item">100% also: Committee Independence and Expertise: Support for New/Current ACIP Panel or Increased Scrutiny</div>
+                            </div>
+                        </div>
+                        <div class="position-card">
+                            <div class="position-header" onclick="togglePositionDetails(6_1)">
+                                <span class="position-count">1</span>
+                                <span class="position-name">Emphasis on Public Health Responsibility</span>
+                                <span class="agreement-badge">100.0%</span>
+                                <span class="expand-icon" id="pos-icon-6_1">▼</span>
+                            </div>
+                            <div class="position-details" id="pos-details-6_1" style="display: none;">
+                                <div class="agreement-score">📊 Agreement Score: <strong>100.0%</strong> (average overlap with other positions)</div><div class="connections-header">🔗 Often appears with:</div><div class="connection-item">100% also: Vaccine Safety and Harms: Vaccines Are Unsafe</div><div class="connection-item">100% also: Restoring and Building Public Trust: Trust Depends on Transparency and Safety</div><div class="connection-item">100% also: COVID Vaccine Market Status: Support for Removal of COVID Vaccines from Market</div>
+                            </div>
+                        </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <style>
-        .expandable-stances {
-            display: grid;
-            gap: 12px;
-        }
-        
-        .expandable-stance-card {
-            background: white;
-            border-radius: 8px;
-            border-left: 4px solid #3498db;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        
-        .stance-header {
-            display: flex;
-            align-items: flex-start;
-            gap: 15px;
-            padding: 15px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        
-        .stance-header:hover {
-            background-color: #f8f9fa;
-        }
-        
-        .stance-count {
-            font-size: 1.6em;
-            font-weight: bold;
-            color: #2c3e50;
-            min-width: 80px;
-            flex-shrink: 0;
-        }
-        
-        .stance-name {
-            font-size: 1em;
-            color: #2c3e50;
-            line-height: 1.3;
-            font-weight: 500;
-            flex-grow: 1;
-        }
-        
-        .expand-icon {
-            font-size: 1.2em;
-            color: #7f8c8d;
-            transition: transform 0.3s;
-            flex-shrink: 0;
-        }
-        
-        .expand-icon.expanded {
-            transform: rotate(180deg);
-        }
-        
-        .stance-details {
-            padding: 0 15px 15px 15px;
-            border-top: 1px solid #ecf0f1;
-            background: #f8f9fa;
-        }
-        
-        .connection-item {
-            padding: 8px 10px;
-            margin: 8px 0;
-            background: white;
-            border-radius: 4px;
-            border-left: 3px solid #e67e22;
-            font-size: 0.9em;
-            color: #2c3e50;
-        }
-        
-        .no-connections {
-            padding: 15px;
-            text-align: center;
-            color: #888;
-            font-style: italic;
-        }
-        </style>
-        
-        <script>
-        function toggleStanceDetails(index) {
-            const details = document.getElementById('details-' + index);
-            const icon = document.getElementById('icon-' + index);
             
-            if (details.style.display === 'none' || details.style.display === '') {
-                details.style.display = 'block';
-                icon.classList.add('expanded');
-            } else {
-                details.style.display = 'none';
-                icon.classList.remove('expanded');
+            <style>
+            .theme-stances {
+                display: grid;
+                gap: 15px;
             }
-        }
-        </script>
+            
+            .theme-card {
+                background: white;
+                border-radius: 8px;
+                border-left: 4px solid #2c3e50;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                overflow: hidden;
+            }
+            
+            .theme-header {
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                padding: 15px;
+                cursor: pointer;
+                transition: background-color 0.2s;
+                background: #f8f9fa;
+                font-weight: 600;
+            }
+            
+            .theme-header:hover {
+                background-color: #e9ecef;
+            }
+            
+            .theme-name {
+                font-size: 1.1em;
+                color: #2c3e50;
+                flex: 1;
+            }
+            
+            .theme-count {
+                color: #666;
+                font-size: 0.9em;
+            }
+            
+            .theme-details {
+                padding: 0 15px 15px 15px;
+            }
+            
+            .position-card {
+                background: #f8f9fa;
+                border-radius: 6px;
+                margin: 8px 0;
+                border-left: 3px solid #3498db;
+            }
+            
+            .position-header {
+                display: flex;
+                align-items: flex-start;
+                gap: 12px;
+                padding: 12px;
+                cursor: pointer;
+                transition: background-color 0.2s;
+            }
+            
+            .position-header:hover {
+                background-color: #ffffff;
+            }
+            
+            .position-count {
+                font-size: 1.4em;
+                font-weight: bold;
+                color: #3498db;
+                min-width: 40px;
+            }
+            
+            .position-name {
+                flex: 1;
+                font-weight: 500;
+                color: #2c3e50;
+            }
+            
+            .agreement-badge {
+                background: #e74c3c;
+                color: white;
+                padding: 4px 8px;
+                border-radius: 12px;
+                font-size: 0.8em;
+                font-weight: 600;
+                margin: 0 8px;
+            }
+            
+            .position-details {
+                padding: 0 12px 12px 12px;
+                background: white;
+                margin: 0 12px 12px 12px;
+                border-radius: 4px;
+            }
+            
+            .agreement-score {
+                padding: 10px 0;
+                background: #e8f5e8;
+                border-radius: 4px;
+                padding: 8px 12px;
+                margin-bottom: 8px;
+                font-size: 0.9em;
+                color: #27ae60;
+                border-left: 3px solid #27ae60;
+            }
+            
+            .connections-header {
+                font-weight: 600;
+                color: #2c3e50;
+                margin: 12px 0 8px 0;
+                font-size: 0.9em;
+            }
+            
+            .expand-icon {
+                font-size: 0.8em;
+                color: #666;
+                transition: transform 0.2s;
+                min-width: 20px;
+                text-align: center;
+            }
+            
+            .expand-icon.expanded {
+                transform: rotate(180deg);
+            }
+            
+            .connection-item {
+                padding: 6px 0;
+                border-bottom: 1px solid #eee;
+                color: #555;
+                font-size: 0.9em;
+            }
+            
+            .connection-item:last-child {
+                border-bottom: none;
+            }
+            
+            .no-connections {
+                padding: 10px 0;
+                color: #999;
+                font-style: italic;
+                font-size: 0.9em;
+            }
+            </style>
+            
+            <script>
+            function toggleThemeDetails(themeId) {
+                const details = document.getElementById('theme-details-' + themeId);
+                const icon = document.getElementById('theme-icon-' + themeId);
+                
+                if (details.style.display === 'none' || details.style.display === '') {
+                    details.style.display = 'block';
+                    icon.classList.add('expanded');
+                } else {
+                    details.style.display = 'none';
+                    icon.classList.remove('expanded');
+                }
+            }
+            
+            function togglePositionDetails(positionId) {
+                const details = document.getElementById('pos-details-' + positionId);
+                const icon = document.getElementById('pos-icon-' + positionId);
+                
+                if (details.style.display === 'none' || details.style.display === '') {
+                    details.style.display = 'block';
+                    icon.classList.add('expanded');
+                } else {
+                    details.style.display = 'none';
+                    icon.classList.remove('expanded');
+                }
+            }
+            </script>
 
         <!-- Comments Table -->
         <div class="section">
@@ -750,7 +977,7 @@
                             </th>
                             <th class="filterable" data-column="4">
                                 Stances <span class="filter-arrow" onclick="toggleFilter(4)">▼</span>
-                                <div class="filter-dropdown" id="filter-4" style="display: none;"><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Opposition to Politicization of the Civil Service/Schedule F" onchange="filterTable()"> Opposition to Politicization of the Civil Service/Schedule F</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)" onchange="filterTable()"> Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</label>
+                                <div class="filter-dropdown" id="filter-4" style="display: none;"><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="COVID Vaccine Market Status: Support for Continued or Expanded COVID Vaccine Access" onchange="filterTable()"> COVID Vaccine Market Status: Support for Continued or Expanded COVID Vaccine Access</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="COVID Vaccine Market Status: Support for Removal of COVID Vaccines from Market" onchange="filterTable()"> COVID Vaccine Market Status: Support for Removal of COVID Vaccines from Market</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Committee Independence and Expertise: Support for New/Current ACIP Panel or Increased Scrutiny" onchange="filterTable()"> Committee Independence and Expertise: Support for New/Current ACIP Panel or Increased Scrutiny</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Importance of Vaccine Recommendations for Insurance and Coverage: Support for Maintaining Recommendations to Guarantee Coverage" onchange="filterTable()"> Importance of Vaccine Recommendations for Insurance and Coverage: Support for Maintaining Recommendations to Guarantee Coverage</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Policy Transparency and Conflicts of Interest: Concern About Conflicts of Interest and Lack of Transparency" onchange="filterTable()"> Policy Transparency and Conflicts of Interest: Concern About Conflicts of Interest and Lack of Transparency</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Public Health vs. Personal Autonomy: Emphasis on Individual Choice/Bodily Autonomy" onchange="filterTable()"> Public Health vs. Personal Autonomy: Emphasis on Individual Choice/Bodily Autonomy</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Public Health vs. Personal Autonomy: Emphasis on Public Health Responsibility" onchange="filterTable()"> Public Health vs. Personal Autonomy: Emphasis on Public Health Responsibility</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Restoring and Building Public Trust: Trust Depends on Transparency and Safety" onchange="filterTable()"> Restoring and Building Public Trust: Trust Depends on Transparency and Safety</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Vaccine Safety and Harms: Vaccines Are Unsafe" onchange="filterTable()"> Vaccine Safety and Harms: Vaccines Are Unsafe</label>
                                     <hr style="margin: 5px 0;">
                                     <label class="filter-checkbox"><input type="checkbox" data-filter="unusual_combo" value="yes" onchange="filterTable()"> ⚠️ Unusual Combinations</label>
                                 </div>
@@ -806,920 +1033,93 @@
                         <tbody>
 
                             <tr>
-                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-26668" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-26668</a></span></td>
-                                <td class="date-cell">2025-05-29</td>
-                                <td class="char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="Comment from National Weather Service Employees Organization">Comment from National Weather Service Employees Or...</td>
-                                <td>National Weather Service Employees Organization</td>
-                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-8673" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-8673</a></span></td>
+                                <td class="date-cell">2025-06-22</td>
+                                <td>Jennifer Gokey</td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">COVID Vaccine Market Status: Support for Continued or Expanded COVID Vaccine Access</span> <span class="stance-tag">Importance of Vaccine Recommendations for Insurance and Coverage: Support for Maintaining Recommendations to Guarantee Coverage</span></div></td>
                                 <td><span style="color: #999;">None</span></td>
-                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="See attached letter
-
---- ATTACHMENT CONTENT ---
-e
-National Weather Service
-Employees Organization
-Office of Personnel Management
-1900 E Street, N.W.
-Washington, DC 20415
-Re: &quot;Improving Performance, Accountability and Responsiveness in the Civil Service,&quot;
-Proposed Rule, 90 Fed. Reg. 17182, Docket ID OPM20250004
-Dear Office of Personnel Management:
-The National Weather Service Employees Organization (NWSEO) submits these comments
-concerning the Office of Personnel Management&#039;s (OPM) Proposed Rule &quot;Improving
-Performance, Accountability and Responsiveness in the Civil Service,&quot; 90 Fed. Reg. 17182
-(April 23, 2025). We write to express opposition to the Proposed Rule.
-NWSEO
-The National Weather Service Employees Organization (NWSEO) was established in 1976 and
-has championed the rights of workers in the National Oceanic and Atmospheric Administration
-(NOAA). NWSEO is a labor organization and professional association that now represents
-approximately 4,000 NOAA employees in the U.S. Department of Commerce (DOC). Among
-NWSEO&#039;s ranks are forecasters, technicians, researchers, attorneys, and support personnel. Our
-members track satellites and provide the nation&#039;s official weather forecasts and warnings. Our
-members also work to enforce and implement laws that facilitate protection of the nation&#039;s
-environment and natural resources. NWSEO has five bargaining units representing employees in
-the National Weather Service (NWS) NOAA&#039;s Office of Satellite &amp; Product Operations within
-the Natio... [truncated]">See attached letter
-
---- ATTACHMENT CONTENT ---
-e
-National Weather Service
-Employees Organization
-Office of Personnel Management
-1900 E Street, N.W.
-Washington, DC 20415
-Re: "Improving Performance, Accountability and Responsiveness in the Civil Service,"
-Proposed Rule, 90 Fed. Reg. 17182, Docket ID ...</td>
-                                <td><span class="attachment-indicator">📎</span></td>
+                                <td class="text-preview">Maintain universal recommendations for COVID vaccines
+-Vaccines must be fully covered by insurance/no out of pocket costs
+-Do not roll back recommendations for ANY vaccine
+-Restore the BRIDGE program
+-Release COVID vaccines in summer</td>
+                                <td></td>
                                 <td><span class="unique-indicator">1</span></td>
                                 <td><span class="unique-indicator">1:1</span></td>
-                                <td style="display: none;" class="char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="e
-National Weather Service
-Employees Organization
-Office of Personnel Management
-1900 E Street, N.W.
-Washington, DC 20415
-Re: &quot;Improving Performance, Accountability and Responsiveness in the Civil Service,&quot;
-Proposed Rule, 90 Fed. Reg. 17182, Docket ID OPM20250004
-Dear Office of Personnel Management:
-The National Weather Service Employees Organization (NWSEO) submits these comments
-concerning the Office of Personnel Management&#039;s (OPM) Proposed Rule &quot;Improving
-Performance, Accountability and Responsiveness in the Civil Service,&quot; 90 Fed. Reg. 17182
-(April 23, 2025). We write to express opposition to the Proposed Rule.
-NWSEO
-The National Weather Service Employees Organization (NWSEO) was established in 1976 and
-has championed the rights of workers in the National Oceanic and Atmospheric Administration
-(NOAA). NWSEO is a labor organization and professional association that now represents
-approximately 4,000 NOAA employees in the U.S. Department of Commerce (DOC). Among
-NWSEO&#039;s ranks are forecasters, technicians, researchers, attorneys, and support personnel. Our
-members track satellites and provide the nation&#039;s official weather forecasts and warnings. Our
-members also work to enforce an... [truncated]">e
-National Weather Service
-Employees Organization
-Office of Personnel Management
-1900 E Street, N.W.
-Washington, DC 20415
-Re: "Improving Performance, Accountability and Responsiveness in the Civil Service,"
-Proposed Rule, 90 Fed. Reg. 17182, Docket ID OPM20250004
-Dear Office of Personnel Management:...</td>
-                                <td style="display: none;">We write to express opposition to the Proposed Rule.</td>
-                                <td style="display: none;">The comment clearly expresses opposition to the Proposed Rule, indicating concerns about the potential impact on civil service protections and the integrity of the workforce. The affiliation with a labor organization further emphasizes a commitment to workers' rights, aligning with opposition to weakening due process and protections for federal employees.</td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Do not roll back recommendations for ANY vaccine.</td>
+                                <td style="display: none;">The comment clearly advocates for the maintenance of universal recommendations for COVID vaccines and emphasizes the importance of ensuring insurance covers these vaccines without out-of-pocket costs. This aligns with the themes of supporting continued access to vaccines and ensuring that recommendations are in place to guarantee coverage.</td>
                             </tr>
 
                             <tr>
-                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-4329" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-4329</a></span></td>
-                                <td class="date-cell">2025-05-08</td>
-                                <td>Comment from Anonymous</td>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-6360" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-6360</a></span></td>
+                                <td class="date-cell">2025-06-20</td>
+                                <td>Susan King</td>
                                 <td></td>
-                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><div class="stances-container"><span class="stance-tag">COVID Vaccine Market Status: Support for Removal of COVID Vaccines from Market</span> <span class="stance-tag">Vaccine Safety and Harms: Vaccines Are Unsafe</span> <span class="stance-tag">Restoring and Building Public Trust: Trust Depends on Transparency and Safety</span></div></td>
                                 <td><span style="color: #999;">None</span></td>
-                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="See attached file(s)
-
---- ATTACHMENT CONTENT ---
-May
- 
-7,
- 
-2025
- 
-To
- 
-Whom
- 
-It
- 
-May
- 
-Concern
- 
-at
- 
-the
- 
-U.S.
- 
-Office
- 
-of
- 
-Personnel
- 
-Management,
- 
-I
- 
-am
- 
-writing
- 
-to
- 
-express
- 
-my
- 
-strong
- 
-opposition
- 
-to
- 
-any
- 
-proposed
- 
-regulations
- 
-that
- 
-would
- 
-enable
- 
-the
- 
-creation
- 
-of
- 
-a
- 
-new
- 
-federal
- 
-employee
- 
-category
- 
-resembling
- 
-“Schedule
- 
-F,”
- 
-or
- 
-otherwise
- 
-allow
- 
-for
- 
-the
- 
-politicization
- 
-of
- 
-the
- 
-federal
- 
-civil
- 
-service.
- 
-As
- 
-a
- 
-long-time
- 
-public
- 
-servant
- 
-with
- 
-the
- 
-National
- 
-Park
- 
-Service,
- 
-I
- 
-have
- 
-dedicated
- 
-my
- 
-career
- 
-to
- 
-serving
- 
-the
- 
-American
- 
-public
- 
-with
- 
-integrity,
- 
-impartiality,
- 
-and
- 
-professionalism.
- 
-The
- 
-foundation
- 
-of
- 
-the
- 
-federal
- 
-civil
- 
-service
- 
-is
- 
-its
- 
-merit-based,
- 
-nonpartisan
- 
-structure.
- 
-This
- 
-is
- 
-not
- 
-just
- 
-a
- 
-principle—it
- 
-is
- 
-a
- 
-safeguard
- 
-that
- 
-ensures
- 
-public
- 
-agencies
- 
-serve
- 
-all
- 
-Americans
-,
- 
-regardless
- 
-of
- 
-political
- 
-party.
- 
-Proposals
- 
-that
- 
-allow
- 
-employees
- 
-to
- 
-be
- 
-reclassified
- 
-into
- 
-an
- 
-at-will
- 
-status—stripped
- 
-of
- 
-due
- 
-process
- 
-and
- 
-vulnerable
- 
-to
- 
-politically
- 
-motivated
- 
-firings—are
- 
-a
- 
-direct
- 
-attack
- 
-on
- 
-that
- 
-foundation.
- 
-These
- 
-policies
- 
-would
- 
-open
- 
-the
- 
-door
- 
-to
- 
-replacing
- 
-career
- 
-professionals
- 
-with
- 
-political
- 
-loyalists,
- 
-weakening
- 
-the
- 
-effectiveness,
- 
-credibility,
- 
-and
- 
-continuity
- 
-of
- 
-public
- 
-service.
- 
-Federal
- 
-employees
- 
-are
- 
-experts
- 
-in
- 
-their
- 
-fields—scientists,
- 
-analyst... [truncated]">See attached file(s)
-
---- ATTACHMENT CONTENT ---
-May
- 
-7,
- 
-2025
- 
-To
- 
-Whom
- 
-It
- 
-May
- 
-Concern
- 
-at
- 
-the
- 
-U.S.
- 
-Office
- 
-of
- 
-Personnel
- 
-Management,
- 
-I
- 
-am
- 
-writing
- 
-to
- 
-express
- 
-my
- 
-strong
- 
-opposition
- 
-to
- 
-any
- 
-proposed
- 
-regulations
- 
-that
- 
-would
- 
-enable
- 
-the
- 
-creation
- 
-of
- ...</td>
-                                <td><span class="attachment-indicator">📎</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
                                 <td><span class="unique-indicator">1</span></td>
                                 <td><span class="unique-indicator">1:1</span></td>
-                                <td style="display: none;" class="char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="May
- 
-7,
- 
-2025
- 
-To
- 
-Whom
- 
-It
- 
-May
- 
-Concern
- 
-at
- 
-the
- 
-U.S.
- 
-Office
- 
-of
- 
-Personnel
- 
-Management,
- 
-I
- 
-am
- 
-writing
- 
-to
- 
-express
- 
-my
- 
-strong
- 
-opposition
- 
-to
- 
-any
- 
-proposed
- 
-regulations
- 
-that
- 
-would
- 
-enable
- 
-the
- 
-creation
- 
-of
- 
-a
- 
-new
- 
-federal
- 
-employee
- 
-category
- 
-resembling
- 
-“Schedule
- 
-F,”
- 
-or
- 
-otherwise
- 
-allow
- 
-for
- 
-the
- 
-politicization
- 
-of
- 
-the
- 
-federal
- 
-civil
- 
-service.
- 
-As
- 
-a
- 
-long-time
- 
-public
- 
-servant
- 
-with
- 
-the
- 
-National
- 
-Park
- 
-Service,
- 
-I
- 
-have
- 
-dedicated
- 
-my
- 
-career
- 
-to
- 
-serving
- 
-the
- 
-American
- 
-public
- 
-with
- 
-integrity,
- 
-impartiality,
- 
-and
- 
-professionalism.
- 
-The
- 
-foundation
- 
-of
- 
-the
- 
-federal
- 
-civil
- 
-service
- 
-is
- 
-its
- 
-merit-based,
- 
-nonpartisan
- 
-structure.
- 
-This
- 
-is
- 
-not
- 
-just
- 
-a
- 
-principle—it
- 
-is
- 
-a
- 
-safeguard
- 
-that
- 
-ensures
- 
-public
- 
-agencies
- 
-serve
- 
-all
- 
-Americans
-,
- 
-regardless
- 
-of
- 
-political
- 
-party.
- 
-Proposals
- 
-that
- 
-allow
- 
-employees
- 
-to
- 
-be
- 
-reclassified
- 
-into
- 
-an
- 
-at-will
- 
-status—stripped
- 
-of
- 
-due
- 
-process
- 
-and
- 
-vulnerable
- 
-to
- 
-politically
- 
-motivated
- 
-firings—are
- 
-a
- 
-direct
- 
-attack
- 
-on
- 
-that
- 
-foundation.
- 
-These
- 
-policies
- 
-would
- 
-open
- 
-the
- 
-doo... [truncated]">May
- 
-7,
- 
-2025
- 
-To
- 
-Whom
- 
-It
- 
-May
- 
-Concern
- 
-at
- 
-the
- 
-U.S.
- 
-Office
- 
-of
- 
-Personnel
- 
-Management,
- 
-I
- 
-am
- 
-writing
- 
-to
- 
-express
- 
-my
- 
-strong
- 
-opposition
- 
-to
- 
-any
- 
-proposed
- 
-regulations
- 
-that
- 
-would
- 
-enable
- 
-the
- 
-creation
- 
-of
- 
-a
- 
-new
- 
-federal
- 
-employee
- 
-category
- 
-resemb...</td>
-                                <td style="display: none;">Proposals that allow employees to be reclassified into an at-will status—stripped of due process and vulnerable to politically motivated firings—are a direct attack on that foundation.</td>
-                                <td style="display: none;">The comment clearly expresses strong opposition to the (re)introduction of Schedule F, warning against the politicization of the federal civil service and emphasizing the need for merit-based, nonpartisan structures. Additionally, it raises concerns about the loss of due process and worker protections, indicating a fear of arbitrary dismissals affecting job security.</td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The comment explicitly calls for the removal of COVID vaccines from the market due to concerns about their safety, referencing specific death counts and historical comparisons to the 1976 swine flu vaccine. It emphasizes the need for transparency and rigorous research to regain public trust, aligning with concerns about both vaccine safety and the integrity of the health committee.</td>
                             </tr>
 
                             <tr>
-                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/OPM-2025-0004-8242" target="_blank" style="color: #007bff; text-decoration: underline;">OPM-2025-0004-8242</a></span></td>
-                                <td class="date-cell">2025-05-13</td>
-                                <td>Comment from Mac Walsh</td>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-6917" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-6917</a></span></td>
+                                <td class="date-cell">2025-06-20</td>
+                                <td>Laura Claiborne</td>
                                 <td></td>
-                                <td><div class="stances-container"><span class="stance-tag">Opposition to Politicization of the Civil Service/Schedule F</span> <span class="stance-tag">Opposition to Weakening Federal Due Process and Worker Protections (General Civil Service Rights)</span></div></td>
+                                <td><div class="stances-container"><span class="stance-tag">COVID Vaccine Market Status: Support for Removal of COVID Vaccines from Market</span> <span class="stance-tag">Vaccine Safety and Harms: Vaccines Are Unsafe</span> <span class="stance-tag">Restoring and Building Public Trust: Trust Depends on Transparency and Safety</span></div></td>
                                 <td><span style="color: #999;">None</span></td>
-                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="See attached
-
---- ATTACHMENT CONTENT ---
-Comments Opposing the Proposed Rule that would allow civilian career positions to be 
-moved into Schedule Policy/Career and stripped of their civil service protections.  
-Docket ID: OPM -2025- 0004  
- 
-The modern Civil Service has developed over the past 150 years, with major legislation passed 
-in 1883 (Pendleton Act) and 1978 (Civil Service Reform Act) in response to episodes of 
-corruption and poor governance. These reforms ended the era of the notoriously corrupt and 
-highly politicized  “spoils system,” ushering in and later strengthening a non- partisan, merit -
-based, professional federal civilian workforce. Such a workforce has been definitively shown 
-over many decades and across many countries to dramatically reduce waste, fraud, and abuse, 
-and to improve services and outcomes for the public. The proposed rule would reverse much of 
-America’s progress on this front by reclassifying thousands of civil servants as “at -will” 
-employees who could be fired without cause, warning, or recourse.  
- 
-In addition to personally harming thousands of dedicated public servants, the proposed rule 
-would also harm the American people by reducing the professionalism and competence of the 
-federal workforce, thus reducing the quality and efficiency of government services delivered to 
-the public. Oliveira et al.  (2020) conducted a systematic review and found that “ factors such as 
-meritocratic appointments/recruitment, tenure protection, i... [truncated]">See attached
-
---- ATTACHMENT CONTENT ---
-Comments Opposing the Proposed Rule that would allow civilian career positions to be 
-moved into Schedule Policy/Career and stripped of their civil service protections.  
-Docket ID: OPM -2025- 0004  
- 
-The modern Civil Service has developed over the past 150 ...</td>
-                                <td><span class="attachment-indicator">📎</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
                                 <td><span class="unique-indicator">1</span></td>
                                 <td><span class="unique-indicator">1:1</span></td>
-                                <td style="display: none;" class="char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="Comments Opposing the Proposed Rule that would allow civilian career positions to be 
-moved into Schedule Policy/Career and stripped of their civil service protections.  
-Docket ID: OPM -2025- 0004  
- 
-The modern Civil Service has developed over the past 150 years, with major legislation passed 
-in 1883 (Pendleton Act) and 1978 (Civil Service Reform Act) in response to episodes of 
-corruption and poor governance. These reforms ended the era of the notoriously corrupt and 
-highly politicized  “spoils system,” ushering in and later strengthening a non- partisan, merit -
-based, professional federal civilian workforce. Such a workforce has been definitively shown 
-over many decades and across many countries to dramatically reduce waste, fraud, and abuse, 
-and to improve services and outcomes for the public. The proposed rule would reverse much of 
-America’s progress on this front by reclassifying thousands of civil servants as “at -will” 
-employees who could be fired without cause, warning, or recourse.  
- 
-In addition to personally harming thousands of dedicated public servants, the proposed rule 
-would also harm the American people by reducing the professionalism and competence of th... [truncated]">Comments Opposing the Proposed Rule that would allow civilian career positions to be 
-moved into Schedule Policy/Career and stripped of their civil service protections.  
-Docket ID: OPM -2025- 0004  
- 
-The modern Civil Service has developed over the past 150 years, with major legislation passed 
-in ...</td>
-                                <td style="display: none;">The proposed rule would reverse much of America’s progress on this front by reclassifying thousands of civil servants as 'at-will' employees who could be fired without cause, warning, or recourse.</td>
-                                <td style="display: none;">The comment explicitly opposes the implementation of Schedule Policy/Career due to the risks it poses to civil service protections, highlighting the importance of a non-partisan and merit-based workforce. It also warns about the potential consequences of creating at-will positions, indicating concerns over due process and the overall competency of the federal workforce.</td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The commenter expresses a strong stance for removing COVID vaccines from the market due to safety concerns, referencing significant adverse event reports. They also emphasize the need for rigorous research before licensing vaccines, linking this approach to restoring public trust in the ACIP.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-10031" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-10031</a></span></td>
+                                <td class="date-cell">2025-06-23</td>
+                                <td>Jack Gorfien</td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">Committee Independence and Expertise: Support for New/Current ACIP Panel or Increased Scrutiny</span> <span class="stance-tag">Policy Transparency and Conflicts of Interest: Concern About Conflicts of Interest and Lack of Transparency</span> <span class="stance-tag">Public Health vs. Personal Autonomy: Emphasis on Individual Choice/Bodily Autonomy</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview">It's about time you cleaned house.   People with obvious conflicts of interest have no business influencing public health policy with respect to vaccines.  The COVID vaccine fiasco has illustrated this.  Mandating of vaccines should be illegal.  And liability protection removed for vaccines.</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">People with obvious conflicts of interest have no business influencing public health policy with respect to vaccines.</td>
+                                <td style="display: none;">The selected stances reflect a clear concern about conflicts of interest affecting public health policy and a belief that mandates should not be imposed on individuals, aligning with the emphasis on personal choice. Additionally, there is a call for increased scrutiny of the processes that influence vaccine recommendations.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-5216" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-5216</a></span></td>
+                                <td class="date-cell">2025-06-19</td>
+                                <td>Diane Cochran</td>
+                                <td></td>
+                                <td><div class="stances-container"><span class="stance-tag">COVID Vaccine Market Status: Support for Removal of COVID Vaccines from Market</span> <span class="stance-tag">Vaccine Safety and Harms: Vaccines Are Unsafe</span> <span class="stance-tag">Public Health vs. Personal Autonomy: Emphasis on Public Health Responsibility</span> <span class="stance-tag">Restoring and Building Public Trust: Trust Depends on Transparency and Safety</span></div></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The comment expresses strong support for the removal of COVID vaccines, citing safety concerns and referencing significant death tolls linked to vaccination. It emphasizes the committee's responsibility towards public health and the need for rigorous scientific evaluation to regain public trust, indicating a clear stance on both vaccine safety and the role of ACIP in protecting community health.</td>
                             </tr>
 
                         </tbody>
@@ -1734,7 +1134,7 @@ in ...</td>
             <div class="meta-grid">
                 <div class="meta-item">
                     <div class="meta-label">Generated</div>
-                    <div class="meta-value">2025-06-28 21:40:31</div>
+                    <div class="meta-value">2025-06-30 18:33:29</div>
                 </div>
                 <div class="meta-item">
                     <div class="meta-label">Model Used</div>
@@ -1742,19 +1142,19 @@ in ...</td>
                 </div>
                 <div class="meta-item">
                     <div class="meta-label">Total Comments</div>
-                    <div class="meta-value">3</div>
+                    <div class="meta-value">5</div>
                 </div>
                 <div class="meta-item">
                     <div class="meta-label">With Attachments</div>
-                    <div class="meta-value">3</div>
+                    <div class="meta-value">0</div>
                 </div>
                 <div class="meta-item">
                     <div class="meta-label">Average Length</div>
-                    <div class="meta-value">11,903 chars</div>
+                    <div class="meta-value">631 chars</div>
                 </div>
                 <div class="meta-item">
                     <div class="meta-label">Date Range</div>
-                    <div class="meta-value">2025-05-08 to 2025-05-29</div>
+                    <div class="meta-value">2025-06-19 to 2025-06-23</div>
                 </div>
             </div>
         </div>
