@@ -1,0 +1,2019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regulation Comments Analysis - Comment Analysis Report</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            line-height: 1.5;
+            background: #f8f9fa;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            font-size: 2em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .section {
+            background: white;
+            margin: 30px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h2 {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+        }
+        
+        .filters-container {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .filters-header {
+            font-weight: 600;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+        
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .filter-label {
+            font-weight: 500;
+            color: #333;
+            font-size: 0.9em;
+        }
+        
+        .filterable {
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .filter-arrow {
+            float: right;
+            font-size: 12px;
+            color: #666;
+            margin-left: 8px;
+            user-select: none;
+        }
+        
+        .filter-arrow:hover {
+            color: #007bff;
+        }
+        
+        .filter-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 1000;
+            padding: 10px;
+            min-width: 200px;
+        }
+        
+        .filter-input {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        
+        .filter-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 1px rgba(0,123,255,0.25);
+        }
+        
+        .filter-checkbox {
+            display: block;
+            margin: 5px 0;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        
+        .filter-checkbox input {
+            margin-right: 6px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9em;
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            margin: 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        th {
+            background: #e9ecef;
+            padding: 12px 8px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #dee2e6;
+            position: sticky;
+            top: 0;
+        }
+        
+        td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: top;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        tr:hover {
+            background-color: #e3f2fd;
+        }
+        
+        .stance-for {
+            background: #28a745;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .stance-against {
+            background: #dc3545;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .stance-neutral {
+            background: #ffc107;
+            color: #212529;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .stance-unknown {
+            background: #6c757d;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .stances-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            max-width: 300px;
+        }
+        
+        .stance-tag {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+            border: 1px solid #bbdefb;
+        }
+        
+        .text-preview {
+            max-width: 300px;
+            max-height: 100px;
+            overflow: hidden;
+            font-size: 12px;
+        }
+        
+        .comment-id {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        
+        .comment-id a:hover {
+            color: #0056b3 !important;
+            background-color: #e3f2fd;
+        }
+        
+        .date-cell {
+            white-space: nowrap;
+            font-size: 12px;
+        }
+        
+        .attachment-indicator {
+            font-size: 16px;
+            color: #28a745;
+        }
+        
+        .unique-indicator {
+            background: #28a745;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .duplicate-indicator {
+            background: #ffc107;
+            color: #212529;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .meta-info {
+            background: #343a40;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+        
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .meta-label {
+            font-size: 0.8em;
+            opacity: 0.8;
+        }
+        
+        .meta-value {
+            font-weight: 600;
+        }
+        
+        
+        .clear-filters {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        
+        .clear-filters:hover {
+            background: #c82333;
+        }
+        
+        .show-hide-columns {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        
+        .show-hide-columns:hover {
+            background: #0056b3;
+        }
+        
+        .column-visibility-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .column-visibility-content {
+            display: none;
+            position: absolute;
+            background-color: white;
+            min-width: 250px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1000;
+            border-radius: 4px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            top: 100%;
+            left: 0;
+        }
+        
+        .column-visibility-content.show {
+            display: block;
+        }
+        
+        .column-visibility-item {
+            display: flex;
+            align-items: center;
+            padding: 5px 0;
+            gap: 8px;
+        }
+        
+        .column-visibility-item input[type="checkbox"] {
+            margin: 0;
+        }
+        
+        .column-visibility-item label {
+            cursor: pointer;
+            font-size: 14px;
+            margin: 0;
+        }
+        
+        .char-limited {
+            cursor: help;
+        }
+        
+        /* Custom tooltip styling for wider tooltips */
+        .tooltip .tooltip-inner {
+            max-width: 600px !important;
+            width: auto !important;
+            text-align: left !important;
+            font-size: 13px !important;
+            line-height: 1.4 !important;
+            padding: 8px 12px !important;
+        }
+        
+        /* Allow table to be wider and let columns size naturally */
+        table {
+            width: 100%;
+            table-layout: auto;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        
+        /* Only constrain the comment column to prevent it from being too wide */
+        th[data-column="5"] {
+            width: 25%;
+            max-width: 400px;
+        }
+        
+        .text-preview {
+            max-width: 400px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        
+        /* Co-occurrence table styles */
+        .cooccurrence-table {
+            border-collapse: collapse;
+            font-size: 12px;
+            margin: 0 auto;
+        }
+        
+        .cooccurrence-table th,
+        .cooccurrence-table td {
+            border: 1px solid #dee2e6;
+            text-align: center;
+            padding: 8px;
+            min-width: 40px;
+        }
+        
+        .cooccurrence-table .stance-label {
+            text-align: left;
+            font-weight: 500;
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .rotate-header {
+            height: 150px;
+            white-space: nowrap;
+            vertical-align: bottom;
+        }
+        
+        .rotate-header > div {
+            transform: translate(15px, 65px) rotate(-45deg);
+            width: 30px;
+            transform-origin: bottom left;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .diagonal-cell {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .cooccurrence-cell {
+            color: #333;
+            font-weight: 500;
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Regulation Comments Analysis</h1>
+            <div class="subtitle">Analysis of public comments on federal regulation</div>
+            
+        </div>
+        
+        <!-- Summary Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">50</div>
+                <div class="stat-label">Total Comments</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">1</div>
+                <div class="stat-label">With Attachments</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">1,019</div>
+                <div class="stat-label">Avg. Characters</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">2025-06-10 to 2025-06-24</div>
+                <div class="stat-label">Date Range</div>
+            </div>
+        </div>
+
+
+        <!-- Analysis Field Distributions -->
+        
+        <div class="section">
+            <h2>📊 Themes Distribution</h2>
+            <div class="stats-grid">
+                
+            </div>
+        </div>
+
+        <!-- New Stances (Compact) -->
+        
+        <div class="section compact-section">
+            <h3>🆕 New Stances</h3>
+            <p class="section-note">Additional stances discovered during analysis that didn't fit predefined categories</p>
+            
+            <table class="new-stances-table">
+                <thead>
+                    <tr>
+                        <th>Stance</th>
+                        <th>Count</th>
+                        <th>%</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+            <tr>
+                <td class="new-stance-name">Vaccine Technology Concerns: Opposition to mRNA Technology</td>
+                <td class="new-stance-count">1</td>
+                <td class="new-stance-percentage">2.0%</td>
+            </tr>
+            <tr>
+                <td class="new-stance-name">Preservative Safety: Concern over Thimerosal in Vaccines</td>
+                <td class="new-stance-count">1</td>
+                <td class="new-stance-percentage">2.0%</td>
+            </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <style>
+        .compact-section {
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .compact-section h3 {
+            font-size: 1.2em;
+            margin-bottom: 8px;
+            color: #666;
+        }
+        
+        .section-note {
+            font-size: 0.9em;
+            color: #888;
+            margin-bottom: 10px;
+            font-style: italic;
+        }
+        
+        .new-stances-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+        
+        .new-stances-table th {
+            background: #f8f9fa;
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+            font-weight: 600;
+        }
+        
+        .new-stances-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #eee;
+            vertical-align: top;
+        }
+        
+        .new-stance-name {
+            font-weight: 500;
+        }
+        
+        .new-stance-count {
+            text-align: center;
+            width: 80px;
+        }
+        
+        .new-stance-percentage {
+            text-align: center;
+            width: 60px;
+        }
+        </style>
+
+        <!-- Comments Table -->
+        <div class="section">
+            <h2>Comments</h2>
+            <div class="table-controls">
+                <button class="clear-filters" onclick="clearAllFilters()">Clear All Filters</button>
+                <div class="column-visibility-dropdown">
+                    <button class="show-hide-columns" onclick="toggleColumnVisibility()">Show/Hide Columns</button>
+                    <div class="column-visibility-content" id="columnVisibilityDropdown">
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-0" checked onchange="toggleColumn(0)">
+                            <label for="col-0">Comment ID</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-1" checked onchange="toggleColumn(1)">
+                            <label for="col-1">Date</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-2" checked onchange="toggleColumn(2)">
+                            <label for="col-2">Submitter</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-3" checked onchange="toggleColumn(3)">
+                            <label for="col-3">Organization</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-4" checked onchange="toggleColumn(4)">
+                            <label for="col-4">Stances</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-5" checked onchange="toggleColumn(5)">
+                            <label for="col-5">New Stances</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-6" checked onchange="toggleColumn(6)">
+                            <label for="col-6">Comment</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-7" checked onchange="toggleColumn(7)">
+                            <label for="col-7">Attachments</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-8" checked onchange="toggleColumn(8)">
+                            <label for="col-8">Dup Count</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-9" checked onchange="toggleColumn(9)">
+                            <label for="col-9">Dup Ratio</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-10" onchange="toggleColumn(10)">
+                            <label for="col-10">Attachment</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-11" onchange="toggleColumn(11)">
+                            <label for="col-11">Key Quote (LLM)</label>
+                        </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-12" onchange="toggleColumn(12)">
+                            <label for="col-12">Rationale (LLM)</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                
+            <div style="overflow-x: auto;">
+                <table id="commentsTable" class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th class="filterable" data-column="0">
+                                Comment ID <span class="filter-arrow" onclick="toggleFilter(0)">▼</span>
+                                <div class="filter-dropdown" id="filter-0" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="0" placeholder="Filter ID..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th>Date</th>
+                            <th class="filterable" data-column="2">
+                                Submitter <span class="filter-arrow" onclick="toggleFilter(2)">▼</span>
+                                <div class="filter-dropdown" id="filter-2" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="2" placeholder="Filter name..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="3">
+                                Organization <span class="filter-arrow" onclick="toggleFilter(3)">▼</span>
+                                <div class="filter-dropdown" id="filter-3" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="3" placeholder="Filter organization..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="4">
+                                Stances <span class="filter-arrow" onclick="toggleFilter(4)">▼</span>
+                                <div class="filter-dropdown" id="filter-4" style="display: none;"><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Access and Equity in Vaccines: Support for Universal Vaccine Access" onchange="filterTable()"> Access and Equity in Vaccines: Support for Universal Vaccine Access</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="COVID Vaccine Access and Availability: Oppose Removal of COVID Vaccines" onchange="filterTable()"> COVID Vaccine Access and Availability: Oppose Removal of COVID Vaccines</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="COVID Vaccine Access and Availability: Support for Removal of COVID Vaccines" onchange="filterTable()"> COVID Vaccine Access and Availability: Support for Removal of COVID Vaccines</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Committee Composition and Expertise (ACIP Appointments): Oppose Current Committee Composition" onchange="filterTable()"> Committee Composition and Expertise (ACIP Appointments): Oppose Current Committee Composition</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Committee Composition and Expertise (ACIP Appointments): Support for Independent Expert Committee" onchange="filterTable()"> Committee Composition and Expertise (ACIP Appointments): Support for Independent Expert Committee</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Political Influence and Interference: Oppose Political Interference in ACIP/CDC" onchange="filterTable()"> Political Influence and Interference: Oppose Political Interference in ACIP/CDC</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Public Trust and Transparency: Oppose Current Process Due to Perceived Lack of Trust" onchange="filterTable()"> Public Trust and Transparency: Oppose Current Process Due to Perceived Lack of Trust</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Public Trust and Transparency: Support for Increased Transparency/Disclosure" onchange="filterTable()"> Public Trust and Transparency: Support for Increased Transparency/Disclosure</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Role of Vaccines in Public Health: Support for Vaccines as Essential Public Health Tool" onchange="filterTable()"> Role of Vaccines in Public Health: Support for Vaccines as Essential Public Health Tool</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Scientific Standards and Evidence for Vaccine Policy: Oppose Current Standards / Claim Insufficient Testing" onchange="filterTable()"> Scientific Standards and Evidence for Vaccine Policy: Oppose Current Standards / Claim Insufficient Testing</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Scientific Standards and Evidence for Vaccine Policy: Support for Science-Based/Strict Evidence Standards" onchange="filterTable()"> Scientific Standards and Evidence for Vaccine Policy: Support for Science-Based/Strict Evidence Standards</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Scope of Vaccine Recommendations/Schedule: Support for Universal/Broad Recommendations" onchange="filterTable()"> Scope of Vaccine Recommendations/Schedule: Support for Universal/Broad Recommendations</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Use of Adverse Event Reporting (VAERS Data) for Policy: Support for Using VAERS Data to Restrict Vaccines" onchange="filterTable()"> Use of Adverse Event Reporting (VAERS Data) for Policy: Support for Using VAERS Data to Restrict Vaccines</label><label class="filter-checkbox"><input type="checkbox" data-filter="stances" value="Vaccine Mandates and Requirements: Oppose Vaccine Mandates" onchange="filterTable()"> Vaccine Mandates and Requirements: Oppose Vaccine Mandates</label>
+                                    <hr style="margin: 5px 0;">
+                                    <label class="filter-checkbox"><input type="checkbox" data-filter="unusual_combo" value="yes" onchange="filterTable()"> ⚠️ Unusual Combinations</label>
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="5">
+                                New Stances <span class="filter-arrow" onclick="toggleFilter(5)">▼</span>
+                                <div class="filter-dropdown" id="filter-5" style="display: none;"><label class="filter-checkbox"><input type="checkbox" data-filter="new_stances" value="Preservative Safety: Concern over Thimerosal in Vaccines" onchange="filterTable()"> Preservative Safety: Concern over Thimerosal in Vaccines</label><label class="filter-checkbox"><input type="checkbox" data-filter="new_stances" value="Vaccine Technology Concerns: Opposition to mRNA Technology" onchange="filterTable()"> Vaccine Technology Concerns: Opposition to mRNA Technology</label>
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="6">
+                                Comment <span class="filter-arrow" onclick="toggleFilter(6)">▼</span>
+                                <div class="filter-dropdown" id="filter-6" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="6" placeholder="Search comment text..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="7">
+                                📎 <span class="filter-arrow" onclick="toggleFilter(7)">▼</span>
+                                <div class="filter-dropdown" id="filter-7" style="display: none;">
+                                    <label class="filter-checkbox"><input type="checkbox" data-filter="attachments" value="yes" onchange="filterTable()"> With attachments</label>
+                                    <label class="filter-checkbox"><input type="checkbox" data-filter="attachments" value="no" onchange="filterTable()"> No attachments</label>
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="8">
+                                Dup Count <span class="filter-arrow" onclick="toggleFilter(8)">▼</span>
+                                <div class="filter-dropdown" id="filter-8" style="display: none;"><label class="filter-checkbox"><input type="checkbox" data-filter="duplication_count" value="1" onchange="filterTable()"> 1</label>
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="9">
+                                Dup Ratio <span class="filter-arrow" onclick="toggleFilter(9)">▼</span>
+                                <div class="filter-dropdown" id="filter-9" style="display: none;"><label class="filter-checkbox"><input type="checkbox" data-filter="duplication_ratio" value="1/50" onchange="filterTable()"> 1:1/50</label>
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="10" style="display: none;">
+                                Attachment <span class="filter-arrow" onclick="toggleFilter(10)">▼</span>
+                                <div class="filter-dropdown" id="filter-10" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="10" placeholder="Search attachment text..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="11" style="display: none;">
+                                Key Quote <span class="filter-arrow" onclick="toggleFilter(11)">▼</span>
+                                <div class="filter-dropdown" id="filter-11" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="11" placeholder="Search quotes..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                            <th class="filterable" data-column="12" style="display: none;">
+                                Rationale <span class="filter-arrow" onclick="toggleFilter(12)">▼</span>
+                                <div class="filter-dropdown" id="filter-12" style="display: none;">
+                                    <input type="text" class="filter-input" data-column="12" placeholder="Search rationale..." onkeyup="filterTable()">
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                        <tbody>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-10552" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-10552</a></span></td>
+                                <td class="date-cell">2025-06-24</td>
+                                <td>Shari Flesness</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="CDC ACIP experts must support unhindered access to vaccines including COVID, HPV, influenza, MMR/MMRV, meningococcal, and RSV vaccines. 
+Current available vaccines are safe and effective. 
+We need a universal recommendation for COVID vaccination for all ages. 
+As someone who lives with an autoimmune disorder, I know first hand the importance of available and affordable  vaccines.">CDC ACIP experts must support unhindered access to vaccines including COVID, HPV, influenza, MMR/MMRV, meningococcal, and RSV vaccines. 
+Current available vaccines are safe and effective. 
+We need a universal recommendation for COVID vaccination for all ages. 
+As someone who lives with an autoimmune...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">We need a universal recommendation for COVID vaccination for all ages.</td>
+                                <td style="display: none;">The comment clearly expresses a strong support for maintaining and expanding access to vaccines, including COVID vaccines, by advocating for universal recommendations and highlighting their safety and effectiveness. The emphasis on universal access and the importance of vaccines for individuals with autoimmune disorders reinforces the need for equitable vaccine access.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-6662" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-6662</a></span></td>
+                                <td class="date-cell">2025-06-20</td>
+                                <td>Lynn Chodur</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The commenter clearly expresses a strong position advocating for the removal of COVID vaccines based on reported adverse effects, and they call for higher scientific standards for vaccine testing. These stances highlight concerns about public health and the need for rigorous evaluation before vaccines are licensed.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-3183" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-3183</a></span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Jill Lyons</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The commenter expresses a strong support for removing currently licensed COVID vaccines due to reported deaths and a call for rigorous testing standards, highlighting their concerns about the existing regulatory processes and lack of public trust in ACIP's recommendations.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-5392" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-5392</a></span></td>
+                                <td class="date-cell">2025-06-19</td>
+                                <td>Sushma Patel</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The comment expresses clear support for removing COVID vaccines due to reported deaths and stresses the need for rigorous scientific standards in vaccine approval processes, indicating a clear opposition to the current ACIP recommendations and practices. It also highlights a perceived lack of trust in the current committee's process.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-7841" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-7841</a></span></td>
+                                <td class="date-cell">2025-06-20</td>
+                                <td>Denise Maple</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.
+
+My nephew suffers from myocarditis because of the COVID vaccine. I have several friends that feel sicker after that shot and one felt sick for a year directly after receiving the COVID booster. Please stop killing and making sick our American populations.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.</td>
+                                <td style="display: none;">The comment clearly expresses a strong position supporting the removal of COVID vaccines due to reported deaths and adverse events, as well as criticizing the existing scientific standards for vaccine testing. Additionally, it emphasizes the need for ACIP to regain public trust, indicating a perceived lack of transparency and accountability in the current decision-making process.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-4226" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-4226</a></span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Vincent Gay-Balmaz</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.</td>
+                                <td style="display: none;">The comment advocates for the removal of COVID vaccines from the market and emphasizes the need for sound scientific testing before approval, reflecting a stance against current vaccine standards. It also expresses a lack of trust in the ACIP's current processes, suggesting the committee must take significant actions to regain public confidence.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-2311" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-2311</a></span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Kathy Pepneck</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The comment clearly expresses strong opposition to the current recommendations of the ACIP regarding COVID vaccines, advocating for their removal due to reported adverse events. It also calls for more rigorous scientific testing standards, indicating a belief that current testing is inadequate, and highlights the issue of public trust in relation to the committee's actions.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-4191" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-4191</a></span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Kathleen Stewart</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The comment clearly expresses support for removing COVID vaccines based on reported deaths and insufficient testing standards, while also calling for improved transparency and rigorous research methodologies for vaccine licensing. These positions reflect a profound discontent with the current ACIP practices and seek a reevaluation of vaccine recommendations to regain public trust.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-3647" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-3647</a></span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Amanda Burlock</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The commenter advocates for the removal of COVID vaccines based on reported adverse events and a perceived lack of rigorous testing, aligning with positions that support removal and oppose current scientific standards. Additionally, the emphasis on regaining public trust suggests a critical view of the current process.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-9178" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-9178</a></span></td>
+                                <td class="date-cell">2025-06-23</td>
+                                <td>Amanda Kopplin</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="Please see attached file.
+
+--- ATTACHMENT CONTENT ---
+Docket: CDC-2025-0024Public Comment for the June 25-27, 2025, CDC ACIP Committee MeetingTo RFK Jr. and Members of the CDC ACIP committee:I have no conﬂicts of interest to disclose.As a family that operates a small business, we know how important our health is to our daily lives and livelihoods. We rely on access to vaccines and sound science to preserve our health and wellbeing. Since we know multiple people who have been disabled by long COVID, we know the importance of everyone having access to regular updated COVID vaccines to prevent severe illness and likelihood of long term consequences. Continuing to provide vaccine access for all preventable diseases is sound science and good policy. Today, I am writing to express grave concerns about the recent termination of all 17 members of the CDC ACIP committee announced on June 9 by Robert F. Kennedy, Jr. These former members have an important role as independent expert scientists or clinicians on the ACIP committee with a crucial role in providing their understanding of the safety and efﬁcacy of FDA-approved and authorized vaccines while also guiding insurance coverage and coverage for uninsured children through the Vaccines for Children program. Currently, vaccination rates for many infectious diseases are very low, and many communities across the US are directly affected by outbreaks of vaccine-preventable diseases such as measles, pertussis, and COVID. Many of these infe... [truncated]">Please see attached file.
+
+--- ATTACHMENT CONTENT ---
+Docket: CDC-2025-0024Public Comment for the June 25-27, 2025, CDC ACIP Committee MeetingTo RFK Jr. and Members of the CDC ACIP committee:I have no conﬂicts of interest to disclose.As a family that operates a small business, we know how important ...</td>
+                                <td><span class="attachment-indicator">📎</span></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;" class="char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="Docket: CDC-2025-0024Public Comment for the June 25-27, 2025, CDC ACIP Committee MeetingTo RFK Jr. and Members of the CDC ACIP committee:I have no conﬂicts of interest to disclose.As a family that operates a small business, we know how important our health is to our daily lives and livelihoods. We rely on access to vaccines and sound science to preserve our health and wellbeing. Since we know multiple people who have been disabled by long COVID, we know the importance of everyone having access to regular updated COVID vaccines to prevent severe illness and likelihood of long term consequences. Continuing to provide vaccine access for all preventable diseases is sound science and good policy. Today, I am writing to express grave concerns about the recent termination of all 17 members of the CDC ACIP committee announced on June 9 by Robert F. Kennedy, Jr. These former members have an important role as independent expert scientists or clinicians on the ACIP committee with a crucial role in providing their understanding of the safety and efﬁcacy of FDA-approved and authorized vaccines while also guiding insurance coverage and coverage for uninsured children through the Vaccines for Chi... [truncated]">Docket: CDC-2025-0024Public Comment for the June 25-27, 2025, CDC ACIP Committee MeetingTo RFK Jr. and Members of the CDC ACIP committee:I have no conﬂicts of interest to disclose.As a family that operates a small business, we know how important our health is to our daily lives and livelihoods. We r...</td>
+                                <td style="display: none;">COVID vaccines must be available to everyone and not be limited to only some people.</td>
+                                <td style="display: none;">The comment clearly supports the continued availability of COVID vaccines and highlights concerns about the removal of ACIP members, emphasizing the importance of expert input in vaccine policy. It reflects a commitment to public health and universal access to vaccines, asserting that limiting vaccine access is harmful to the community.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-2240" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-2240</a></span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Corry Prinsen</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.</td>
+                                <td style="display: none;">The comment clearly advocates for the removal of COVID vaccines from the market due to reported deaths, aligning with the theme of supporting removal of COVID vaccines. It also emphasizes the need for rigorous scientific standards in vaccine testing, indicating a support for science-based evidence standards. Lastly, it expresses a concern regarding the current lack of public trust in ACIP's process.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-9573" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-9573</a></span></td>
+                                <td class="date-cell">2025-06-23</td>
+                                <td>Anonymous Anonymous</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="RFK Jr. must preserve an independent decision process with CDC’s ACIP and reverse the decision to remove the recent expert advisors and bypass his policies limiting access to COVID vaccines.
+Members of ACIP must disclose all financial and other conflicts of interest.
+ACIP must understand that currently available FDA-approved vaccines are safe and effective, and children, adults, and pregnant people all of whom rely on CDC ACIP vaccine recommendations for access to vaccines and insurance coverage.
+ACIP must continue to recommend widespread and unhindered access to a wide range of vaccines to protect people of all ages in the US.
+ACIP must preserve a universal recommendation for COVID vaccines for people of all ages, including children and pregnant people, at least twice annually.
+
+My son was immunocompromised at birth and vaccines have been incredibly important to keeping him safe and healthy. Please keep families like us in mind.">RFK Jr. must preserve an independent decision process with CDC’s ACIP and reverse the decision to remove the recent expert advisors and bypass his policies limiting access to COVID vaccines.
+Members of ACIP must disclose all financial and other conflicts of interest.
+ACIP must understand that curren...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">ACIP must preserve a universal recommendation for COVID vaccines for people of all ages, including children and pregnant people, at least twice annually.</td>
+                                <td style="display: none;">The comment expresses support for an independent decision-making process for ACIP, a request for transparency regarding conflicts of interest, a strong advocacy for universal access to vaccines, and a reaffirmation of the essential role of vaccines in public health. These theme:position combinations clearly align with the expressed sentiments in the comment.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-10153" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-10153</a></span></td>
+                                <td class="date-cell">2025-06-23</td>
+                                <td>Alan Meyers</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="As a (now retired) primary care pediatrician, I strongly support the current vaccination schedule as presented by the ACIP that has been dismissed. I am old enough to have seen children critically ill with infections (pneumococcus, H. influenza) that virtually disappeared once vaccines against these pathogens became available. Vaccination saves lives.">As a (now retired) primary care pediatrician, I strongly support the current vaccination schedule as presented by the ACIP that has been dismissed. I am old enough to have seen children critically ill with infections (pneumococcus, H. influenza) that virtually disappeared once vaccines against these...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Vaccination saves lives.</td>
+                                <td style="display: none;">The comment clearly emphasizes the importance of vaccination in preventing serious illnesses, supporting both vaccines as essential public health tools and the universal vaccination schedule advocated by ACIP. The author's background as a pediatrician lends credibility to their support for the current vaccination recommendations.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-5902" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-5902</a></span></td>
+                                <td class="date-cell">2025-06-19</td>
+                                <td>Debra McGuire</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The comment strongly advocates for the removal of all COVID vaccines, citing significant adverse event reports as justification. It also critiques the current lack of rigorous scientific testing for vaccines and emphasizes the need for ACIP to regain public trust by implementing stricter evidence standards.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-3915" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-3915</a></span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Fallon Clark</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The comment clearly advocates for the removal of COVID vaccines due to reported deaths, aligns with a call for improved scientific standards in vaccine testing, and emphasizes the need for ACIP to regain public trust through transparency and rigorous research.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-1873" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-1873</a></span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Melanie Roche</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The comment expresses a clear support for the removal of COVID vaccines citing adverse event reports, a call for stricter research standards for vaccines, and a concern regarding the erosion of public trust in ACIP's decisions. These points align directly with the identified themes and positions.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-11340" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-11340</a></span></td>
+                                <td class="date-cell">2025-06-24</td>
+                                <td>Rene Monzon</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="As a immunocompromised individual, access to vaccines are vital to my survival and livelihood. Communities of color have been impacted the most since the onset of the COVID-19 pandemic, vaccines have been an efficient and vital protective layer. ACIP must understand that currently available FDA-approved vaccines are safe and effective, and children, adults, and pregnant people all of whom rely on CDC ACIP vaccine recommendations for access to vaccines and insurance coverage.">As a immunocompromised individual, access to vaccines are vital to my survival and livelihood. Communities of color have been impacted the most since the onset of the COVID-19 pandemic, vaccines have been an efficient and vital protective layer. ACIP must understand that currently available FDA-appr...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">As a immunocompromised individual, access to vaccines are vital to my survival and livelihood.</td>
+                                <td style="display: none;">The commenter expresses the critical need for access to vaccines, particularly highlighting the importance for immunocompromised individuals and communities of color, which aligns with the themes of supporting universal access and recognizing vaccines as essential public health tools. Additionally, there is a clear opposition to the removal of COVID vaccines, emphasizing their safety and effectiveness.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-7083" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-7083</a></span></td>
+                                <td class="date-cell">2025-06-20</td>
+                                <td>Jeannette Arrowood</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="Docket: CDC-2025-0024
+
+Public Comment for the June 25-27, 2025, CDC ACIP Committee Meeting
+
+To RFK Jr. and Members of the CDC ACIP committee:
+
+I have no conflicts of interest to disclose.
+
+Today, I am writing to express grave concerns about the recent termination of all 17 members of the CDC ACIP committee announced on June 9 by Robert F. Kennedy, Jr. These former members have an important role as independent expert scientists or clinicians on the ACIP committee with a crucial role in providing their understanding of the safety and efficacy of FDA-approved and authorized vaccines while also guiding insurance coverage and coverage for uninsured children through the Vaccines for Children program. Currently, vaccination rates for many infectious diseases are very low, and many communities across the US are directly affected by outbreaks of vaccine-preventable diseases such as measles, pertussis, and COVID. Many of these infections can cause serious and potentially lifelong consequences on their health. Children in 2025 should not die or become disabled from infectious diseases because of a lack of access to affordable and effective vaccines.
+
+RFK Jr., Marty Makary, and Vinay Prasad have recently established policies that limit access to COVID vaccinations.. Creating such barriers is harmful to the public’s health. Everyone must have regular access to updated COVID vaccines and widely available with full coverage by health insurance. The scientific evidence is irrefutable and it ... [truncated]">Docket: CDC-2025-0024
+
+Public Comment for the June 25-27, 2025, CDC ACIP Committee Meeting
+
+To RFK Jr. and Members of the CDC ACIP committee:
+
+I have no conflicts of interest to disclose.
+
+Today, I am writing to express grave concerns about the recent termination of all 17 members of the CDC ACIP co...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Creating such barriers is harmful to the public’s health. Everyone must have regular access to updated COVID vaccines and widely available with full coverage by health insurance.</td>
+                                <td style="display: none;">The selected theme:position combinations reflect the commenter's strong support for maintaining a committee composed of independent experts, opposition to barriers limiting vaccine access, and an emphasis on the essential role of vaccines in public health. The comment explicitly discusses the negative impact of recent changes to vaccine access and expresses a desire for transparency and trust in the ACIP process.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-10755" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-10755</a></span></td>
+                                <td class="date-cell">2025-06-24</td>
+                                <td>Anonymous Anonymous</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview">Covid vaccines have been proven in a multitude of studies to be helpful in reducing the risk of hospitalization, regardless of socioeconomic factors</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Covid vaccines have been proven in a multitude of studies to be helpful in reducing the risk of hospitalization, regardless of socioeconomic factors.</td>
+                                <td style="display: none;">The comment clearly supports the role of vaccines as vital public health tools by stating that COVID vaccines are effective in reducing hospitalization. This aligns with the theme of promoting vaccines as essential for public health.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-0640" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-0640</a></span></td>
+                                <td class="date-cell">2025-06-16</td>
+                                <td>Tessa Huxley</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="I am writing today to express my dismay and horror at the recent dismissal of all seventeen members of the CDC&#039;s Vaccine Advisory Committee.  As an older person (age 71) I have lived long enough to see huge changes, for the better, of our PUBLIC HEALTH.  For example, in my lifetime people no longer need to be vaccinated for Smallpox because the disease has been eradicated world wide. However, that is only possible because people of all ages, all over the world, did receive the Smallpox vaccine and as a result the disease has died out.  This is a modern day miracle and one which was beginning to become possible for other diseases such as HIV/AIDS.  
+
+However due to Vaccine skeptics like Secretary Robert F Kennedy, Jr. we can also see clearly the backwards &quot;slide&quot; of highly contagious diseases such as Measles.  There are thousands of parents of young children who have decided that childhood diseases do not actually require vaccinations.  They think that the vaccines are more dangerous to the diseases.  They are able to think this way because they, themselves, are young enough NOT to have experienced those diseases personally thanks to their own parents who took the advice of their pediatricians and vaccinated them.  
+
+ Mr. Kennedy has upended/destroyed a highly regarded advisory committee that has been a model world wide for decades.  Given the fact that Mr. Kennedy is neither a medical doctor nor a public health professional this seems like an egregious action that should not ... [truncated]">I am writing today to express my dismay and horror at the recent dismissal of all seventeen members of the CDC's Vaccine Advisory Committee.  As an older person (age 71) I have lived long enough to see huge changes, for the better, of our PUBLIC HEALTH.  For example, in my lifetime people no longer ...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Mr. Kennedy has upended/destroyed a highly regarded advisory committee that has been a model world wide for decades.</td>
+                                <td style="display: none;">The comment reflects opposition to the current composition of the ACIP committee due to concerns over its political motivations and the credentials of its new members. Additionally, it emphasizes the importance of vaccines as critical to public health, as highlighted by the successful eradication of diseases like Smallpox.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-1074" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-1074</a></span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Barbara Decker</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The comment expresses strong support for the removal of COVID vaccines, citing concerns over reported deaths and a historical precedent. It also calls for more rigorous testing standards for vaccines, indicating dissatisfaction with current practices, and emphasizes the need for ACIP to regain public trust due to potential lapses in transparency and decision-making.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-7338" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-7338</a></span></td>
+                                <td class="date-cell">2025-06-20</td>
+                                <td>Dick Atlee</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><div class="stances-container"><span class="stance-tag" style="background: #e8f5e8; color: #2e7d32; border: 1px solid #c8e6c9;">Vaccine Technology Concerns: Opposition to mRNA Technology</span> <span class="stance-tag" style="background: #e8f5e8; color: #2e7d32; border: 1px solid #c8e6c9;">Preservative Safety: Concern over Thimerosal in Vaccines</span></div></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="To the esteemed members of the CDC Advisory Committee on Immunization Practices, for the meeting of June 25-26, regarding one of the vaccines on which you will be voting, and two for which you will be hearing presentations:
+
+1. Thimerosal in the multi-dose flu vials
+
+Thimerosal should either be replaced with a less neurotoxic preservative, or the instructions for use (on the box and insert, which, regrettably, recipients seldom see, if ever) should explicitly exclude pregnant women and children. The ghost of the Simpsonwood meeting&#039;s neurotoxicity revelations will forever hang over mercury as long as it remains in any vaccine.
+
+2. COVID-19 injections
+
+Though you are not taking a vote on these today, the record of death and destruction (neurological, cardiovascular, reproductive, and oncologic) amassed by the mRNA injections would have long ago forced their removal from the market by any previously accepted standards. 
+
+The role of the modified spike protein in all this, both in terms of its longevity and multitude of mechanisms of damage to both tissue and multiple aspects of the immune system, should at least force its replacement in the injections by the nucleocapsid protein, which has shown a greater efficacy in terms of disease prevention. This should be easy, given the turn-on-a-dime antigen claims of the mRNA technology industry. 
+
+However, in a growing number of studies, mRNA technology has, in and of itself, proven to be a significant danger. This has been shown to be... [truncated]">To the esteemed members of the CDC Advisory Committee on Immunization Practices, for the meeting of June 25-26, regarding one of the vaccines on which you will be voting, and two for which you will be hearing presentations:
+
+1. Thimerosal in the multi-dose flu vials
+
+Thimerosal should either be repl...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">The record of death and destruction (neurological, cardiovascular, reproductive, and oncologic) amassed by the mRNA injections would have long ago forced their removal from the market by any previously accepted standards.</td>
+                                <td style="display: none;">The comment expresses strong opposition to the current mRNA vaccine technology, citing significant health risks and a lack of thorough testing, which aligns with the stances on adverse event reporting and opposition to current scientific standards. Additionally, it raises specific concerns about thimerosal, warranting new stances related to vaccine preservatives.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-3751" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-3751</a></span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Betsy Fisher</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The commenter expresses a clear position advocating for the removal of COVID vaccines, highlights insufficient testing, and emphasizes the need for restoring public trust through stringent vaccine research standards. These positions reflect strong concerns about safety and transparency in ACIP's current processes.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-7185" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-7185</a></span></td>
+                                <td class="date-cell">2025-06-20</td>
+                                <td>Brooke O’Brien</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="If you want the respect from the public. 
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. There is so much proof of the damage these shots have done. From the athletes falling dead on the field, to the coroners reporting of blood clots they’ve never seen before the shots, to the scientist who have shown the spike proteins lasting more than 700 days. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">If you want the respect from the public. 
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. There is so much proof of the damage these shots have done. From the athletes falling dead on the field, to the coroners reporting of b...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The comment clearly advocates for the removal of COVID vaccines from the market, expresses concerns about insufficient testing and scientific rigor in vaccine approval processes, and highlights a lack of public trust in the current committee's recommendations, aligning with multiple identified themes.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-2145" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-2145</a></span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Kathy Oriana Kahn Hurwit</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.</td>
+                                <td style="display: none;">The commenter expresses a clear stance for the removal of COVID vaccines and ties this position to a lack of public trust in ACIP. They also emphasize the need for improved scientific standards in vaccine testing, underscoring concerns about the current processes and their impact on public confidence.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-0391" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-0391</a></span></td>
+                                <td class="date-cell">2025-06-16</td>
+                                <td>Amanda S</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="We&#039;ve come so far. We&#039;ve made such advancements. You&#039;re dismantling it all, putting people without the proper education/expertise in positions of power. It doesn&#039;t make any sense. You are making death from sicknesses great again. Ignoring everything qualified doctors and scientists are saying. You are killing us.">We've come so far. We've made such advancements. You're dismantling it all, putting people without the proper education/expertise in positions of power. It doesn't make any sense. You are making death from sicknesses great again. Ignoring everything qualified doctors and scientists are saying. You a...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">You are dismantling it all, putting people without the proper education/expertise in positions of power.</td>
+                                <td style="display: none;">The comment expresses a clear opposition to the current composition of the ACIP committee, highlighting concerns about unqualified individuals being placed in positions of authority, which aligns with the theme of opposing the current committee composition. Additionally, it indicates a broader concern about political influence affecting public health, suggesting distrust in the direction of the ACIP/CDC.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-11117" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-11117</a></span></td>
+                                <td class="date-cell">2025-06-24</td>
+                                <td>Michael Murphy</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="My familly has immune-compromised members. Covis is still a dangerous pandemic Access to UPDATED covid vaccines is a matter of life and death for us. The US gov&#039;t shopuld be EXPANDING access to vaccines and expediting next-generation intranasal vaccines that address CONTAGION rather than mere morbidity.">My familly has immune-compromised members. Covis is still a dangerous pandemic Access to UPDATED covid vaccines is a matter of life and death for us. The US gov't shopuld be EXPANDING access to vaccines and expediting next-generation intranasal vaccines that address CONTAGION rather than mere morbid...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Access to UPDATED covid vaccines is a matter of life and death for us.</td>
+                                <td style="display: none;">The commenter emphasizes the critical need for continued access to updated COVID vaccines, particularly due to the vulnerability of immune-compromised family members, which aligns with supporting broad access to vaccines. There is a clear appeal for the government to expand vaccine access instead of limiting it, further reinforcing the position against removing COVID vaccines.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-2032" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-2032</a></span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Elizabeth Brooks</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The comment expresses strong support for the removal of COVID vaccines, citing VAERS data as evidence for safety concerns. It also criticizes the current lack of rigorous testing standards and emphasizes the need for increased transparency to regain public trust. Each of these themes clearly aligns with the selected theme:position combinations.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-7962" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-7962</a></span></td>
+                                <td class="date-cell">2025-06-20</td>
+                                <td>JULIA WILDENRADT</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.
+Please please please do the right thing and remove these shots from the market and then make mandates illegal!!!">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The commenter explicitly calls for the removal of COVID vaccines, cites the high number of reported deaths as justification, and questions the current process and standards for vaccine testing. This strongly indicates support for the removal of COVID vaccines, opposition to existing testing standards, and a lack of trust in the ACIP's current processes.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-1730" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-1730</a></span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Amy Wright</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The commenter clearly supports the removal of licensed COVID vaccines, pointing to adverse event reports as justification. They also express opposition to current testing standards for vaccines, advocating for rigorous placebo studies. These selections reflect explicit positions articulated in the text regarding vaccine policy and public health standards.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-5660" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-5660</a></span></td>
+                                <td class="date-cell">2025-06-19</td>
+                                <td>Sherri Presta</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The commenter clearly advocates for the removal of COVID vaccines based on reports of adverse events and urges stricter testing standards, indicating a lack of trust in current safety measures. Additionally, they emphasize the need for transparency to regain public trust, aligning with multiple themes and positions.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-1766" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-1766</a></span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Nicole Leo</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The comment clearly calls for the removal of COVID vaccines, indicating a belief that they are harmful, which aligns with the theme of supporting the removal of COVID vaccines. It also criticizes current vaccine testing standards, indicating a need for improved scientific rigor, and expresses a lack of public trust in ACIP, indicating an urgent need to regain it.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-4485" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-4485</a></span></td>
+                                <td class="date-cell">2025-06-19</td>
+                                <td>Cynthia Henry</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The commenter expresses a clear position advocating for the removal of COVID vaccines based on reported adverse events, while also calling for more rigorous scientific standards in testing vaccines. Additionally, there is a strong emphasis on the need for ACIP to regain public trust, indicating dissatisfaction with the current process.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-1169" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-1169</a></span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Anonymous Anonymous</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="Docket: CDC-2025-0024
+Public Comment for the June 25-27, 2025, CDC ACIP Committee Meeting
+To RFK Jr. and Members of the CDC ACIP committee:
+I have no conflicts of interest to disclose.
+Today, I am writing to express grave concerns about the recent termination of all 17 members of the CDC ACIP committee announced on June 9 by Robert F. Kennedy, Jr. These former members have an important role as independent expert scientists or clinicians on the ACIP committee with a crucial role in providing their understanding of the safety and efficacy of FDA-approved and authorized vaccines while also guiding insurance coverage and coverage for uninsured children through the Vaccines for Children program. Currently, vaccination rates for many infectious diseases are very low, and many communities across the US are directly affected by outbreaks of vaccine-preventable diseases such as measles, pertussis, and COVID. Many of these infections can cause serious and potentially lifelong consequences on their health. Children in 2025 should not die or become disabled from infectious diseases because of a lack of access to affordable and effective vaccines.
+RFK Jr., Marty Makary, and Vinay Prasad have recently established policies that limit access to COVID vaccinations. These individuals are not making policies that help the public. Creating such barriers is harmful to the public’s health. Everyone must have regular access to updated COVID vaccines and widely available with full coverage by health... [truncated]">Docket: CDC-2025-0024
+Public Comment for the June 25-27, 2025, CDC ACIP Committee Meeting
+To RFK Jr. and Members of the CDC ACIP committee:
+I have no conflicts of interest to disclose.
+Today, I am writing to express grave concerns about the recent termination of all 17 members of the CDC ACIP commit...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">These former members have an important role as independent expert scientists or clinicians on the ACIP committee with a crucial role in providing their understanding of the safety and efficacy of FDA-approved and authorized vaccines.</td>
+                                <td style="display: none;">The commenter expresses strong support for reinstating independent experts on the ACIP committee, opposes current barriers limiting access to COVID vaccines, advocates for universal access to vaccines, and emphasizes the essential role of vaccines in preventing serious health consequences, all of which align well with the selected themes and positions.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-10163" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-10163</a></span></td>
+                                <td class="date-cell">2025-06-23</td>
+                                <td>Lisa Dobberteen MD</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="As a pediatrician, former Public Health official, parent and grandparent I am strongly in favor of my patients having access to the Covid vaccine, for all those who want and need it. Children are effective transmitters of Covid-19 to their elderly and otherwise at risk family members, so preventing them from infecting their households is key. As many as 25% of children may develop post Covid syndrome, and we would like to prevent that as well. This is one of the many safe effective vaccines we would very much like to continue to have in our tool kit for prevention.">As a pediatrician, former Public Health official, parent and grandparent I am strongly in favor of my patients having access to the Covid vaccine, for all those who want and need it. Children are effective transmitters of Covid-19 to their elderly and otherwise at risk family members, so preventing ...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I am strongly in favor of my patients having access to the Covid vaccine, for all those who want and need it.</td>
+                                <td style="display: none;">The comment clearly expresses support for maintaining access to COVID vaccines, highlighting their importance in preventing transmission, especially among children. It also emphasizes the role of vaccines as critical tools for public health by discussing the prevention of potential post-COVID complications.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-8837" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-8837</a></span></td>
+                                <td class="date-cell">2025-06-22</td>
+                                <td>Anonymous Anonymous</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="To RFK Jr. and Members of the CDC ACIP committee:
+
+I have no conflicts of interest to disclose.
+
+Today, I am writing to express grave concerns about the recent termination of all 17 members of the CDC ACIP committee announced on June 9 by Robert F. Kennedy, Jr. These former members have an important role as independent expert scientists or clinicians on the ACIP committee with a crucial role in providing their understanding of the safety and efficacy of FDA-approved and authorized vaccines while also guiding insurance coverage and coverage for uninsured children through the Vaccines for Children program. Currently, vaccination rates for many infectious diseases are very low, and many communities across the US are directly affected by outbreaks of vaccine-preventable diseases such as measles, pertussis, and COVID. Many of these infections can cause serious and potentially lifelong consequences on their health. Children in 2025 should not die or become disabled from infectious diseases because of a lack of access to affordable and effective vaccines.
+
+RFK Jr., Marty Makary, and Vinay Prasad have recently established policies that limit access to COVID vaccinations.. Creating such barriers is harmful to the public’s health. Everyone must have regular access to updated COVID vaccines and widely available with full coverage by health insurance. The scientific evidence is irrefutable and it is a waste of precious resources and time to conduct additional efficacy studies, which only... [truncated]">To RFK Jr. and Members of the CDC ACIP committee:
+
+I have no conflicts of interest to disclose.
+
+Today, I am writing to express grave concerns about the recent termination of all 17 members of the CDC ACIP committee announced on June 9 by Robert F. Kennedy, Jr. These former members have an important...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Creating such barriers is harmful to the public’s health. Everyone must have regular access to updated COVID vaccines and widely available with full coverage by health insurance.</td>
+                                <td style="display: none;">These theme:position combinations were selected because the comment strongly advocates for the reinstatement of independent experts to the ACIP, highlights the necessity for universal access to COVID vaccines, expresses concerns regarding the lack of trust in current policies, and emphasizes the importance of vaccines as vital public health tools.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-6008" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-6008</a></span></td>
+                                <td class="date-cell">2025-06-19</td>
+                                <td>James Morris</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The comment clearly supports the removal of all currently licensed COVID vaccines due to concerns about safety and past vaccine pullbacks. It also calls for rigorous scientific testing before any vaccine is licensed, indicative of skepticism towards the current standards. Additionally, the comment emphasizes the need for ACIP to take action to regain public trust, critiquing the committee's current decisions.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-0273" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-0273</a></span></td>
+                                <td class="date-cell">2025-06-12</td>
+                                <td>Laurie Stricks</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview">As a Clinical Psychologist, I value science-based medical research. It is my strong opinion that in order to serve the people of this country and the world, we must have strong public health. 
+We need briad access to vaccines and science-based expert advisory committees.</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">We need broad access to vaccines and science-based expert advisory committees.</td>
+                                <td style="display: none;">The commenter emphasizes the importance of broad access to vaccines, positioning themselves against the removal of COVID vaccines. They also highlight the necessity of science-based advisory committees, showing support for strict evidence standards. Additionally, the mention of strong public health points to a need for increased transparency and reliance on expert opinion.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-0173" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-0173</a></span></td>
+                                <td class="date-cell">2025-06-11</td>
+                                <td>Jennifer Vazquez-Bryan</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="RJK Jr&#039;s decision to remove all members of the ACIP is a bad idea.  We need experts that know what they are doing.  If we are concerned about conflicts of interest, he should step down given his track record.  I support broad access to safe and effective vaccines, including universal COVID vaccine recommendations for all ages. During RFK&#039;s confirmation hearing, he said he would support vaccines and would not change existing vaccine approval system, yet, here he is, doing exactly that. He can&#039;t be trusted to select people that believe in evidence based science.">RJK Jr's decision to remove all members of the ACIP is a bad idea.  We need experts that know what they are doing.  If we are concerned about conflicts of interest, he should step down given his track record.  I support broad access to safe and effective vaccines, including universal COVID vaccine r...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">We need experts that know what they are doing.</td>
+                                <td style="display: none;">The comment expresses clear opposition to the current composition of the ACIP by criticizing RFK Jr.'s decision to remove all members, indicating a need for qualified experts. Additionally, it supports maintaining broad access to vaccines and universal recommendations, reinforcing the importance of science and trust in the process.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-7396" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-7396</a></span></td>
+                                <td class="date-cell">2025-06-20</td>
+                                <td>Jocelyn Church</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The commenter advocates for the removal of currently licensed COVID shots based on safety concerns and calls for rigorous testing standards for vaccines, reflecting a clear stance on both the removal of COVID vaccines and criticism of current scientific testing standards.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-4532" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-4532</a></span></td>
+                                <td class="date-cell">2025-06-19</td>
+                                <td>Sally Weise</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The comment clearly expresses support for the removal of COVID vaccines based on reported adverse events, reflects concerns over the adequacy of testing protocols, and emphasizes the need for ACIP to regain public trust through rigorous scientific standards and transparency.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-2205" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-2205</a></span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Laurie Nelson</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing.</td>
+                                <td style="display: none;">The commenter explicitly supports the removal of COVID vaccines, citing significant adverse event reports and drawing a parallel to historical vaccine withdrawals. They also criticize the current testing standards for vaccines and call for more rigorous research to restore public trust, indicating clear themes regarding public health, safety standards, and transparency.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-5513" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-5513</a></span></td>
+                                <td class="date-cell">2025-06-19</td>
+                                <td>Katy LeVasseur</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The comment clearly advocates for the removal of COVID vaccines from the market, reflecting a strong opposition to their continued availability. Additionally, it critiques current standards of testing for vaccines, calling for rigorous research methods before licensing. Both of these positions align with the selected theme:position combinations.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-11261" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-11261</a></span></td>
+                                <td class="date-cell">2025-06-24</td>
+                                <td>Anonymous Anonymous</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview">We need to continue to have access to vaccines. Vaccines save lives and protect all of us. We deserve the choice of being able to get vaccinated.</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Vaccines save lives and protect all of us. We deserve the choice of being able to get vaccinated.</td>
+                                <td style="display: none;">The comment clearly expresses support for maintaining access to vaccines, emphasizing their life-saving potential and the importance of choice in vaccination, reflecting multiple stances on vaccine access, public health, and individual rights.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-7608" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-7608</a></span></td>
+                                <td class="date-cell">2025-06-20</td>
+                                <td>Kris Traubel</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview">Please allow people to make their own choices. Please keep vaccines available for all.</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Please allow people to make their own choices. Please keep vaccines available for all.</td>
+                                <td style="display: none;">The comment expresses a strong support for maintaining access to vaccines while also advocating for individual choice regarding vaccination, clearly aligning with the theme of opposing the removal of vaccines and opposing mandates.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-7323" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-7323</a></span></td>
+                                <td class="date-cell">2025-06-20</td>
+                                <td>Aaron Maturen</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="COVID is not over. The CDC must continue universal, unhindered access to updated COVID vaccines for all ages, at least annually. ACIP’s independent scientific expertise is critical—firing the advisory committee was reckless and must be reversed.
+
+The data is clear: COVID vaccines cut risk of severe illness, death, and long COVID by over 50%. Millions of Americans—including high-risk groups, kids, and pregnant people—depend on ACIP recommendations for coverage and access. Restricting vaccines or weakening recommendations will cost lives and worsen disability.
+
+I’ve lost loved ones to COVID and live with high-risk family. We need updated vaccines, not politics or conspiracy. Both mRNA and Novavax options must remain available and covered.
+
+The CDC must be guided by science, not misinformation or political appointees. Reinstate the expert panel. Ensure transparent, open policy. Protect the public—don’t cave to anti-vaccine voices.
+
+Get vaccinated. Keep access universal. Lives depend on it.">COVID is not over. The CDC must continue universal, unhindered access to updated COVID vaccines for all ages, at least annually. ACIP’s independent scientific expertise is critical—firing the advisory committee was reckless and must be reversed.
+
+The data is clear: COVID vaccines cut risk of severe ...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">We need updated vaccines, not politics or conspiracy.</td>
+                                <td style="display: none;">The commenter clearly expresses a strong position in favor of maintaining unhindered access to updated COVID vaccines and highlights the importance of having an independent scientific committee. They emphasize the need for evidence-based recommendations and the role vaccines play in protecting public health, thus covering various themes related to vaccine access, committee expertise, scientific rigor, and the importance of public trust.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-11693" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-11693</a></span></td>
+                                <td class="date-cell">2025-06-24</td>
+                                <td>Megan Atherton</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="As a mom of a infant who nearly died from RSV, I cannot overstate how important safe and effective vaccines can be. Watching my 8-week-old struggling to breathe is something I would not wish on anyone, and the new vaccine to help prevent this in infants is a triumph of our research system. CDC ACIP should represent the gold standard in evidence-based, apolitical recommendations. Instead, the HHS secretary has done exactly what he promised not to do during confirmation: purge career experts in favor of unqualified individuals who seek to gain personal advancement and power by seeding doubt and confusion about proven vaccine science. This will kill people. This will make people sick, especially children, as we have already seen with recent outbreaks. The chilling effect on vaccine uptake is already hurting people; this group must represent a bulwark against vaccine backsliding so that we can follow real science as led by actual experts. Diseases live in the objective, evidence-based world, and they will not stop because of a political shift. We need groups like the ACIP to remain insulated from the whims of political administrations. Otherwise, no one will be safe when the next COVID hits, and it may be your child or grandchild struggling to breathe.">As a mom of a infant who nearly died from RSV, I cannot overstate how important safe and effective vaccines can be. Watching my 8-week-old struggling to breathe is something I would not wish on anyone, and the new vaccine to help prevent this in infants is a triumph of our research system. CDC ACIP ...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">CDC ACIP should represent the gold standard in evidence-based, apolitical recommendations.</td>
+                                <td style="display: none;">The comment strongly advocates for the importance of vaccines in public health, emphasizes the need for evidence-based standards in ACIP recommendations, and expresses concern over political interference in the committee's composition. The selected stances reflect the commenter's positions on vaccines, scientific integrity, and the need for an independent advisory committee.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-11370" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-11370</a></span></td>
+                                <td class="date-cell">2025-06-24</td>
+                                <td>Linda Ray</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview">I am a retired nurse and I have seen vaccines save lives.  It is essential that we follow science in public health and fund COVID and other vaccines.</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I have seen vaccines save lives. It is essential that we follow science in public health and fund COVID and other vaccines.</td>
+                                <td style="display: none;">The comment expresses a clear support for the role of vaccines in public health, highlighting their life-saving capabilities. Additionally, it emphasizes the importance of following scientific evidence in public health policy, aligning with positions that advocate for science-based vaccine recommendations and funding.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-0161" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-0161</a></span></td>
+                                <td class="date-cell">2025-06-10</td>
+                                <td>Alan Sinclair</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="CDC ACIP expert advisors must support widespread and unhindered access to a wide range of safe and effective vaccines. The dismissed Vaccination Advisory Panel members MUST be reinstated. Public Health is no place for political stunts and ignorance.
+
+Currently available FDA-approved vaccines are safe and effective. Children, adults, and pregnant people all rely on CDC ACIP vaccine recommendations for access to vaccines and insurance coverage. 
+
+I am disgusted by Mr. Kennedy&#039;s actions, and demand they be reversed and that he be removed from his undeserved position">CDC ACIP expert advisors must support widespread and unhindered access to a wide range of safe and effective vaccines. The dismissed Vaccination Advisory Panel members MUST be reinstated. Public Health is no place for political stunts and ignorance.
+
+Currently available FDA-approved vaccines are saf...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">Public Health is no place for political stunts and ignorance.</td>
+                                <td style="display: none;">The selected themes and positions reflect the commenter's strong support for maintaining access to vaccines and reinstating the advisory panel members, as well as their opposition to political influence within ACIP. The comment emphasizes the importance of scientific integrity in public health decisions.</td>
+                            </tr>
+
+                            <tr>
+                                <td><span class="comment-id"><a href="https://www.regulations.gov/comment/CDC-2025-0024-3581" target="_blank" style="color: #007bff; text-decoration: underline;">CDC-2025-0024-3581</a></span></td>
+                                <td class="date-cell">2025-06-18</td>
+                                <td>Lisa Forgacs</td>
+                                <td></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td><span style="color: #999;">None</span></td>
+                                <td class="text-preview char-limited" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="false" title="ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, there have been 38,666 reports of deaths following COVID vaccination in the Vaccine Adverse Event Reporting System, yet this committee continues to recommend routine and repeated COVID shots. Additionally, I urge you to ensure that all vaccines will be subject to gold standard, double-blind inert placebo studies – a process that has not been in place for vaccines – before licensing. If ACIP is ever to regain the trust of the American people, it must start with removing COVID shot recommendations and establishing sound and rigorous research of all vaccines prior to marketing.
+
+It is sickening that we even have to make this request.">ACIP – Want to Regain the Public’s Trust?
+I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market. In 1976, the swine flu vaccine was immediately pulled after approximately 25 people died following vaccination. As of May 30, 2025, the...</td>
+                                <td></td>
+                                <td><span class="unique-indicator">1</span></td>
+                                <td><span class="unique-indicator">1:1/50</span></td>
+                                <td style="display: none;"></td>
+                                <td style="display: none;">I urge ACIP members to take a firm stance for public health and remove all currently licensed COVID shots from the market.</td>
+                                <td style="display: none;">The comment clearly advocates for the removal of COVID vaccines, citing safety concerns and emphasizing the need for rigorous scientific testing before vaccine approval. It also expresses a critical view of ACIP's current practices, highlighting a lack of public trust due to perceived shortcomings in vaccine safety protocols.</td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Meta Information -->
+        <div class="meta-info">
+            <h3 style="color: white; margin-bottom: 20px;">📋 Report Details</h3>
+            <div class="meta-grid">
+                <div class="meta-item">
+                    <div class="meta-label">Generated</div>
+                    <div class="meta-value">2025-06-30 20:45:09</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Model Used</div>
+                    <div class="meta-value">gpt-4o-mini</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Total Comments</div>
+                    <div class="meta-value">50</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">With Attachments</div>
+                    <div class="meta-value">1</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Average Length</div>
+                    <div class="meta-value">1,019 chars</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Date Range</div>
+                    <div class="meta-value">2025-06-10 to 2025-06-24</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Column visibility state (13 columns with new_stances)
+        const columnVisibility = {
+            0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: true, 9: true, 10: false, 11: false, 12: false
+        };
+
+        // Initialize column visibility on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            for (const [col, visible] of Object.entries(columnVisibility)) {
+                updateColumnVisibility(parseInt(col), visible);
+                // Also update the checkbox state
+                const checkbox = document.getElementById('col-' + col);
+                if (checkbox) {
+                    checkbox.checked = visible;
+                }
+            }
+        });
+
+        function toggleColumnVisibility() {
+            const dropdown = document.getElementById('columnVisibilityDropdown');
+            dropdown.classList.toggle('show');
+        }
+
+        function toggleColumn(columnIndex) {
+            const checkbox = document.getElementById('col-' + columnIndex);
+            const visible = checkbox.checked;
+            columnVisibility[columnIndex] = visible;
+            updateColumnVisibility(columnIndex, visible);
+        }
+
+        function updateColumnVisibility(columnIndex, visible) {
+            const table = document.getElementById('commentsTable');
+            const rows = table.getElementsByTagName('tr');
+            
+            // Update header
+            const headers = rows[0].getElementsByTagName('th');
+            if (headers[columnIndex]) {
+                headers[columnIndex].style.display = visible ? '' : 'none';
+            }
+            
+            // Update all data rows
+            for (let i = 1; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName('td');
+                if (cells[columnIndex]) {
+                    cells[columnIndex].style.display = visible ? '' : 'none';
+                }
+            }
+        }
+
+        function filterTable() {
+            const table = document.getElementById('commentsTable');
+            const rows = table.getElementsByTagName('tr');
+            
+            // Get text input filters
+            const textFilters = document.querySelectorAll('.filter-input');
+            const textFilterValues = Array.from(textFilters).map(filter => {
+                return {
+                    column: parseInt(filter.getAttribute('data-column')),
+                    value: filter.value.toLowerCase()
+                };
+            });
+            
+            // Get checkbox filters
+            const stanceCheckboxes = document.querySelectorAll('input[data-filter="stances"]:checked');
+            const newStanceCheckboxes = document.querySelectorAll('input[data-filter="new_stances"]:checked');
+            const unusualComboCheckboxes = document.querySelectorAll('input[data-filter="unusual_combo"]:checked');
+            const attachmentCheckboxes = document.querySelectorAll('input[data-filter="attachments"]:checked');
+            const duplicationCountCheckboxes = document.querySelectorAll('input[data-filter="duplication_count"]:checked');
+            const duplicationRatioCheckboxes = document.querySelectorAll('input[data-filter="duplication_ratio"]:checked');
+            
+            const selectedStances = Array.from(stanceCheckboxes).map(cb => cb.value.toLowerCase());
+            const selectedNewStances = Array.from(newStanceCheckboxes).map(cb => cb.value.toLowerCase());
+            const filterUnusualCombos = unusualComboCheckboxes.length > 0;
+            const selectedAttachments = Array.from(attachmentCheckboxes).map(cb => cb.value);
+            const selectedDuplicationCounts = Array.from(duplicationCountCheckboxes).map(cb => parseInt(cb.value));
+            const selectedDuplicationRatios = Array.from(duplicationRatioCheckboxes).map(cb => parseInt(cb.value));
+
+            // Always assume new_stances column exists (column 5)
+            const hasNewStances = true;
+            
+            // Filter each row
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                const cells = row.getElementsByTagName('td');
+                let showRow = true;
+
+                // Check text filters
+                for (const filter of textFilterValues) {
+                    if (filter.value && filter.column < cells.length) {
+                        const cellText = cells[filter.column].textContent.toLowerCase();
+                        if (!cellText.includes(filter.value)) {
+                            showRow = false;
+                            break;
+                        }
+                    }
+                }
+                
+                // Check stance filter (column 4)
+                if (showRow && selectedStances.length > 0) {
+                    const stanceText = cells[4].textContent.toLowerCase();
+                    if (!selectedStances.some(stance => stanceText.includes(stance))) {
+                        showRow = false;
+                    }
+                }
+                
+                // Check unusual combination filter
+                if (showRow && filterUnusualCombos) {
+                    const stanceCell = cells[4].innerHTML;
+                    if (!stanceCell.includes('⚠️')) {
+                        showRow = false;
+                    }
+                }
+                
+                // Check new stance filter (column 5 if exists)
+                if (showRow && hasNewStances && selectedNewStances.length > 0) {
+                    const newStanceText = cells[5].textContent.toLowerCase();
+                    if (!selectedNewStances.some(stance => newStanceText.includes(stance))) {
+                        showRow = false;
+                    }
+                }
+                
+                // Column positions shift by 1 when new_stances exists
+                const attachmentCol = hasNewStances ? 7 : 6;
+                const dupCountCol = hasNewStances ? 8 : 7;
+                const dupRatioCol = hasNewStances ? 9 : 8;
+                
+                // Check attachments filter
+                if (showRow && selectedAttachments.length > 0) {
+                    const attachmentCell = cells[attachmentCol];
+                    const hasAttachment = attachmentCell.textContent.trim() !== '';
+                    
+                    let attachmentMatch = false;
+                    for (const filter of selectedAttachments) {
+                        if (filter === 'yes' && hasAttachment) {
+                            attachmentMatch = true;
+                            break;
+                        }
+                        if (filter === 'no' && !hasAttachment) {
+                            attachmentMatch = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!attachmentMatch) {
+                        showRow = false;
+                    }
+                }
+                
+                // Check duplication count filter
+                if (showRow && selectedDuplicationCounts.length > 0) {
+                    const duplicationCell = cells[dupCountCol];
+                    const duplicationText = duplicationCell.textContent.trim();
+                    const duplicationCount = parseInt(duplicationText);
+                    
+                    if (!selectedDuplicationCounts.includes(duplicationCount)) {
+                        showRow = false;
+                    }
+                }
+                
+                // Check duplication ratio filter
+                if (showRow && selectedDuplicationRatios.length > 0) {
+                    const ratioCell = cells[dupRatioCol];
+                    const ratioText = ratioCell.textContent.trim();
+                    // Extract number after "1:" (e.g., "1:10" -> 10)
+                    const ratioMatch = ratioText.match(/1:(\d+)/);
+                    const ratioValue = ratioMatch ? parseInt(ratioMatch[1]) : 1;
+                    
+                    if (!selectedDuplicationRatios.includes(ratioValue)) {
+                        showRow = false;
+                    }
+                }
+
+                row.style.display = showRow ? '' : 'none';
+            }
+        }
+        
+        function toggleFilter(columnIndex) {
+            const dropdown = document.getElementById('filter-' + columnIndex);
+            const allDropdowns = document.querySelectorAll('.filter-dropdown');
+            
+            // Close all other dropdowns
+            allDropdowns.forEach(dd => {
+                if (dd !== dropdown) {
+                    dd.style.display = 'none';
+                }});
+            
+            // Toggle current dropdown
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        function clearAllFilters() {
+            const textFilters = document.querySelectorAll('.filter-input');
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            
+            textFilters.forEach(filter => filter.value = '');
+            checkboxes.forEach(checkbox => checkbox.checked = false);
+            
+            filterTable();
+        }
+        
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(event) {
+            const isFilterClick = event.target.closest('.filterable') || event.target.closest('.filter-dropdown');
+            const isColumnVisClick = event.target.closest('.column-visibility-dropdown');
+            
+            if (!isFilterClick) {
+                document.querySelectorAll('.filter-dropdown').forEach(dd => {
+                    dd.style.display = 'none';
+                });
+            }
+            
+            if (!isColumnVisClick) {
+                document.getElementById('columnVisibilityDropdown').classList.remove('show');
+            }
+        });
+        
+        // Initialize Bootstrap tooltips
+        function initializeTooltips() {
+            const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+            [...tooltipTriggerList].forEach(tooltipTriggerEl => {
+                try {
+                    // Dispose existing tooltip if any
+                    const existingTooltip = bootstrap.Tooltip.getInstance(tooltipTriggerEl);
+                    if (existingTooltip) {
+                        existingTooltip.dispose();
+                    }
+                    
+                    // Create new tooltip
+                    new bootstrap.Tooltip(tooltipTriggerEl, {
+                        boundary: document.body,
+                        trigger: 'hover focus',
+                        container: 'body'
+                    });
+                } catch (err) {
+                    console.error('Error initializing tooltip:', err);
+                }
+            });
+        }
+        
+        // Initialize tooltips when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeTooltips();
+        });
+    </script>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

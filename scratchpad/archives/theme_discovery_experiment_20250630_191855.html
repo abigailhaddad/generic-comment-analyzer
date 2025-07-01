@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stance Discovery Experiment Results</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .results-table {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #2c3e50;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: top;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .strategy-original {
+            background: #e3f2fd;
+        }
+        
+        .strategy-mutually_exclusive {
+            background: #f3e5f5;
+        }
+        
+        .stance-list {
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        
+        .stance-item {
+            margin-bottom: 8px;
+            padding: 4px 8px;
+            background: #ffffff;
+            border-left: 3px solid #007bff;
+            border-radius: 4px;
+        }
+        
+        .error {
+            color: #dc3545;
+            font-style: italic;
+        }
+        
+        .timestamp {
+            font-size: 0.8em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Theme Discovery Experiment Results</h1>
+        <div class="subtitle">Comparing prompting strategies and target theme counts</div>
+        <div class="timestamp">Generated: 2025-06-30 19:18:55</div>
+    </div>
+    
+    <div class="results-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Strategy</th>
+                    <th>Target Count</th>
+                    <th>Actual Count</th>
+                    <th>Discovered Themes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="strategy-mutually_exclusive">
+                    <td><strong>Mutually Exclusive</strong></td>
+                    <td>10</td>
+                    <td>11</td>
+                    <td><div class="stance-list"><div class="stance-item"><strong>COVID Vaccine Market Access</strong><ul><li>Support for Removal of COVID Vaccines</li><li>Support for Continued COVID Vaccine Access</li></ul></div><div class="stance-item"><strong>Expertise and Independence of the ACIP Committee</strong><ul><li>Support for Previous/Expert Committee</li><li>Support for Removal/Restructuring of Previous Committee</li></ul></div><div class="stance-item"><strong>Vaccine Safety and Risk</strong><ul><li>Vaccines are Unsafe/Dangerous</li><li>Vaccines are Safe and Effective</li></ul></div><div class="stance-item"><strong>Public Trust in Vaccine Policy</strong><ul><li>Trust Depends on Science-Based/Independent Oversight</li><li>Distrust Due to Corruption/Conflict in Existing Oversight</li></ul></div><div class="stance-item"><strong>Vaccine Mandates and Personal Freedom</strong><ul><li>Support for Medical Freedom/Choice</li><li>Support for Public Health Mandates</li></ul></div><div class="stance-item"><strong>Political Influence in Science and Health Policy</strong><ul><li>Oppose Political Interference/Support Science-Based Decision-Making</li><li>Support Changes for Accountability/Transparency</li></ul></div><div class="stance-item"><strong>Insurance Coverage for Vaccines</strong><ul><li>Support for Insurance Coverage of Vaccines</li><li>Accept Limits or Question Insurance Coverage</li></ul></div><div class="stance-item"><strong>Transparency and Conflicts of Interest</strong><ul><li>Support Strict Disclosure and Elimination of Conflicts</li><li>Trust Existing Safeguards/Downplay Conflicts</li></ul></div><div class="stance-item"><strong>Vaccine Policy Impact on Vulnerable Populations</strong><ul><li>Support Widespread Access to Protect Vulnerable Groups</li><li>Minimize Need for Broad Coverage</li></ul></div><div class="stance-item"><strong>Role of Science and Evidence in Vaccine Policy</strong><ul><li>Support for Science and Evidence-Based Policy</li><li>Skepticism Toward Current Science/Process</li></ul></div><div class="stance-item"><strong>Comparison with Historical Vaccine Precedents</strong><ul><li>Support Using Historical Precedents as Grounds for Caution</li><li>Oppose Direct Historical Comparison</li></ul></div></div></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

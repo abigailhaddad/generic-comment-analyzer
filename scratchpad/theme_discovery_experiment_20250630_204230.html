@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stance Discovery Experiment Results</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .results-table {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #2c3e50;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: top;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .strategy-original {
+            background: #e3f2fd;
+        }
+        
+        .strategy-mutually_exclusive {
+            background: #f3e5f5;
+        }
+        
+        .stance-list {
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        
+        .stance-item {
+            margin-bottom: 8px;
+            padding: 4px 8px;
+            background: #ffffff;
+            border-left: 3px solid #007bff;
+            border-radius: 4px;
+        }
+        
+        .error {
+            color: #dc3545;
+            font-style: italic;
+        }
+        
+        .timestamp {
+            font-size: 0.8em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Theme Discovery Experiment Results</h1>
+        <div class="subtitle">Comparing prompting strategies and target theme counts</div>
+        <div class="timestamp">Generated: 2025-06-30 20:42:30</div>
+    </div>
+    
+    <div class="results-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Strategy</th>
+                    <th>Target Count</th>
+                    <th>Actual Count</th>
+                    <th>Discovered Themes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="strategy-mutually_exclusive">
+                    <td><strong>Mutually Exclusive</strong></td>
+                    <td>10</td>
+                    <td>10</td>
+                    <td><div class="stance-list"><div class="stance-item"><strong>COVID Vaccine Access and Availability</strong><ul><li>Support for Removal of COVID Vaccines</li><li>Oppose Removal of COVID Vaccines</li></ul></div><div class="stance-item"><strong>Vaccine Mandates and Requirements</strong><ul><li>Support for Vaccine Mandates</li><li>Oppose Vaccine Mandates</li></ul></div><div class="stance-item"><strong>Committee Composition and Expertise (ACIP Appointments)</strong><ul><li>Support for Independent Expert Committee</li><li>Oppose Current Committee Composition</li></ul></div><div class="stance-item"><strong>Use of Adverse Event Reporting (VAERS Data) for Policy</strong><ul><li>Support for Using VAERS Data to Restrict Vaccines</li><li>Oppose Using VAERS Data for Restricting Vaccines</li></ul></div><div class="stance-item"><strong>Scientific Standards and Evidence for Vaccine Policy</strong><ul><li>Support for Science-Based/Strict Evidence Standards</li><li>Oppose Current Standards / Claim Insufficient Testing</li></ul></div><div class="stance-item"><strong>Public Trust and Transparency</strong><ul><li>Support for Increased Transparency/Disclosure</li><li>Oppose Current Process Due to Perceived Lack of Trust</li></ul></div><div class="stance-item"><strong>Scope of Vaccine Recommendations/Schedule</strong><ul><li>Support for Universal/Broad Recommendations</li><li>Oppose Current Broad Recommendations</li></ul></div><div class="stance-item"><strong>Role of Vaccines in Public Health</strong><ul><li>Support for Vaccines as Essential Public Health Tool</li><li>Oppose Characterizing Vaccines as Essential</li></ul></div><div class="stance-item"><strong>Access and Equity in Vaccines</strong><ul><li>Support for Universal Vaccine Access</li><li>Oppose Universal Access</li></ul></div><div class="stance-item"><strong>Political Influence and Interference</strong><ul><li>Oppose Political Interference in ACIP/CDC</li><li>Support for Current Political Direction</li></ul></div></div></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

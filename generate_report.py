@@ -12,10 +12,17 @@ from datetime import datetime
 from typing import Dict, Any, List
 import pandas as pd
 
-def load_results(json_file: str) -> List[Dict[str, Any]]:
-    """Load analyzed comments from JSON file."""
+def load_results(json_file: str) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """Load analyzed comments from JSON file and return comments plus metadata."""
     with open(json_file, 'r', encoding='utf-8') as f:
-        return json.load(f)
+        data = json.load(f)
+        # Handle both direct list format and {"comments": [...]} format
+        if isinstance(data, dict) and 'comments' in data:
+            return data['comments'], data
+        elif isinstance(data, list):
+            return data, {}
+        else:
+            raise ValueError(f"Unexpected JSON format in {json_file}")
 
 def load_results_parquet(parquet_file: str) -> List[Dict[str, Any]]:
     """Load analyzed comments from Parquet file."""
@@ -286,6 +293,102 @@ def calculate_cooccurrence_percentages(stats: Dict[str, Any], field_analysis: Di
                     percentages[stance1][stance_to_num[stance2]] = percentage
     
     return percentages, stance_to_num
+
+def generate_new_stances_compact_html(field_info: Dict[str, Any], stats: Dict[str, Any]) -> str:
+    """Generate compact HTML for new stances distribution."""
+    if not field_info or not field_info.get('unique_values'):
+        return ""
+    
+    field_counts = stats['field_counts'].get('new_stances', {})
+    if not field_counts:
+        return ""
+    
+    # Sort by count
+    sorted_items = sorted(field_counts.items(), key=lambda x: x[1], reverse=True)
+    
+    # Create table rows
+    table_rows = []
+    for stance, count in sorted_items:
+        percentage = (count / stats['total_comments']) * 100
+        table_rows.append(f'''
+            <tr>
+                <td class="new-stance-name">{stance}</td>
+                <td class="new-stance-count">{count}</td>
+                <td class="new-stance-percentage">{percentage:.1f}%</td>
+            </tr>''')
+    
+    return f'''
+        <div class="section compact-section">
+            <h3>🆕 New Stances</h3>
+            <p class="section-note">Additional stances discovered during analysis that didn't fit predefined categories</p>
+            {f'''
+            <table class="new-stances-table">
+                <thead>
+                    <tr>
+                        <th>Stance</th>
+                        <th>Count</th>
+                        <th>%</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {''.join(table_rows)}
+                </tbody>
+            </table>''' if table_rows else '<p><em>No new stances discovered</em></p>'}
+        </div>
+        
+        <style>
+        .compact-section {{
+            padding: 15px;
+            margin: 15px 0;
+        }}
+        
+        .compact-section h3 {{
+            font-size: 1.2em;
+            margin-bottom: 8px;
+            color: #666;
+        }}
+        
+        .section-note {{
+            font-size: 0.9em;
+            color: #888;
+            margin-bottom: 10px;
+            font-style: italic;
+        }}
+        
+        .new-stances-table {{
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }}
+        
+        .new-stances-table th {{
+            background: #f8f9fa;
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+            font-weight: 600;
+        }}
+        
+        .new-stances-table td {{
+            padding: 6px 8px;
+            border-bottom: 1px solid #eee;
+            vertical-align: top;
+        }}
+        
+        .new-stance-name {{
+            font-weight: 500;
+        }}
+        
+        .new-stance-count {{
+            text-align: center;
+            width: 80px;
+        }}
+        
+        .new-stance-percentage {{
+            text-align: center;
+            width: 60px;
+        }}
+        </style>'''
 
 def generate_field_distribution_html(field_name: str, field_info: Dict[str, Any], stats: Dict[str, Any]) -> str:
     """Generate distribution HTML for a specific analysis field."""
@@ -1369,7 +1472,10 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
 
 
         <!-- Analysis Field Distributions -->
-        {"".join(generate_field_distribution_html(field_name, field_info, stats) for field_name, field_info in field_analysis.items())}
+        {"".join(generate_field_distribution_html(field_name, field_info, stats) for field_name, field_info in field_analysis.items() if field_name != 'new_stances')}
+
+        <!-- New Stances (Compact) -->
+        {generate_new_stances_compact_html(field_analysis.get('new_stances', {}), stats)}
 
         <!-- Comments Table -->
         <div class="section">
@@ -1558,12 +1664,15 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         stance_data = analysis.get('stance', analysis.get('stances', []))
         if isinstance(stance_data, str):
             # Legacy single stance
-            stances = [stance_data] if stance_data else []
+            all_stances = [stance_data] if stance_data else []
         elif isinstance(stance_data, list):
             # New multi-stance format
-            stances = stance_data
+            all_stances = stance_data
         else:
-            stances = []
+            all_stances = []
+        
+        # Use all stances from the stances field (original discovered stances)
+        stances = all_stances
         
         key_quote = analysis.get('key_quote', '')
         rationale = analysis.get('rationale', '')
@@ -1943,7 +2052,7 @@ def main():
     # Try Parquet first, then JSON
     if args.json and os.path.exists(args.json):
         print(f"Loading results from {args.json}...")
-        comments = load_results(args.json)
+        comments, metadata = load_results(args.json)
     elif os.path.exists(args.parquet):
         print(f"Loading results from {args.parquet}...")
         comments = load_results_parquet(args.parquet)

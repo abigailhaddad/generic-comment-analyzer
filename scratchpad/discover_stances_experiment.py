@@ -127,8 +127,13 @@ Each theme should:
 
 Each position should:
 - Be clearly framed as SUPPORT or OPPOSITION to something specific within the theme
+- NEVER have two "Support for" positions that are opposites - use "Support for X" vs "Oppose X" instead
+- BAD EXAMPLE: "Support for Policy A" + "Support for Policy B" where A and B are opposites
+- GOOD EXAMPLE: "Support for Policy A" + "Oppose Policy A"
+- If you find yourself writing "Support for X" and "Support for the opposite of X", change the second one to "Oppose X"
+- Multiple "Support for" positions are only acceptable if they support genuinely different, non-conflicting aspects
 - Have specific indicators: phrases, keywords, concepts, or argument patterns
-- Be distinct from other positions within the same theme
+- Be clearly distinct from other positions within the same theme
 
 Output as structured JSON."""
 
@@ -149,12 +154,19 @@ Think of positions as representing different "camps" or "sides" within each them
 - Look for natural divisions and conflicts in the comments
 
 Examples of themes with mutually exclusive positions:
-- Theme: "Vaccine Access" 
-  - Position: "Support for immediate vaccine removal"
-  - Position: "Support for continued vaccine access"
+- Theme: "Policy Implementation" 
+  - Position: "Support for immediate implementation"
+  - Position: "Oppose immediate implementation"
 - Theme: "Regulatory Authority"
-  - Position: "Trust in current committee"
-  - Position: "Distrust in current committee leadership"
+  - Position: "Support for current authority"
+  - Position: "Oppose current authority"
+
+CRITICAL: When positions are opposites within a theme, one must be "Support" and the other must be "Oppose" - never two "Support for" statements that contradict each other.
+
+FORBIDDEN PATTERNS (fix these immediately):
+- "Support for X" + "Support for Y" where X and Y are opposites
+- "Support for keeping Z" + "Support for removing Z" → Change to "Support for keeping Z" + "Oppose keeping Z"
+- "Support for expanding A" + "Support for restricting A" → Change to "Support for expanding A" + "Oppose expanding A"
 
 Each theme should:
 - Be a clear topic/subject area that people discuss
@@ -164,6 +176,9 @@ Each theme should:
 Each position should:
 - Represent a distinct viewpoint that commenters typically hold exclusively within that theme
 - Be clearly framed as SUPPORT or OPPOSITION to something specific
+- NEVER have two "Support for" positions that are opposites - use "Support for X" vs "Oppose X" instead
+- Avoid contradictory pairs like "Support for Removal" and "Support for Continued Access" - make one "Support" and one "Oppose"
+- Multiple "Support for" positions are only acceptable if they support genuinely different, non-conflicting aspects
 - Have specific indicators: phrases, keywords, concepts, or argument patterns
 - Not significantly overlap with other positions within the same theme
 
@@ -179,7 +194,8 @@ For each theme, provide:
 3. Positions: 2-3 distinct positions people take on this theme
 
 For each position within a theme, provide:
-1. Name: Clear support/opposition label (e.g., "Support for X", "Opposition to Y")
+1. Name: Clear support/opposition label (e.g., "Support for X", "Oppose X", "Agree with Y", "Disagree with Y")
+   IMPORTANT: If you have opposing positions, make one "Support" and one "Oppose" - NEVER two "Support for" statements that contradict each other
 2. Indicators: Specific phrases, keywords, concepts, or argument patterns that signal someone holds this position
 
 Also identify:

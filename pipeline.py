@@ -335,8 +335,10 @@ def create_dedup_table(comments: List[Dict[str, Any]]) -> tuple[List[Dict[str, A
     # Update each unique comment with the correct ratio based on total dataset
     for unique_comment in unique_comments:
         group_size = unique_comment['duplication_count']
-        # Calculate how many total comments this represents out of the full dataset
-        unique_comment['duplication_ratio'] = round(total_comments / group_size)
+        # Calculate the fraction: if half the comments are this duplicate, it's 1/2
+        from fractions import Fraction
+        fraction = Fraction(group_size, total_comments)
+        unique_comment['duplication_ratio'] = f"1/{total_comments//group_size}"
     
     logger.info(f"Deduplication complete:")
     logger.info(f"  Total comments: {total_comments}")

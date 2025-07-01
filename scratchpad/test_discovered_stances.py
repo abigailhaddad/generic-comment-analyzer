@@ -152,7 +152,7 @@ Instructions:
         os.unlink(temp_config_file)
 
 
-def analyze_single_comment_custom(theme_position_options: List[str], system_prompt: str, comment: Dict[str, Any], comment_index: int, truncate_chars: int = 2000) -> Dict[str, Any]:
+def analyze_single_comment_custom(theme_position_options: List[str], system_prompt: str, comment: Dict[str, Any], comment_index: int, total_sample_size: int, truncate_chars: int = 2000) -> Dict[str, Any]:
     """Analyze a single comment using direct LLM call to bypass hardcoded enums."""
     import litellm
     
@@ -206,7 +206,7 @@ Respond in JSON format with:
             'organization': comment.get('organization', ''),  # Preserve original organization data
             'attachment_text': comment.get('attachment_text', ''),
             'duplication_count': comment.get('duplication_count', 1),
-            'duplication_ratio': comment.get('duplication_ratio', 1),
+            'duplication_ratio': total_sample_size,  # Stores denominator for 1:X display format
             'analysis': analysis_result
         }
         
@@ -226,7 +226,8 @@ def analyze_comments_sample(comments: List[Dict[str, Any]], discovered_stances: 
     else:
         sampled_comments = comments
     
-    logger.info(f"Analyzing {len(sampled_comments)} comments with {max_workers} workers in batches of {batch_size}...")
+    total_sample_size = len(sampled_comments)
+    logger.info(f"Analyzing {total_sample_size} comments with {max_workers} workers in batches of {batch_size}...")
     
     analyzed_comments = []
     
@@ -331,7 +332,7 @@ Instructions:
             future_to_comment = {}
             for i, comment in enumerate(batch_comments):
                 comment_index = batch_start + i
-                future = executor.submit(analyze_single_comment_custom, theme_position_options, system_prompt, comment, comment_index)
+                future = executor.submit(analyze_single_comment_custom, theme_position_options, system_prompt, comment, comment_index, total_sample_size)
                 future_to_comment[future] = comment
             
             # Collect results as they complete
@@ -557,14 +558,25 @@ def main():
         with open(processed_json, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
-        # Parse themes from theme:position names and add theme metadata
+        # Build themes metadata from original discovered stances
         themes = {}
-        for theme_position_name in discovered_theme_positions:
-            if ': ' in theme_position_name:
-                theme, position = theme_position_name.split(': ', 1)
-                if theme not in themes:
-                    themes[theme] = []
-                themes[theme].append(theme_position_name)
+        if "positions" in discovered:
+            for pos in discovered["positions"]:
+                theme_name = pos.get("theme", "Unknown Theme")
+                position_name = pos["name"]
+                formatted_theme_position = f"{theme_name}: {position_name}"
+                if theme_name not in themes:
+                    themes[theme_name] = []
+                themes[theme_name].append(formatted_theme_position)
+        else:
+            for theme in discovered.get("themes", []):
+                theme_name = theme.get("name", "Unknown Theme")
+                if theme_name not in themes:
+                    themes[theme_name] = []
+                for position in theme.get("positions", []):
+                    position_name = position["name"]
+                    formatted_theme_position = f"{theme_name}: {position_name}"
+                    themes[theme_name].append(formatted_theme_position)
         
         data['themes'] = themes
         logger.info(f"DEBUG: Detected themes: {list(themes.keys())}")

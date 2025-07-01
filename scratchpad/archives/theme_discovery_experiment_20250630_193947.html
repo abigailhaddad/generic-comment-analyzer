@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stance Discovery Experiment Results</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .results-table {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #2c3e50;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: top;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .strategy-original {
+            background: #e3f2fd;
+        }
+        
+        .strategy-mutually_exclusive {
+            background: #f3e5f5;
+        }
+        
+        .stance-list {
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        
+        .stance-item {
+            margin-bottom: 8px;
+            padding: 4px 8px;
+            background: #ffffff;
+            border-left: 3px solid #007bff;
+            border-radius: 4px;
+        }
+        
+        .error {
+            color: #dc3545;
+            font-style: italic;
+        }
+        
+        .timestamp {
+            font-size: 0.8em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Theme Discovery Experiment Results</h1>
+        <div class="subtitle">Comparing prompting strategies and target theme counts</div>
+        <div class="timestamp">Generated: 2025-06-30 19:39:47</div>
+    </div>
+    
+    <div class="results-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Strategy</th>
+                    <th>Target Count</th>
+                    <th>Actual Count</th>
+                    <th>Discovered Themes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="strategy-mutually_exclusive">
+                    <td><strong>Mutually Exclusive</strong></td>
+                    <td>10</td>
+                    <td>10</td>
+                    <td><div class="stance-list"><div class="stance-item"><strong>Removal of COVID-19 Vaccines</strong><ul><li>Support for removal of COVID-19 vaccines</li><li>Oppose removal of COVID-19 vaccines</li></ul></div><div class="stance-item"><strong>ACIP Committee Member Terminations</strong><ul><li>Support for ACIP member terminations</li><li>Oppose ACIP member terminations</li></ul></div><div class="stance-item"><strong>Vaccine Access</strong><ul><li>Support for universal/broad vaccine access</li><li>Oppose universal vaccine access</li></ul></div><div class="stance-item"><strong>Vaccine Safety</strong><ul><li>Support for safety of COVID-19 vaccines</li><li>Oppose safety of COVID-19 vaccines</li></ul></div><div class="stance-item"><strong>Vaccine Mandates & Individual Choice</strong><ul><li>Support for individual choice in vaccination</li><li>Oppose individual choice (Support mandates/restrictions)</li></ul></div><div class="stance-item"><strong>Public Trust in Health Authorities</strong><ul><li>Support for current/recent health authority approach</li><li>Oppose current health authority approach</li></ul></div><div class="stance-item"><strong>Insurance Coverage for Vaccines</strong><ul><li>Support for insurance coverage tied to ACIP recommendations</li><li>Oppose insurance coverage tied to ACIP recommendations</li></ul></div><div class="stance-item"><strong>Qualifications of ACIP Members</strong><ul><li>Support for expert/qualified ACIP members</li><li>Oppose requirement for expert ACIP members</li></ul></div><div class="stance-item"><strong>Equity in Vaccine Access</strong><ul><li>Support for equitable access to vaccines</li><li>Oppose focus on equity in vaccine access</li></ul></div><div class="stance-item"><strong>Role of Science vs. Political Influence</strong><ul><li>Support for science-based vaccine policy</li><li>Oppose current science-based policy (alleging bias or corruption)</li></ul></div></div></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
