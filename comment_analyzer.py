@@ -29,12 +29,22 @@ class TimeoutError(Exception):
 
 # Placeholder enums - will be populated by discover_stances.py
 class Stance(str, Enum):
-    OPPOSITION_TO_COVID_19_VACCINES_CALL_FOR_REMOVAL = "Opposition to COVID-19 Vaccines (Call for Removal)"
-    SUPPORT_FOR_CONTINUED_BROAD_ACCESS_TO_COVID_19_VACCINES = "Support for Continued/Broad Access to COVID-19 Vaccines"
-    SUPPORT_FOR_SCIENCE_BASED_INDEPENDENT_ACIP_COMMITTEE = "Support for Science-Based, Independent ACIP Committee"
-    OPPOSITION_TO_RESTRICTING_VACCINE_ACCESS_ELIGIBILITY_INCLUDING_CHILDREN_AND_HIGH_RISK = "Opposition to Restricting Vaccine Access/Eligibility (including Children and High-Risk)"
-    OPPOSITION_TO_POLITICIZATION_DELEGITIMIZATION_OF_VACCINE_POLICY = "Opposition to Politicization/Delegitimization of Vaccine Policy"
-    SUPPORT_FOR_VACCINE_PREVENTABLE_DISEASE_PROTECTION_AND_BROAD_IMMUNIZATION_POLICY = "Support for Vaccine-Preventable Disease Protection and Broad Immunization Policy"
+    COVID_19_VACCINE_ACCESS_SUPPORT_FOR_COVID_19_VACCINE_ACCESS = "COVID-19 Vaccine Access: Support for COVID-19 Vaccine Access"
+    COVID_19_VACCINE_ACCESS_OPPOSE_COVID_19_VACCINE_ACCESS = "COVID-19 Vaccine Access: Oppose COVID-19 Vaccine Access"
+    VACCINE_SAFETY_CONCERNS_SUPPORT_FOR_VACCINE_SAFETY = "Vaccine Safety Concerns: Support for Vaccine Safety"
+    VACCINE_SAFETY_CONCERNS_OPPOSE_VACCINE_SAFETY = "Vaccine Safety Concerns: Oppose Vaccine Safety"
+    REGULATORY_CHANGES_AND_COMMITTEE_MEMBERSHIP_SUPPORT_FOR_CURRENT_REGULATORY_CHANGES = "Regulatory Changes and Committee Membership: Support for Current Regulatory Changes"
+    REGULATORY_CHANGES_AND_COMMITTEE_MEMBERSHIP_OPPOSE_CURRENT_REGULATORY_CHANGES = "Regulatory Changes and Committee Membership: Oppose Current Regulatory Changes"
+    INDEPENDENT_SCIENTIFIC_OVERSIGHT_SUPPORT_FOR_INDEPENDENT_OVERSIGHT = "Independent Scientific Oversight: Support for Independent Oversight"
+    INDEPENDENT_SCIENTIFIC_OVERSIGHT_OPPOSE_INDEPENDENT_OVERSIGHT = "Independent Scientific Oversight: Oppose Independent Oversight"
+    PUBLIC_TRUST_IN_VACCINATIONS_SUPPORT_FOR_PUBLIC_TRUST_INITIATIVES = "Public Trust in Vaccinations: Support for Public Trust Initiatives"
+    PUBLIC_TRUST_IN_VACCINATIONS_OPPOSE_PUBLIC_TRUST_INITIATIVES = "Public Trust in Vaccinations: Oppose Public Trust Initiatives"
+    RISK_ASSESSMENT_AND_VACCINE_RECOMMENDATIONS_SUPPORT_FOR_UNIVERSAL_RECOMMENDATIONS = "Risk Assessment and Vaccine Recommendations: Support for Universal Recommendations"
+    RISK_ASSESSMENT_AND_VACCINE_RECOMMENDATIONS_OPPOSE_UNIVERSAL_RECOMMENDATIONS = "Risk Assessment and Vaccine Recommendations: Oppose Universal Recommendations"
+    VACCINE_DISTRIBUTION_POLICY_SUPPORT_FOR_CURRENT_DISTRIBUTION_POLICY = "Vaccine Distribution Policy: Support for Current Distribution Policy"
+    VACCINE_DISTRIBUTION_POLICY_OPPOSE_CURRENT_DISTRIBUTION_POLICY = "Vaccine Distribution Policy: Oppose Current Distribution Policy"
+    ANTI_VACCINE_SENTIMENT_OPPOSE_ANTI_VACCINE_INFLUENCE = "Anti-Vaccine Sentiment: Oppose Anti-Vaccine Influence"
+    ANTI_VACCINE_SENTIMENT_SUPPORT_ANTI_VACCINE_INFLUENCE = "Anti-Vaccine Sentiment: Support Anti-Vaccine Influence"
 
 
 class CommentAnalysisResult(BaseModel):
@@ -210,31 +220,51 @@ def create_regulation_analyzer(model=None, timeout_seconds=None):
     """Create an analyzer configured for regulation analysis"""
     
     stance_options = [
-        "Opposition to COVID-19 Vaccines (Call for Removal)",
-        "Support for Continued/Broad Access to COVID-19 Vaccines",
-        "Support for Science-Based, Independent ACIP Committee",
-        "Opposition to Restricting Vaccine Access/Eligibility (including Children and High-Risk)",
-        "Opposition to Politicization/Delegitimization of Vaccine Policy",
-        "Support for Vaccine-Preventable Disease Protection and Broad Immunization Policy"
+        "COVID-19 Vaccine Access: Support for COVID-19 Vaccine Access",
+        "COVID-19 Vaccine Access: Oppose COVID-19 Vaccine Access",
+        "Vaccine Safety Concerns: Support for Vaccine Safety",
+        "Vaccine Safety Concerns: Oppose Vaccine Safety",
+        "Regulatory Changes and Committee Membership: Support for Current Regulatory Changes",
+        "Regulatory Changes and Committee Membership: Oppose Current Regulatory Changes",
+        "Independent Scientific Oversight: Support for Independent Oversight",
+        "Independent Scientific Oversight: Oppose Independent Oversight",
+        "Public Trust in Vaccinations: Support for Public Trust Initiatives",
+        "Public Trust in Vaccinations: Oppose Public Trust Initiatives",
+        "Risk Assessment and Vaccine Recommendations: Support for Universal Recommendations",
+        "Risk Assessment and Vaccine Recommendations: Oppose Universal Recommendations",
+        "Vaccine Distribution Policy: Support for Current Distribution Policy",
+        "Vaccine Distribution Policy: Oppose Current Distribution Policy",
+        "Anti-Vaccine Sentiment: Oppose Anti-Vaccine Influence",
+        "Anti-Vaccine Sentiment: Support Anti-Vaccine Influence"
     ]
     
-    system_prompt = """You are analyzing public comments about CDC ACIP COVID-19 and Vaccine Committee Policy Changes, June 2025.
+    system_prompt = """You are analyzing public comments about CDC ACIP's recommendations on COVID-19 vaccines.
 
-A set of proposed and implemented changes affecting the Advisory Committee on Immunization Practices (ACIP) at CDC, including the removal of all 17 previous members by RFK Jr. and policies about the continued availability, restriction, or removal of COVID-19 vaccines and other immunization recommendations and coverage.
+The public comments discuss the CDC's Advisory Committee on Immunization Practices (ACIP) recommendations and actions regarding COVID-19 vaccines, including access to vaccines, changes in committee membership, and concerns about vaccine safety and efficacy.
 
 For each comment, identify:
 
-1. Stances: Which of these positions/arguments does the commenter express? Look for the indicators listed below. (Select ALL that apply, or none if none apply)
-- Opposition to COVID-19 Vaccines (Call for Removal): remove all currently licensed COVID shots from the market; destroy the deadly vaccines; get rid of these vaccines; these vaccines cause more harm than good; deaths following COVID vaccination in the Vaccine Adverse Event Reporting System; comparing to swine flu vaccine recall; urge ACIP to take a stance for public health by pulling COVID vaccines; routine and repeated COVID shots should stop; evidence is clear, remove COVID shots; toxins knowingly placed in these injections to harm
-- Support for Continued/Broad Access to COVID-19 Vaccines: keep COVID-19 vaccines available to everyone; protect access to covid 19 vaccines; do not restrict the Covid vaccine; please don't take it away; vaccines save lives; vaccines should be covered by insurance; COVID vaccine has proven to be safe and effective; need access for high-risk/disabled/immunocompromised people; demand full access to all healthcare including vaccines; please keep all Vaccines available to whom ever would like to do so
-- Support for Science-Based, Independent ACIP Committee: grave/serious concerns about the recent termination of all 17 ACIP committee members; independent expert scientific and medical input is crucial; oppose replacement with unqualified or anti-vaccine figures; RFK Jr. must preserve an independent decision process; committee must be made up of experienced, qualified people; removal of previous members harms public health; demand restoration of former ACIP members; distrust of politically-motivated removals; platforming of pseudoscience profiteers; calls for transparency and conflict of interest disclosures
-- Opposition to Restricting Vaccine Access/Eligibility (including Children and High-Risk): oppose unnecessary restrictions placed on COVID vaccinations; do not change vaccine policies that would make vaccines more difficult to access; setting restrictions on vaccines is not only unnecessary, it's anti-science; universal or broad access is necessary; removal or restriction would endanger vulnerable groups; insurance should cover vaccines for all ages; keep covid vaccines on the recommended schedule; Novavax (non mRNA) should be approved for all ages and covered
-- Opposition to Politicization/Delegitimization of Vaccine Policy: RFK Jr. has politicized science; political shenanigans; politics should not make this decision; removal/appointment of ACIP members for political, not scientific, reasons; keep the committee apolitical; must be actual experts, not political appointees; government interference in public health
-- Support for Vaccine-Preventable Disease Protection and Broad Immunization Policy: vaccines are a proven way out of polio, measles, covid, etc.; broad access to all FDA-approved and recommended vaccines; keep access to vaccines for all vaccine-preventable diseases; importance of vaccination for community health, children, workplace, school safety; calls to keep or expand coverage through Vaccines for Children and insurance; concerns about declining vaccination rates and outbreaks
+1. Stances: Which of these theme:position combinations does the commenter express? Look for the indicators listed below. (Select ALL that apply, or none if none apply)
+- COVID-19 Vaccine Access: Support for COVID-19 Vaccine Access: universal recommendation and access; available for all; right to continue use; preserve access; full coverage by insurance
+- COVID-19 Vaccine Access: Oppose COVID-19 Vaccine Access: remove access; limit access; suspend access; restrict access; prevent people from access
+- Vaccine Safety Concerns: Support for Vaccine Safety: safe and effective; life-saving tools; no significant adverse effects; saved hundreds of thousands of lives
+- Vaccine Safety Concerns: Oppose Vaccine Safety: remove all COVID shots; reports of deaths; serious adverse reactions; Vaccine Adverse Event Reporting System
+- Regulatory Changes and Committee Membership: Support for Current Regulatory Changes: support for RFK Jr.'s decision; agree with committee changes; trust in new ACIP members
+- Regulatory Changes and Committee Membership: Oppose Current Regulatory Changes: reinstate previous ACIP members; influence of anti-vaccine personalities; concerns about conflicts of interest; RFK Jr.'s actions are harmful
+- Independent Scientific Oversight: Support for Independent Oversight: independent decision process; disclose all conflicts of interest; keep politics out of public health; scientifically based
+- Independent Scientific Oversight: Oppose Independent Oversight: biased decisions; interference in decision-making; political influence on recommendations
+- Public Trust in Vaccinations: Support for Public Trust Initiatives: regain public's trust; transparent processes; scientific evidence; inform access to safe vaccines
+- Public Trust in Vaccinations: Oppose Public Trust Initiatives: eroded public confidence; mistrust in current vaccines; lack of transparency; concerns ignored
+- Risk Assessment and Vaccine Recommendations: Support for Universal Recommendations: universal recommendation for all ages; same schedule for everyone; CDC must recommend vaccines for all
+- Risk Assessment and Vaccine Recommendations: Oppose Universal Recommendations: individualized schedule; consider health status and risk factors; context-based vaccination
+- Vaccine Distribution Policy: Support for Current Distribution Policy: preserve current guidelines; insurance coverage; protect vulnerable groups
+- Vaccine Distribution Policy: Oppose Current Distribution Policy: change distribution priorities; concern about coverage inadequacies; vulnerable still at risk
+- Anti-Vaccine Sentiment: Oppose Anti-Vaccine Influence: anti-vaxxer RFK is not unbiased; conspiracy mongers; scientific misinformation
+- Anti-Vaccine Sentiment: Support Anti-Vaccine Influence: support for removal of vaccines; questions on vaccine effectiveness; skeptical of vaccine agendas
 
 2. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. Must be verbatim from the text.
 
-3. Rationale: Briefly explain (1-2 sentences) why you selected these stances.
+3. Rationale: Briefly explain (1-2 sentences) why you selected these theme:position combinations.
 
 Instructions:
 - A comment may express multiple stances or no clear stance

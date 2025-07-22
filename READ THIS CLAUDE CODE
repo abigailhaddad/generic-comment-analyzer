@@ -1,0 +1,21 @@
+# Coding Rules for Claude Code
+
+## Core Principles
+
+**Fail fast, fail loud.** Never implement backup or fallback functionality unless explicitly requested. If something can't be done as asked, throw an error or fail clearly rather than silently working around the issue.
+
+**Modify, don't create.** When asked to fix existing code, always modify the actual functions and scripts we already have. Don't create new scripts or duplicate functionality.
+
+**Clean imports.** Always import all required libraries at the top of the script. No inline imports scattered throughout the code.
+
+**Single responsibility.** Each function should do exactly one thing and do it well. Keep functions simple and focused.
+
+**Minimal dependencies.** Don't add excess libraries. We rarely need more than one data visualization package per project, one HTTP client, etc. Use what we already have before adding new dependencies.
+
+**Keep it flat.** Repos should be relatively flat with minimal nesting. We're very unlikely to need more than one layer of directories.
+
+**Make a virtual env.** Put it in myenv in root. Install dependencies there. Use it always to run code. Use uv pip intall to install things. 
+
+**Don't add unasked for functionality** If you think something is necessary, ask. 
+
+**Don't 'back things up'** by creating new files of other files. Rather, commit code regularly with descriptive commit messages. Data or other untracked files should be the only things 'backed up' by renaming them or putting them in backup folders.
