@@ -232,6 +232,32 @@ def calculate_stats(comments: List[Dict[str, Any]], field_analysis: Dict[str, Di
     # Comments with attachments
     with_attachments = sum(1 for c in comments if c.get('attachment_text', '').strip())
     
+    # Attachment processing statistics
+    attachment_stats = {
+        'total_with_attachments': 0,
+        'total_attachments': 0,
+        'processed_successfully': 0,
+        'failed_attachments': 0,
+        'comments_with_failures': 0,
+        'failure_reasons': {'download_failed': 0, 'no_text_extracted': 0}
+    }
+    
+    for comment in comments:
+        attachment_status = comment.get('attachment_status')
+        if attachment_status:
+            attachment_stats['total_with_attachments'] += 1
+            attachment_stats['total_attachments'] += attachment_status.get('total', 0)
+            attachment_stats['processed_successfully'] += attachment_status.get('processed', 0)
+            attachment_stats['failed_attachments'] += attachment_status.get('failed', 0)
+            
+            if attachment_status.get('failed', 0) > 0:
+                attachment_stats['comments_with_failures'] += 1
+                
+                for failure in attachment_status.get('failures', []):
+                    reason = failure.get('reason', 'unknown')
+                    if reason in attachment_stats['failure_reasons']:
+                        attachment_stats['failure_reasons'][reason] += 1
+    
     # Average text length
     text_lengths = [len(c.get('text', '')) for c in comments]
     avg_length = sum(text_lengths) / len(text_lengths) if text_lengths else 0
@@ -242,6 +268,7 @@ def calculate_stats(comments: List[Dict[str, Any]], field_analysis: Dict[str, Di
         'stance_cooccurrence': stance_cooccurrence,
         'agreement_scores': agreement_scores,
         'with_attachments': with_attachments,
+        'attachment_stats': attachment_stats,
         'avg_text_length': int(avg_length),
         'date_range': get_date_range(comments)
     }
@@ -260,11 +287,21 @@ def get_date_range(comments: List[Dict[str, Any]]) -> str:
                 pass
     
     if dates:
-        min_date = min(dates).strftime('%Y-%m-%d')
-        max_date = max(dates).strftime('%Y-%m-%d')
+        min_date_obj = min(dates)
+        max_date_obj = max(dates)
+        
+        # Format dates more intuitively
+        min_date = min_date_obj.strftime('%B %d, %Y')  # e.g., "June 17, 2025"
+        max_date = max_date_obj.strftime('%B %d, %Y')
+        
         if min_date == max_date:
             return min_date
-        return f"{min_date} to {max_date}"
+        
+        # If same month and year, simplify the range
+        if min_date_obj.strftime('%B %Y') == max_date_obj.strftime('%B %Y'):
+            return f"{min_date_obj.strftime('%B %d')}-{max_date_obj.strftime('%d, %Y')}"  # e.g., "June 17-24, 2025"
+        else:
+            return f"{min_date} to {max_date}"
     return "Unknown"
 
 def calculate_cooccurrence_percentages(stats: Dict[str, Any], field_analysis: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
@@ -1476,10 +1513,6 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                 <div class="stat-label">With Attachments</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">{stats['avg_text_length']:,}</div>
-                <div class="stat-label">Avg. Characters</div>
-            </div>
-            <div class="stat-card">
                 <div class="stat-number">{stats['date_range']}</div>
                 <div class="stat-label">Date Range</div>
             </div>
@@ -1569,7 +1602,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                                     <input type="text" class="filter-input" data-column="0" placeholder="Filter ID..." onkeyup="filterTable()">
                                 </div>
                             </th>
-                            <th>Date</th>
+                            <th data-column="1">Date</th>
                             <th class="filterable" data-column="2">
                                 Submitter <span class="filter-arrow" onclick="toggleFilter(2)">▼</span>
                                 <div class="filter-dropdown" id="filter-2" style="display: none;">
@@ -1725,8 +1758,17 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         attachment_text = comment.get('attachment_text', '')
         attachment_cell = create_tooltip_cell(attachment_text, 300, tooltip_max_length=1200).replace('<td', '<td style="display: none;"')
         
-        # Attachments
-        has_attachments = '<span class="attachment-indicator">📎</span>' if comment.get('attachment_text', '').strip() else ''
+        # Attachments with failure indicator
+        attachment_status = comment.get('attachment_status')
+        if attachment_status and attachment_status.get('total', 0) > 0:
+            failed = attachment_status.get('failed', 0)
+            total = attachment_status.get('total', 0)
+            if failed > 0:
+                has_attachments = f'<span class="attachment-indicator">📎</span> <span style="color: #ff6b6b; font-weight: bold;">({failed}/{total} failed)</span>'
+            else:
+                has_attachments = '<span class="attachment-indicator">📎</span>'
+        else:
+            has_attachments = ''
         
         # Duplication count and ratio
         duplication_count = comment.get('duplication_count', 1)
@@ -1791,78 +1833,110 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                     <div class="meta-value">{stats['with_attachments']:,}</div>
                 </div>
                 <div class="meta-item">
-                    <div class="meta-label">Average Length</div>
-                    <div class="meta-value">{stats['avg_text_length']:,} chars</div>
-                </div>
-                <div class="meta-item">
                     <div class="meta-label">Date Range</div>
                     <div class="meta-value">{stats['date_range']}</div>
                 </div>
-            </div>
+            </div>"""
+    
+    # Add attachment processing details if there are any attachments
+    attachment_stats = stats.get('attachment_stats', {})
+    if attachment_stats.get('total_attachments', 0) > 0:
+        html_template += f"""
+            <div style="margin-top: 30px;">
+                <h3 style="color: white; margin-bottom: 20px;">📎 Attachment Processing Details</h3>
+                <div class="meta-grid">
+                    <div class="meta-item">
+                        <div class="meta-label">Total Attachments</div>
+                        <div class="meta-value">{attachment_stats['total_attachments']:,}</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Processed Successfully</div>
+                        <div class="meta-value">{attachment_stats['processed_successfully']:,}</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Failed to Process</div>
+                        <div class="meta-value" style="color: #ff6b6b;">{attachment_stats['failed_attachments']:,}</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Comments with Failures</div>
+                        <div class="meta-value" style="color: #ff6b6b;">{attachment_stats['comments_with_failures']:,}</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Download Failures</div>
+                        <div class="meta-value">{attachment_stats['failure_reasons']['download_failed']:,}</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Extraction Failures</div>
+                        <div class="meta-value">{attachment_stats['failure_reasons']['no_text_extracted']:,}</div>
+                    </div>
+                </div>
+            </div>"""
+    
+    html_template += """
         </div>
     </div>
 
     <script>
         // Column visibility state (13 columns with new_stances)
-        const columnVisibility = {{
+        const columnVisibility = {
             0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: true, 9: true, 10: false, 11: false, 12: false
-        }};
+        };
 
         // Initialize column visibility on page load
-        document.addEventListener('DOMContentLoaded', function() {{
-            for (const [col, visible] of Object.entries(columnVisibility)) {{
+        document.addEventListener('DOMContentLoaded', function() {
+            for (const [col, visible] of Object.entries(columnVisibility)) {
                 updateColumnVisibility(parseInt(col), visible);
                 // Also update the checkbox state
                 const checkbox = document.getElementById('col-' + col);
-                if (checkbox) {{
+                if (checkbox) {
                     checkbox.checked = visible;
-                }}
-            }}
-        }});
+                }
+            }
+        });
 
-        function toggleColumnVisibility() {{
+        function toggleColumnVisibility() {
             const dropdown = document.getElementById('columnVisibilityDropdown');
             dropdown.classList.toggle('show');
-        }}
+        }
 
-        function toggleColumn(columnIndex) {{
+        function toggleColumn(columnIndex) {
             const checkbox = document.getElementById('col-' + columnIndex);
             const visible = checkbox.checked;
             columnVisibility[columnIndex] = visible;
             updateColumnVisibility(columnIndex, visible);
-        }}
+        }
 
-        function updateColumnVisibility(columnIndex, visible) {{
+        function updateColumnVisibility(columnIndex, visible) {
             const table = document.getElementById('commentsTable');
             const rows = table.getElementsByTagName('tr');
             
             // Update header
             const headers = rows[0].getElementsByTagName('th');
-            if (headers[columnIndex]) {{
+            if (headers[columnIndex]) {
                 headers[columnIndex].style.display = visible ? '' : 'none';
-            }}
+            }
             
             // Update all data rows
-            for (let i = 1; i < rows.length; i++) {{
+            for (let i = 1; i < rows.length; i++) {
                 const cells = rows[i].getElementsByTagName('td');
-                if (cells[columnIndex]) {{
+                if (cells[columnIndex]) {
                     cells[columnIndex].style.display = visible ? '' : 'none';
-                }}
-            }}
-        }}
+                }
+            }
+        }
 
-        function filterTable() {{
+        function filterTable() {
             const table = document.getElementById('commentsTable');
             const rows = table.getElementsByTagName('tr');
             
             // Get text input filters
             const textFilters = document.querySelectorAll('.filter-input');
-            const textFilterValues = Array.from(textFilters).map(filter => {{
-                return {{
+            const textFilterValues = Array.from(textFilters).map(filter => {
+                return {
                     column: parseInt(filter.getAttribute('data-column')),
                     value: filter.value.toLowerCase()
-                }};
-            }});
+                };
+            });
             
             // Get checkbox filters
             const stanceCheckboxes = document.querySelectorAll('input[data-filter="stances"]:checked');
@@ -1883,45 +1957,45 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
             const hasNewStances = true;
             
             // Filter each row
-            for (let i = 1; i < rows.length; i++) {{
+            for (let i = 1; i < rows.length; i++) {
                 const row = rows[i];
                 const cells = row.getElementsByTagName('td');
                 let showRow = true;
 
                 // Check text filters
-                for (const filter of textFilterValues) {{
-                    if (filter.value && filter.column < cells.length) {{
+                for (const filter of textFilterValues) {
+                    if (filter.value && filter.column < cells.length) {
                         const cellText = cells[filter.column].textContent.toLowerCase();
-                        if (!cellText.includes(filter.value)) {{
+                        if (!cellText.includes(filter.value)) {
                             showRow = false;
                             break;
-                        }}
-                    }}
-                }}
+                        }
+                    }
+                }
                 
                 // Check stance filter (column 4)
-                if (showRow && selectedStances.length > 0) {{
+                if (showRow && selectedStances.length > 0) {
                     const stanceText = cells[4].textContent.toLowerCase();
-                    if (!selectedStances.some(stance => stanceText.includes(stance))) {{
+                    if (!selectedStances.some(stance => stanceText.includes(stance))) {
                         showRow = false;
-                    }}
-                }}
+                    }
+                }
                 
                 // Check unusual combination filter
-                if (showRow && filterUnusualCombos) {{
+                if (showRow && filterUnusualCombos) {
                     const stanceCell = cells[4].innerHTML;
-                    if (!stanceCell.includes('⚠️')) {{
+                    if (!stanceCell.includes('⚠️')) {
                         showRow = false;
-                    }}
-                }}
+                    }
+                }
                 
                 // Check new stance filter (column 5 if exists)
-                if (showRow && hasNewStances && selectedNewStances.length > 0) {{
+                if (showRow && hasNewStances && selectedNewStances.length > 0) {
                     const newStanceText = cells[5].textContent.toLowerCase();
-                    if (!selectedNewStances.some(stance => newStanceText.includes(stance))) {{
+                    if (!selectedNewStances.some(stance => newStanceText.includes(stance))) {
                         showRow = false;
-                    }}
-                }}
+                    }
+                }
                 
                 // Column positions shift by 1 when new_stances exists
                 const attachmentCol = hasNewStances ? 7 : 6;
@@ -1929,70 +2003,70 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                 const dupRatioCol = hasNewStances ? 9 : 8;
                 
                 // Check attachments filter
-                if (showRow && selectedAttachments.length > 0) {{
+                if (showRow && selectedAttachments.length > 0) {
                     const attachmentCell = cells[attachmentCol];
                     const hasAttachment = attachmentCell.textContent.trim() !== '';
                     
                     let attachmentMatch = false;
-                    for (const filter of selectedAttachments) {{
-                        if (filter === 'yes' && hasAttachment) {{
+                    for (const filter of selectedAttachments) {
+                        if (filter === 'yes' && hasAttachment) {
                             attachmentMatch = true;
                             break;
-                        }}
-                        if (filter === 'no' && !hasAttachment) {{
+                        }
+                        if (filter === 'no' && !hasAttachment) {
                             attachmentMatch = true;
                             break;
-                        }}
-                    }}
+                        }
+                    }
                     
-                    if (!attachmentMatch) {{
+                    if (!attachmentMatch) {
                         showRow = false;
-                    }}
-                }}
+                    }
+                }
                 
                 // Check duplication count filter
-                if (showRow && selectedDuplicationCounts.length > 0) {{
+                if (showRow && selectedDuplicationCounts.length > 0) {
                     const duplicationCell = cells[dupCountCol];
                     const duplicationText = duplicationCell.textContent.trim();
                     const duplicationCount = parseInt(duplicationText);
                     
-                    if (!selectedDuplicationCounts.includes(duplicationCount)) {{
+                    if (!selectedDuplicationCounts.includes(duplicationCount)) {
                         showRow = false;
-                    }}
-                }}
+                    }
+                }
                 
                 // Check duplication ratio filter
-                if (showRow && selectedDuplicationRatios.length > 0) {{
+                if (showRow && selectedDuplicationRatios.length > 0) {
                     const ratioCell = cells[dupRatioCol];
                     const ratioText = ratioCell.textContent.trim();
                     // Extract number after "1:" (e.g., "1:10" -> 10)
                     const ratioMatch = ratioText.match(/1:(\\d+)/);
                     const ratioValue = ratioMatch ? parseInt(ratioMatch[1]) : 1;
                     
-                    if (!selectedDuplicationRatios.includes(ratioValue)) {{
+                    if (!selectedDuplicationRatios.includes(ratioValue)) {
                         showRow = false;
-                    }}
-                }}
+                    }
+                }
 
                 row.style.display = showRow ? '' : 'none';
-            }}
-        }}
+            }
+        }
         
-        function toggleFilter(columnIndex) {{
+        function toggleFilter(columnIndex) {
             const dropdown = document.getElementById('filter-' + columnIndex);
             const allDropdowns = document.querySelectorAll('.filter-dropdown');
             
             // Close all other dropdowns
-            allDropdowns.forEach(dd => {{
-                if (dd !== dropdown) {{
+            allDropdowns.forEach(dd => {
+                if (dd !== dropdown) {
                     dd.style.display = 'none';
-                }}}});
+                }});
             
             // Toggle current dropdown
             dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
-        }}
+        }
         
-        function clearAllFilters() {{
+        function clearAllFilters() {
             const textFilters = document.querySelectorAll('.filter-input');
             const checkboxes = document.querySelectorAll('input[type="checkbox"]');
             
@@ -2000,51 +2074,51 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
             checkboxes.forEach(checkbox => checkbox.checked = false);
             
             filterTable();
-        }}
+        }
         
         // Close dropdowns when clicking outside
-        document.addEventListener('click', function(event) {{
+        document.addEventListener('click', function(event) {
             const isFilterClick = event.target.closest('.filterable') || event.target.closest('.filter-dropdown');
             const isColumnVisClick = event.target.closest('.column-visibility-dropdown');
             
-            if (!isFilterClick) {{
-                document.querySelectorAll('.filter-dropdown').forEach(dd => {{
+            if (!isFilterClick) {
+                document.querySelectorAll('.filter-dropdown').forEach(dd => {
                     dd.style.display = 'none';
-                }});
-            }}
+                });
+            }
             
-            if (!isColumnVisClick) {{
+            if (!isColumnVisClick) {
                 document.getElementById('columnVisibilityDropdown').classList.remove('show');
-            }}
-        }});
+            }
+        });
         
         // Initialize Bootstrap tooltips
-        function initializeTooltips() {{
+        function initializeTooltips() {
             const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-            [...tooltipTriggerList].forEach(tooltipTriggerEl => {{
-                try {{
+            [...tooltipTriggerList].forEach(tooltipTriggerEl => {
+                try {
                     // Dispose existing tooltip if any
                     const existingTooltip = bootstrap.Tooltip.getInstance(tooltipTriggerEl);
-                    if (existingTooltip) {{
+                    if (existingTooltip) {
                         existingTooltip.dispose();
-                    }}
+                    }
                     
                     // Create new tooltip
-                    new bootstrap.Tooltip(tooltipTriggerEl, {{
+                    new bootstrap.Tooltip(tooltipTriggerEl, {
                         boundary: document.body,
                         trigger: 'hover focus',
                         container: 'body'
-                    }});
-                }} catch (err) {{
+                    });
+                } catch (err) {
                     console.error('Error initializing tooltip:', err);
-                }}
-            }});
-        }}
+                }
+            });
+        }
         
         // Initialize tooltips when page loads
-        document.addEventListener('DOMContentLoaded', function() {{
+        document.addEventListener('DOMContentLoaded', function() {
             initializeTooltips();
-        }});
+        });
     </script>
     
     <!-- Bootstrap JS -->

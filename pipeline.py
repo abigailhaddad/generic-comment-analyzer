@@ -128,13 +128,19 @@ def extract_text_with_gemini(file_path: str) -> str:
         logger.error(f"Gemini extraction failed for {file_path}: {e}")
         return ""
 
-def process_attachments(comment_data: Dict[str, Any], attachments_dir: str, attachment_col: str = 'Attachment Files') -> str:
-    """Download and process attachments for a comment, return combined text."""
+def process_attachments(comment_data: Dict[str, Any], attachments_dir: str, attachment_col: str = 'Attachment Files') -> tuple[str, Dict[str, Any]]:
+    """Download and process attachments for a comment, return combined text and processing status."""
     if attachment_col not in comment_data or not comment_data[attachment_col]:
-        return ""
+        return "", {"total": 0, "processed": 0, "failed": 0, "failures": []}
     
     attachment_urls = comment_data[attachment_col].split(',')
     combined_attachment_text = []
+    processing_status = {
+        "total": len([url for url in attachment_urls if url.strip()]),
+        "processed": 0,
+        "failed": 0,
+        "failures": []
+    }
     
     # Get comment ID using multiple possible field names
     comment_id = (comment_data.get('Document ID') or 
@@ -171,10 +177,16 @@ def process_attachments(comment_data: Dict[str, Any], attachments_dir: str, atta
             if text.strip():
                 combined_attachment_text.append(text.strip())
                 logger.info(f"  Extracted {len(text)} characters from {filename}")
+                processing_status["processed"] += 1
             else:
                 logger.warning(f"  No text extracted from {filename}")
+                processing_status["failed"] += 1
+                processing_status["failures"].append({"filename": filename, "reason": "no_text_extracted"})
+        else:
+            processing_status["failed"] += 1
+            processing_status["failures"].append({"filename": filename, "reason": "download_failed"})
     
-    return "\n\n--- ATTACHMENT ---\n\n".join(combined_attachment_text)
+    return "\n\n--- ATTACHMENT ---\n\n".join(combined_attachment_text), processing_status
 
 def load_column_mapping() -> Dict[str, str]:
     """Load column mappings from config file."""
@@ -248,9 +260,10 @@ def read_comments_from_csv(csv_file: str, limit: Optional[int] = None, sample_si
         
         # Process attachments
         attachment_text = ""
+        attachment_status = None
         if has_attachments:
             logger.info(f"Processing attachments for comment {comment_id}")
-            attachment_text = process_attachments(row, attachments_dir, attachment_col)
+            attachment_text, attachment_status = process_attachments(row, attachments_dir, attachment_col)
         
         # Combine comment text and attachment text
         full_text = comment_text
@@ -285,6 +298,7 @@ def read_comments_from_csv(csv_file: str, limit: Optional[int] = None, sample_si
             'text': full_text,
             'comment_text': comment_text,
             'attachment_text': attachment_text,
+            'attachment_status': attachment_status,
             'submitter': submitter,
             'organization': row.get(column_mapping.get('organization', 'Organization Name'), ''),
             'date': row.get(column_mapping.get('date', 'Posted Date'), ''),
