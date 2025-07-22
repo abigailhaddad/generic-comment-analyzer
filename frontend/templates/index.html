@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stance Discovery Tool</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .controls {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        select, input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2980b9;
+        }
+        
+        .btn-success {
+            background-color: #27ae60;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background-color: #229954;
+        }
+        
+        .btn-secondary {
+            background-color: #95a5a6;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #7f8c8d;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .stances-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: none;
+        }
+        
+        .stance-item {
+            margin-bottom: 20px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .stance-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .stance-name {
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+        
+        .stance-keywords {
+            font-size: 14px;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+        
+        .stance-keywords strong {
+            color: #495057;
+        }
+        
+        .stance-description {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            min-height: 60px;
+            resize: vertical;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        .btn-cancel {
+            background-color: #e74c3c;
+            color: white;
+            margin-top: 15px;
+        }
+        
+        .btn-cancel:hover {
+            background-color: #c0392b;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .stance-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 14px;
+        }
+        
+        .btn-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Stance Discovery Tool</h1>
+        
+        <div class="controls">
+            <div class="form-group">
+                <label for="model">Select Model:</label>
+                <select id="model" name="model">
+                    {% for model_id, model_name in models.items() %}
+                    <option value="{{ model_id }}" {% if model_id == 'gpt-4o' %}selected{% endif %}>{{ model_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="num_comments">Number of Comments to Analyze:</label>
+                <input type="number" id="num_comments" name="num_comments" value="50" min="10" max="500">
+            </div>
+            
+            <div class="button-group">
+                <button class="btn-primary" onclick="discoverStances()">Discover Stances</button>
+                <button class="btn-secondary" onclick="loadExistingStances()">Load Existing Stances</button>
+            </div>
+            
+            <div class="status" id="status"></div>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 20px;">Discovering stances... This may take a moment.</p>
+            <button class="btn-cancel" onclick="cancelRequest()">Cancel</button>
+        </div>
+        
+        <div class="stances-container" id="stancesContainer">
+            <h2>Discovered Stances</h2>
+            <p style="margin-bottom: 20px;">Edit the descriptions below and click Save to update stances.json</p>
+            
+            <div id="stancesList"></div>
+            
+            <div class="button-group" style="margin-top: 30px;">
+                <button class="btn-success" onclick="saveStances()">Save Changes</button>
+                <button class="btn-primary btn-small" onclick="addNewStance()">Add New Stance</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentStances = [];
+        let currentRequest = null;
+        
+        function showStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.className = `status ${type}`;
+            status.textContent = message;
+            status.style.display = 'block';
+            
+            if (type !== 'error') {
+                setTimeout(() => {
+                    status.style.display = 'none';
+                }, 5000);
+            }
+        }
+        
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+        
+        async function discoverStances() {
+            const model = document.getElementById('model').value;
+            const numComments = parseInt(document.getElementById('num_comments').value);
+            
+            showLoading(true);
+            showStatus('Discovering stances...', 'info');
+            
+            // Create an AbortController for cancellation
+            const controller = new AbortController();
+            currentRequest = controller;
+            
+            try {
+                const response = await fetch('/discover_stances', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: model,
+                        num_comments: numComments
+                    }),
+                    signal: controller.signal
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentStances = data.stances;
+                    displayStances();
+                    showStatus(`Successfully discovered ${data.count} stances!`, 'success');
+                } else {
+                    showStatus(`Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    showStatus('Request cancelled', 'info');
+                } else {
+                    showStatus(`Error: ${error.message}`, 'error');
+                }
+            } finally {
+                showLoading(false);
+                currentRequest = null;
+            }
+        }
+        
+        function cancelRequest() {
+            if (currentRequest) {
+                currentRequest.abort();
+                showLoading(false);
+                showStatus('Cancelling request...', 'info');
+            }
+        }
+        
+        async function loadExistingStances() {
+            try {
+                const response = await fetch('/get_stances');
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentStances = data.stances;
+                    displayStances();
+                    showStatus(`Loaded ${data.stances.length} existing stances`, 'success');
+                } else {
+                    showStatus(`Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function displayStances() {
+            const container = document.getElementById('stancesContainer');
+            const list = document.getElementById('stancesList');
+            
+            console.log('Displaying stances:', currentStances);
+            
+            list.innerHTML = '';
+            
+            currentStances.forEach((stance, index) => {
+                console.log(`Processing stance ${index}:`, stance);
+                
+                const stanceDiv = document.createElement('div');
+                stanceDiv.className = 'stance-item';
+                
+                // Handle different possible field names and structures
+                const name = stance.name || stance.theme || 'Unnamed Stance';
+                const keywords = stance.keywords || stance.key_terms || [];
+                const description = stance.description || stance.summary || '';
+                
+                stanceDiv.innerHTML = `
+                    <div class="stance-header">
+                        <div class="stance-name">${name}</div>
+                        <div class="stance-actions">
+                            <button class="btn-danger btn-small" onclick="removeStance(${index})">Remove</button>
+                        </div>
+                    </div>
+                    <div class="stance-keywords">
+                        <strong>Keywords:</strong> ${Array.isArray(keywords) ? keywords.join(', ') : keywords}
+                    </div>
+                    <textarea 
+                        class="stance-description" 
+                        data-index="${index}"
+                        onchange="updateStanceDescription(${index}, this.value)"
+                    >${description}</textarea>
+                `;
+                list.appendChild(stanceDiv);
+            });
+            
+            container.style.display = 'block';
+        }
+        
+        function updateStanceDescription(index, newDescription) {
+            // Update the appropriate field based on the data structure
+            if (currentStances[index].hasOwnProperty('description')) {
+                currentStances[index].description = newDescription;
+            } else if (currentStances[index].hasOwnProperty('summary')) {
+                currentStances[index].summary = newDescription;
+            }
+        }
+        
+        function addNewStance() {
+            const name = prompt('Enter stance name:');
+            if (!name) return;
+            
+            const keywords = prompt('Enter keywords (comma-separated):');
+            if (!keywords) return;
+            
+            const description = prompt('Enter description:');
+            if (!description) return;
+            
+            currentStances.push({
+                name: name,
+                keywords: keywords.split(',').map(k => k.trim()),
+                description: description
+            });
+            
+            displayStances();
+        }
+        
+        function removeStance(index) {
+            if (confirm(`Are you sure you want to remove "${currentStances[index].name}"?`)) {
+                currentStances.splice(index, 1);
+                displayStances();
+            }
+        }
+        
+        async function saveStances() {
+            try {
+                const response = await fetch('/update_stances', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        stances: currentStances
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus('Stances saved successfully!', 'success');
+                } else {
+                    showStatus(`Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Load existing stances on page load
+        window.onload = () => {
+            loadExistingStances();
+        };
+    </script>
+</body>
+</html>
