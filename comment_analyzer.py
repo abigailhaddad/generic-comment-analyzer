@@ -29,22 +29,16 @@ class TimeoutError(Exception):
 
 # Placeholder enums - will be populated by discover_stances.py
 class Stance(str, Enum):
-    COVID_19_VACCINE_ACCESS_SUPPORT_FOR_COVID_19_VACCINE_ACCESS = "COVID-19 Vaccine Access: Support for COVID-19 Vaccine Access"
-    COVID_19_VACCINE_ACCESS_OPPOSE_COVID_19_VACCINE_ACCESS = "COVID-19 Vaccine Access: Oppose COVID-19 Vaccine Access"
-    VACCINE_SAFETY_CONCERNS_SUPPORT_FOR_VACCINE_SAFETY = "Vaccine Safety Concerns: Support for Vaccine Safety"
-    VACCINE_SAFETY_CONCERNS_OPPOSE_VACCINE_SAFETY = "Vaccine Safety Concerns: Oppose Vaccine Safety"
-    REGULATORY_CHANGES_AND_COMMITTEE_MEMBERSHIP_SUPPORT_FOR_CURRENT_REGULATORY_CHANGES = "Regulatory Changes and Committee Membership: Support for Current Regulatory Changes"
-    REGULATORY_CHANGES_AND_COMMITTEE_MEMBERSHIP_OPPOSE_CURRENT_REGULATORY_CHANGES = "Regulatory Changes and Committee Membership: Oppose Current Regulatory Changes"
-    INDEPENDENT_SCIENTIFIC_OVERSIGHT_SUPPORT_FOR_INDEPENDENT_OVERSIGHT = "Independent Scientific Oversight: Support for Independent Oversight"
-    INDEPENDENT_SCIENTIFIC_OVERSIGHT_OPPOSE_INDEPENDENT_OVERSIGHT = "Independent Scientific Oversight: Oppose Independent Oversight"
-    PUBLIC_TRUST_IN_VACCINATIONS_SUPPORT_FOR_PUBLIC_TRUST_INITIATIVES = "Public Trust in Vaccinations: Support for Public Trust Initiatives"
-    PUBLIC_TRUST_IN_VACCINATIONS_OPPOSE_PUBLIC_TRUST_INITIATIVES = "Public Trust in Vaccinations: Oppose Public Trust Initiatives"
-    RISK_ASSESSMENT_AND_VACCINE_RECOMMENDATIONS_SUPPORT_FOR_UNIVERSAL_RECOMMENDATIONS = "Risk Assessment and Vaccine Recommendations: Support for Universal Recommendations"
-    RISK_ASSESSMENT_AND_VACCINE_RECOMMENDATIONS_OPPOSE_UNIVERSAL_RECOMMENDATIONS = "Risk Assessment and Vaccine Recommendations: Oppose Universal Recommendations"
-    VACCINE_DISTRIBUTION_POLICY_SUPPORT_FOR_CURRENT_DISTRIBUTION_POLICY = "Vaccine Distribution Policy: Support for Current Distribution Policy"
-    VACCINE_DISTRIBUTION_POLICY_OPPOSE_CURRENT_DISTRIBUTION_POLICY = "Vaccine Distribution Policy: Oppose Current Distribution Policy"
-    ANTI_VACCINE_SENTIMENT_OPPOSE_ANTI_VACCINE_INFLUENCE = "Anti-Vaccine Sentiment: Oppose Anti-Vaccine Influence"
-    ANTI_VACCINE_SENTIMENT_SUPPORT_ANTI_VACCINE_INFLUENCE = "Anti-Vaccine Sentiment: Support Anti-Vaccine Influence"
+    COVID_19_VACCINE_USAGE_SUPPORT_REMOVING_COVID_VACCINES_DUE_TO_SAFETY_CONCERNS = "COVID-19 Vaccine Usage: Support removing COVID vaccines due to safety concerns"
+    COVID_19_VACCINE_USAGE_OPPOSE_REMOVING_COVID_VACCINES_TO_MAINTAIN_PUBLIC_HEALTH_PROTECTION = "COVID-19 Vaccine Usage: Oppose removing COVID vaccines to maintain public health protection"
+    ACIP_COMMITTEE_AUTHORITY_AND_MEMBERSHIP_SUPPORT_CHANGES_TO_ACIP_COMMITTEE_BY_RFK_JR = "ACIP Committee Authority and Membership: Support changes to ACIP committee by RFK Jr."
+    ACIP_COMMITTEE_AUTHORITY_AND_MEMBERSHIP_OPPOSE_CHANGES_TO_ACIP_COMMITTEE_BY_RFK_JR_AND_CALL_FOR_REINSTATEMENT_OF_EXPERT_MEMBERS = "ACIP Committee Authority and Membership: Oppose changes to ACIP committee by RFK Jr. and call for reinstatement of expert members"
+    VACCINE_AVAILABILITY_AND_ACCESS_SUPPORT_UNIVERSAL_ACCESS_TO_VACCINES_FOR_ALL_POPULATIONS = "Vaccine Availability and Access: Support universal access to vaccines for all populations"
+    VACCINE_AVAILABILITY_AND_ACCESS_CONCERN_ABOUT_RESTRICTED_ACCESS_TO_VACCINES_DUE_TO_NEW_POLICIES = "Vaccine Availability and Access: Concern about restricted access to vaccines due to new policies"
+    VACCINE_SAFETY_AND_EFFECTIVENESS_QUESTION_THE_SAFETY_OF_CURRENT_COVID_VACCINES = "Vaccine Safety and Effectiveness: Question the safety of current COVID vaccines"
+    VACCINE_SAFETY_AND_EFFECTIVENESS_CONFIRM_THE_SAFETY_AND_EFFECTIVENESS_OF_VACCINES = "Vaccine Safety and Effectiveness: Confirm the safety and effectiveness of vaccines"
+    CONFLICT_OF_INTEREST_AND_TRANSPARENCY_IN_ACIP_DECISIONS_CONCERN_OVER_CONFLICT_OF_INTEREST_WITHIN_ACIP = "Conflict of Interest and Transparency in ACIP Decisions: Concern over conflict of interest within ACIP"
+    CONFLICT_OF_INTEREST_AND_TRANSPARENCY_IN_ACIP_DECISIONS_TRUST_IN_ACIP_S_CURRENT_TRANSPARENCY_AND_DECISION_MAKING = "Conflict of Interest and Transparency in ACIP Decisions: Trust in ACIP's current transparency and decision-making"
 
 
 class CommentAnalysisResult(BaseModel):
@@ -220,47 +214,35 @@ def create_regulation_analyzer(model=None, timeout_seconds=None):
     """Create an analyzer configured for regulation analysis"""
     
     stance_options = [
-        "COVID-19 Vaccine Access: Support for COVID-19 Vaccine Access",
-        "COVID-19 Vaccine Access: Oppose COVID-19 Vaccine Access",
-        "Vaccine Safety Concerns: Support for Vaccine Safety",
-        "Vaccine Safety Concerns: Oppose Vaccine Safety",
-        "Regulatory Changes and Committee Membership: Support for Current Regulatory Changes",
-        "Regulatory Changes and Committee Membership: Oppose Current Regulatory Changes",
-        "Independent Scientific Oversight: Support for Independent Oversight",
-        "Independent Scientific Oversight: Oppose Independent Oversight",
-        "Public Trust in Vaccinations: Support for Public Trust Initiatives",
-        "Public Trust in Vaccinations: Oppose Public Trust Initiatives",
-        "Risk Assessment and Vaccine Recommendations: Support for Universal Recommendations",
-        "Risk Assessment and Vaccine Recommendations: Oppose Universal Recommendations",
-        "Vaccine Distribution Policy: Support for Current Distribution Policy",
-        "Vaccine Distribution Policy: Oppose Current Distribution Policy",
-        "Anti-Vaccine Sentiment: Oppose Anti-Vaccine Influence",
-        "Anti-Vaccine Sentiment: Support Anti-Vaccine Influence"
+        "COVID-19 Vaccine Usage: Support removing COVID vaccines due to safety concerns",
+        "COVID-19 Vaccine Usage: Oppose removing COVID vaccines to maintain public health protection",
+        "ACIP Committee Authority and Membership: Support changes to ACIP committee by RFK Jr.",
+        "ACIP Committee Authority and Membership: Oppose changes to ACIP committee by RFK Jr. and call for reinstatement of expert members",
+        "Vaccine Availability and Access: Support universal access to vaccines for all populations",
+        "Vaccine Availability and Access: Concern about restricted access to vaccines due to new policies",
+        "Vaccine Safety and Effectiveness: Question the safety of current COVID vaccines",
+        "Vaccine Safety and Effectiveness: Confirm the safety and effectiveness of vaccines",
+        "Conflict of Interest and Transparency in ACIP Decisions: Concern over conflict of interest within ACIP",
+        "Conflict of Interest and Transparency in ACIP Decisions: Trust in ACIP's current transparency and decision-making"
     ]
     
-    system_prompt = """You are analyzing public comments about CDC ACIP's recommendations on COVID-19 vaccines.
+    system_prompt = """You are analyzing public comments about COVID-19 Vaccine Policy and ACIP Committee Changes.
 
-The public comments discuss the CDC's Advisory Committee on Immunization Practices (ACIP) recommendations and actions regarding COVID-19 vaccines, including access to vaccines, changes in committee membership, and concerns about vaccine safety and efficacy.
+The comments discuss the CDC's Advisory Committee on Immunization Practices (ACIP) and recent changes made to the committee members. There is a debate over the continuation of COVID-19 vaccine use and the implications of new appointments by RFK Jr.
 
 For each comment, identify:
 
 1. Stances: Which of these theme:position combinations does the commenter express? Look for the indicators listed below. (Select ALL that apply, or none if none apply)
-- COVID-19 Vaccine Access: Support for COVID-19 Vaccine Access: universal recommendation and access; available for all; right to continue use; preserve access; full coverage by insurance
-- COVID-19 Vaccine Access: Oppose COVID-19 Vaccine Access: remove access; limit access; suspend access; restrict access; prevent people from access
-- Vaccine Safety Concerns: Support for Vaccine Safety: safe and effective; life-saving tools; no significant adverse effects; saved hundreds of thousands of lives
-- Vaccine Safety Concerns: Oppose Vaccine Safety: remove all COVID shots; reports of deaths; serious adverse reactions; Vaccine Adverse Event Reporting System
-- Regulatory Changes and Committee Membership: Support for Current Regulatory Changes: support for RFK Jr.'s decision; agree with committee changes; trust in new ACIP members
-- Regulatory Changes and Committee Membership: Oppose Current Regulatory Changes: reinstate previous ACIP members; influence of anti-vaccine personalities; concerns about conflicts of interest; RFK Jr.'s actions are harmful
-- Independent Scientific Oversight: Support for Independent Oversight: independent decision process; disclose all conflicts of interest; keep politics out of public health; scientifically based
-- Independent Scientific Oversight: Oppose Independent Oversight: biased decisions; interference in decision-making; political influence on recommendations
-- Public Trust in Vaccinations: Support for Public Trust Initiatives: regain public's trust; transparent processes; scientific evidence; inform access to safe vaccines
-- Public Trust in Vaccinations: Oppose Public Trust Initiatives: eroded public confidence; mistrust in current vaccines; lack of transparency; concerns ignored
-- Risk Assessment and Vaccine Recommendations: Support for Universal Recommendations: universal recommendation for all ages; same schedule for everyone; CDC must recommend vaccines for all
-- Risk Assessment and Vaccine Recommendations: Oppose Universal Recommendations: individualized schedule; consider health status and risk factors; context-based vaccination
-- Vaccine Distribution Policy: Support for Current Distribution Policy: preserve current guidelines; insurance coverage; protect vulnerable groups
-- Vaccine Distribution Policy: Oppose Current Distribution Policy: change distribution priorities; concern about coverage inadequacies; vulnerable still at risk
-- Anti-Vaccine Sentiment: Oppose Anti-Vaccine Influence: anti-vaxxer RFK is not unbiased; conspiracy mongers; scientific misinformation
-- Anti-Vaccine Sentiment: Support Anti-Vaccine Influence: support for removal of vaccines; questions on vaccine effectiveness; skeptical of vaccine agendas
+- COVID-19 Vaccine Usage: Support removing COVID vaccines due to safety concerns: remove all currently licensed COVID shots; COVID vaccination in the Vaccine Adverse Event Reporting System; routine and repeated COVID shots; public’s trust
+- COVID-19 Vaccine Usage: Oppose removing COVID vaccines to maintain public health protection: vaccines are vital; COVID vaccines are important; access to COVID vaccines; prevent infections and long COVID; must preserve access
+- ACIP Committee Authority and Membership: Support changes to ACIP committee by RFK Jr.: grateful for new ACIP members; massive change needed; standing up to big pharma; new attitude
+- ACIP Committee Authority and Membership: Oppose changes to ACIP committee by RFK Jr. and call for reinstatement of expert members: recent termination of all members; removed expert advisors; RFK must reverse decision; critical to public health; undermines the process
+- Vaccine Availability and Access: Support universal access to vaccines for all populations: everyone should have access; vaccines available to all; unhindered access; universal COVID-19 vaccine recommendations; covered by insurance
+- Vaccine Availability and Access: Concern about restricted access to vaccines due to new policies: attempts to limit access; shutting down vaccines harms; concerned about limiting vaccinations; restrict access
+- Vaccine Safety and Effectiveness: Question the safety of current COVID vaccines: vaccines cause harm; not safe; adverse events; covert testing
+- Vaccine Safety and Effectiveness: Confirm the safety and effectiveness of vaccines: vaccines are safe and effective; proven efficacy; have saved lives; prevent severe outcomes
+- Conflict of Interest and Transparency in ACIP Decisions: Concern over conflict of interest within ACIP: disclose financial conflicts; independent third-party audit; ensure transparency; concerns about conflicts
+- Conflict of Interest and Transparency in ACIP Decisions: Trust in ACIP's current transparency and decision-making: trust in ACIP; confidence in transparency; trust decisions made; qualified expert inputs
 
 2. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. Must be verbatim from the text.
 

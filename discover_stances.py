@@ -116,9 +116,9 @@ Themes are topics like:
 - "Economic impact"
 
 Positions are stances people take on themes like:
-- "Support for continued vaccine access" with indicators: endorses safety data, supports availability
-- "Opposition to vaccine requirements" with indicators: emphasizes personal choice, questions mandates
-- "Support for stronger oversight" with indicators: calls for more regulation, wants additional safeguards
+- "Support maintaining universal vaccine access for all age groups" with indicators: endorses safety data, supports availability, emphasizes public health benefits
+- "Oppose vaccine mandates based on personal freedom concerns" with indicators: emphasizes individual choice, questions government authority, cites bodily autonomy
+- "Support stricter safety monitoring and transparency requirements" with indicators: calls for more regulation, wants additional safeguards, demands full disclosure
 
 Each theme should:
 - Be a clear topic/subject area that people discuss
@@ -126,12 +126,15 @@ Each theme should:
 - Be actually present in multiple comments
 
 Each position should:
+- Be DETAILED and SPECIFIC - not just "Support X" but "Support X because of Y reason/context"
+- Include the core argument or reasoning in the position name itself
+- Be 8-15 words long to capture the nuance of the position
+- Examples of good detailed positions:
+  - "Support removing COVID vaccines due to safety concerns and adverse event reports"
+  - "Oppose political interference in ACIP's science-based decision making process"
+  - "Support maintaining vaccine access to protect immunocompromised and vulnerable populations"
 - Be clearly framed as SUPPORT or OPPOSITION to something specific within the theme
 - NEVER have two "Support for" positions that are opposites - use "Support for X" vs "Oppose X" instead
-- BAD EXAMPLE: "Support for Policy A" + "Support for Policy B" where A and B are opposites
-- GOOD EXAMPLE: "Support for Policy A" + "Oppose Policy A"
-- If you find yourself writing "Support for X" and "Support for the opposite of X", change the second one to "Oppose X"
-- Multiple "Support for" positions are only acceptable if they support genuinely different, non-conflicting aspects
 - Have specific indicators: phrases, keywords, concepts, or argument patterns
 - Be clearly distinct from other positions within the same theme
 
@@ -174,11 +177,15 @@ Each theme should:
 - Be actually present in multiple comments
 
 Each position should:
+- Be DETAILED and SPECIFIC - include the reasoning or context in the position name (8-15 words)
+- Examples of good opposing positions within a theme:
+  - "Support removing COVID vaccines due to safety concerns and adverse event reports"
+  - "Oppose removing COVID vaccines to maintain protection for vulnerable populations"
+- When positions are opposites, frame them as clear contradictions:
+  - One as "Support X because of Y"
+  - Other as "Oppose X because of Z"
 - Represent a distinct viewpoint that commenters typically hold exclusively within that theme
-- Be clearly framed as SUPPORT or OPPOSITION to something specific
 - NEVER have two "Support for" positions that are opposites - use "Support for X" vs "Oppose X" instead
-- Avoid contradictory pairs like "Support for Removal" and "Support for Continued Access" - make one "Support" and one "Oppose"
-- Multiple "Support for" positions are only acceptable if they support genuinely different, non-conflicting aspects
 - Have specific indicators: phrases, keywords, concepts, or argument patterns
 - Not significantly overlap with other positions within the same theme
 
@@ -433,12 +440,12 @@ def main():
             logger.error("No comments with text content found")
             return
         
-        # Run discovery with mutually_exclusive strategy and 8 themes
+        # Run discovery with mutually_exclusive strategy and 5 themes
         logger.info("Discovering themes and positions...")
         result = discover_themes_experimental(
             comments=comments,
             model=args.model,
-            target_count=8,
+            target_count=5,
             prompt_strategy='mutually_exclusive'
         )
         

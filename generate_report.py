@@ -485,14 +485,29 @@ def generate_stance_cooccurrence_html(sorted_items, stats, field_info):
                     # Build the details content including agreement scores and connections
                     details_content = []
                     
-                    # Show agreement scores with all other positions that have overlap
+                    # Find highest and lowest agreement scores
+                    agreement_pairs = [(stance, pct) for stance, pct in stance_agreement_scores.items() 
+                                     if stance != full_stance]
+                    
                     agreement_items = []
-                    for other_stance, agreement_pct in stance_agreement_scores.items():
-                        if other_stance != full_stance and agreement_pct > 0:
-                            agreement_items.append(f'<div class="agreement-item">📊 {agreement_pct:.0f}% agreement with: {other_stance}</div>')
+                    if agreement_pairs:
+                        # Sort by agreement percentage
+                        agreement_pairs.sort(key=lambda x: x[1], reverse=True)
+                        
+                        # Get highest agreement (if > 0%)
+                        for stance, pct in agreement_pairs:
+                            if pct > 0:
+                                agreement_items.append(f'<div class="agreement-item">📊 Highest agreement ({pct:.0f}%): {stance}</div>')
+                                break
+                        
+                        # Get lowest agreement
+                        if len(agreement_pairs) > 1:
+                            lowest_stance, lowest_pct = agreement_pairs[-1]
+                            # Only show if it's different from highest and meaningful
+                            if not agreement_items or (agreement_items and lowest_pct < agreement_pairs[0][1]):
+                                agreement_items.append(f'<div class="agreement-item">📊 Lowest agreement ({lowest_pct:.0f}%): {lowest_stance}</div>')
                     
                     if agreement_items:
-                        details_content.append('<div class="agreements-header">📊 Agreement scores:</div>')
                         details_content.extend(agreement_items)
                     else:
                         details_content.append('<div class="no-agreements">📊 No overlaps with other positions</div>')
@@ -1626,7 +1641,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                                 <div class="filter-dropdown" id="filter-9" style="display: none;">"""
     
     # Build duplication ratio checkboxes
-    dup_ratio_checkboxes = ''.join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="duplication_ratio" value="{ratio}" onchange="filterTable()"> 1:{ratio}</label>' 
+    dup_ratio_checkboxes = ''.join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="duplication_ratio" value="{ratio}" onchange="filterTable()"> {ratio}</label>' 
                                    for ratio in sorted(field_analysis.get('duplication_ratio', {}).get('unique_values', []), reverse=True))
     
     html_template += dup_ratio_checkboxes
@@ -1719,10 +1734,10 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         
         if duplication_count == 1:
             count_display = '<span class="unique-indicator">1</span>'
-            ratio_display = f'<span class="unique-indicator">1:{duplication_ratio}</span>'
+            ratio_display = f'<span class="unique-indicator">{duplication_ratio}</span>'
         else:
             count_display = f'<span class="duplicate-indicator">{duplication_count}</span>'
-            ratio_display = f'<span class="duplicate-indicator">1:{duplication_ratio}</span>'
+            ratio_display = f'<span class="duplicate-indicator">{duplication_ratio}</span>'
         
         # Create tooltip cells for truncated content
         key_quote_cell = create_tooltip_cell(key_quote, 300, tooltip_max_length=500).replace('<td', '<td style="display: none;"')
