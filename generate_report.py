@@ -1337,6 +1337,38 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
             font-weight: 600;
         }}
         
+        .pagination-controls {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: auto;
+        }}
+        
+        .pagination-info {{
+            font-size: 14px;
+            color: #666;
+        }}
+        
+        .pagination-button {{
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }}
+        
+        .pagination-button:hover {{
+            background: #0056b3;
+        }}
+        
+        .pagination-button:disabled {{
+            background: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }}
+        
         
         .clear-filters {{
             background: #dc3545;
@@ -1579,6 +1611,13 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                             <label for="col-11">Rationale (LLM)</label>
                         </div>
                     </div>
+                </div>
+                <div class="pagination-controls">
+                    <span class="pagination-info">
+                        Showing <span id="startRow">1</span>-<span id="endRow">20</span> of <span id="totalRows">0</span> rows
+                    </span>
+                    <button class="pagination-button" id="prevPage" onclick="changePage(-1)">Previous</button>
+                    <button class="pagination-button" id="nextPage" onclick="changePage(1)">Next</button>
                 </div>
             </div>
                 
@@ -1839,6 +1878,11 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         const columnVisibility = {
             0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: true, 9: false, 10: false, 11: false
         };
+        
+        // Pagination state
+        let currentPage = 1;
+        const rowsPerPage = 20;
+        let filteredRows = [];
 
         // Initialize column visibility on page load
         document.addEventListener('DOMContentLoaded', function() {
@@ -1850,6 +1894,9 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                     checkbox.checked = visible;
                 }
             }
+            
+            // Initialize pagination
+            filterTable();
         });
 
         function toggleColumnVisibility() {
@@ -1886,6 +1933,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         function filterTable() {
             const table = document.getElementById('commentsTable');
             const rows = table.getElementsByTagName('tr');
+            filteredRows = []; // Reset filtered rows
             
             // Get text input filters
             const textFilters = document.querySelectorAll('.filter-input');
@@ -1995,8 +2043,15 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                     }
                 }
 
-                row.style.display = showRow ? '' : 'none';
+                if (showRow) {
+                    filteredRows.push(row);
+                }
+                row.style.display = 'none'; // Hide all rows initially
             }
+            
+            // Reset to first page when filtering
+            currentPage = 1;
+            updatePagination();
         }
         
         function toggleFilter(columnIndex) {
@@ -2022,6 +2077,35 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
             filterCheckboxes.forEach(checkbox => checkbox.checked = false);
             
             filterTable();
+        }
+        
+        function updatePagination() {
+            const totalFilteredRows = filteredRows.length;
+            const totalPages = Math.ceil(totalFilteredRows / rowsPerPage);
+            
+            // Update pagination info
+            const startRow = totalFilteredRows === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
+            const endRow = Math.min(currentPage * rowsPerPage, totalFilteredRows);
+            
+            document.getElementById('startRow').textContent = startRow;
+            document.getElementById('endRow').textContent = endRow;
+            document.getElementById('totalRows').textContent = totalFilteredRows;
+            
+            // Enable/disable buttons
+            document.getElementById('prevPage').disabled = currentPage === 1;
+            document.getElementById('nextPage').disabled = currentPage >= totalPages || totalFilteredRows === 0;
+            
+            // Show only rows for current page
+            filteredRows.forEach((row, index) => {
+                const rowNumber = index + 1;
+                const showRow = rowNumber > (currentPage - 1) * rowsPerPage && rowNumber <= currentPage * rowsPerPage;
+                row.style.display = showRow ? '' : 'none';
+            });
+        }
+        
+        function changePage(direction) {
+            currentPage += direction;
+            updatePagination();
         }
         
         // Close dropdowns when clicking outside
