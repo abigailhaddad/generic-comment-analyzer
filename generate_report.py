@@ -1369,6 +1369,21 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
             opacity: 0.6;
         }}
         
+        .table-controls {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }}
+        
+        .controls-left {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        
         
         .clear-filters {{
             background: #dc3545;
@@ -1558,10 +1573,11 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         <div class="section">
             <h2>Comments</h2>
             <div class="table-controls">
-                <button class="clear-filters" onclick="clearAllFilters()">Clear All Filters</button>
-                <div class="column-visibility-dropdown">
-                    <button class="show-hide-columns" onclick="toggleColumnVisibility()">Show/Hide Columns</button>
-                    <div class="column-visibility-content" id="columnVisibilityDropdown">
+                <div class="controls-left">
+                    <button class="clear-filters" onclick="clearAllFilters()">Clear All Filters</button>
+                    <div class="column-visibility-dropdown">
+                        <button class="show-hide-columns" onclick="toggleColumnVisibility()">Show/Hide Columns</button>
+                        <div class="column-visibility-content" id="columnVisibilityDropdown">
                         <div class="column-visibility-item">
                             <input type="checkbox" id="col-0" checked onchange="toggleColumn(0)">
                             <label for="col-0">Comment ID</label>
@@ -1611,6 +1627,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                             <label for="col-11">Rationale (LLM)</label>
                         </div>
                     </div>
+                </div>
                 </div>
                 <div class="pagination-controls">
                     <span class="pagination-info">
