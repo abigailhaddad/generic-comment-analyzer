@@ -294,19 +294,26 @@ def read_comments_from_csv(csv_file: str, limit: Optional[int] = None, sample_si
         
         # Build submitter name from first/last name or use combined field
         submitter = ""
-        first_name_col = column_mapping.get('first_name', 'First Name')
-        last_name_col = column_mapping.get('last_name', 'Last Name')
         
-        first_name = row.get(first_name_col, '').strip()
-        last_name = row.get(last_name_col, '').strip()
+        # First check if there's a mapped submitter field
+        if 'submitter' in column_mapping:
+            submitter = row.get(column_mapping['submitter'], '').strip()
         
-        if first_name or last_name:
-            submitter = f"{first_name} {last_name}".strip()
-        else:
-            # Try other common submitter fields
-            submitter = (row.get('Submitter Name', '') or 
-                        row.get('submitter', '') or 
-                        row.get('Author', ''))
+        # If no submitter found, try first/last name fields
+        if not submitter:
+            first_name_col = column_mapping.get('first_name', 'First Name')
+            last_name_col = column_mapping.get('last_name', 'Last Name')
+            
+            first_name = row.get(first_name_col, '').strip()
+            last_name = row.get(last_name_col, '').strip()
+            
+            if first_name or last_name:
+                submitter = f"{first_name} {last_name}".strip()
+            else:
+                # Try other common submitter fields as fallback
+                submitter = (row.get('Submitter Name', '') or 
+                            row.get('submitter', '') or 
+                            row.get('Author', ''))
         
         comment_data = {
             'id': comment_id,
