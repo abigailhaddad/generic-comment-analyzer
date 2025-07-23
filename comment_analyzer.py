@@ -29,11 +29,16 @@ class TimeoutError(Exception):
 
 # Placeholder enums - will be populated by discover_stances.py
 class Stance(str, Enum):
-    JOB_SECURITY_OF_FEDERAL_EMPLOYEES_OPPOSE_RULE_DUE_TO_THREAT_TO_JOB_SECURITY = "Job Security of Federal Employees: Oppose rule due to threat to job security"
-    MERIT_BASED_VS_POLITICAL_APPOINTMENTS_OPPOSE_RULE_DUE_TO_POLITICIZATION_CONCERNS = "Merit-Based vs. Political Appointments: Oppose rule due to politicization concerns"
-    PERFORMANCE_AND_ACCOUNTABILITY_IN_CIVIL_SERVICE_OPPOSE_RULE_AS_UNNECESSARY_FOR_PERFORMANCE_IMPROVEMENT = "Performance and Accountability in Civil Service: Oppose rule as unnecessary for performance improvement"
-    IMPACT_ON_SCIENTIFIC_AND_INNOVATIVE_CAPACITY_OPPOSE_RULE_DUE_TO_NEGATIVE_IMPACT_ON_SCIENCE_AND_INNOVATION = "Impact on Scientific and Innovative Capacity: Oppose rule due to negative impact on science and innovation"
-    INFLUENCE_ON_FEDERAL_GOVERNMENT_OPERATIONS_OPPOSE_RULE_DUE_TO_HARM_ON_GOVERNMENT_OPERATIONS = "Influence on Federal Government Operations: Oppose rule due to harm on government operations"
+    CIVIL_SERVICE_PROTECTION_OPPOSE_SCHEDULE_F_IMPLEMENTATION = "Civil Service Protection: Oppose Schedule F Implementation"
+    CIVIL_SERVICE_PROTECTION_SUPPORT_SCHEDULE_F_FOR_ACCOUNTABILITY = "Civil Service Protection: Support Schedule F for Accountability"
+    POLITICAL_INFLUENCE_IN_GOVERNMENT_OPPOSE_POLITICAL_APPOINTEES_IN_CIVIL_SERVICE = "Political Influence in Government: Oppose Political Appointees in Civil Service"
+    POLITICAL_INFLUENCE_IN_GOVERNMENT_SUPPORT_POLITICAL_APPOINTEES_FOR_EFFICIENCY = "Political Influence in Government: Support Political Appointees for Efficiency"
+    MERITOCRACY_VS_LOYALTY_IN_EMPLOYMENT_ADVOCATE_FOR_MERIT_BASED_EMPLOYMENT = "Meritocracy vs. Loyalty in Employment: Advocate for Merit-Based Employment"
+    MERITOCRACY_VS_LOYALTY_IN_EMPLOYMENT_SUPPORT_LOYALTY_IN_APPOINTMENTS = "Meritocracy vs. Loyalty in Employment: Support Loyalty in Appointments"
+    IMPACT_ON_SCIENTIFIC_INTEGRITY_OPPOSE_POLITICIZATION_OF_SCIENCE = "Impact on Scientific Integrity: Oppose Politicization of Science"
+    IMPACT_ON_SCIENTIFIC_INTEGRITY_SUPPORT_POLITICAL_APPOINTEES_IN_SCIENCE_FOR_RESPONSIVENESS = "Impact on Scientific Integrity: Support Political Appointees in Science for Responsiveness"
+    TRUST_IN_GOVERNMENT_OPPOSE_EROSION_OF_TRUST = "Trust in Government: Oppose Erosion of Trust"
+    TRUST_IN_GOVERNMENT_SUPPORT_CHANGES_TO_RESTORE_CONFIDENCE = "Trust in Government: Support Changes to Restore Confidence"
 
 
 class CommentAnalysisResult(BaseModel):
@@ -209,25 +214,35 @@ def create_regulation_analyzer(model=None, timeout_seconds=None):
     """Create an analyzer configured for regulation analysis"""
     
     stance_options = [
-        "Job Security of Federal Employees: Oppose rule due to threat to job security",
-        "Merit-Based vs. Political Appointments: Oppose rule due to politicization concerns",
-        "Performance and Accountability in Civil Service: Oppose rule as unnecessary for performance improvement",
-        "Impact on Scientific and Innovative Capacity: Oppose rule due to negative impact on science and innovation",
-        "Influence on Federal Government Operations: Oppose rule due to harm on government operations"
+        "Civil Service Protection: Oppose Schedule F Implementation",
+        "Civil Service Protection: Support Schedule F for Accountability",
+        "Political Influence in Government: Oppose Political Appointees in Civil Service",
+        "Political Influence in Government: Support Political Appointees for Efficiency",
+        "Meritocracy vs. Loyalty in Employment: Advocate for Merit-Based Employment",
+        "Meritocracy vs. Loyalty in Employment: Support Loyalty in Appointments",
+        "Impact on Scientific Integrity: Oppose Politicization of Science",
+        "Impact on Scientific Integrity: Support Political Appointees in Science for Responsiveness",
+        "Trust in Government: Oppose Erosion of Trust",
+        "Trust in Government: Support Changes to Restore Confidence"
     ]
     
-    system_prompt = """You are analyzing public comments about OPM Schedule F Rule.
+    system_prompt = """You are analyzing public comments about Schedule F Proposed Rule.
 
-A proposed rule by the Office of Personnel Management aiming to improve performance, accountability, and responsiveness in civil service but allowing large-scale reclassification of federal jobs as political appointments.
+A proposed rule by the Office of Personnel Management to reclassify certain federal employee positions, primarily affecting civil servants, allowing them to be classified as political appointees without the standard protections against dismissal.
 
 For each comment, identify:
 
 1. Stances: Which of these theme:position combinations does the commenter express? Look for the indicators listed below. (Select ALL that apply, or none if none apply)
-- Job Security of Federal Employees: Oppose rule due to threat to job security: preserve the jobs; mass layoffs; threatens job stability; replaced by political appointees; harmful to job security
-- Merit-Based vs. Political Appointments: Oppose rule due to politicization concerns: political influence; political appointees; faction-based appointments; politicizes federal employees
-- Performance and Accountability in Civil Service: Oppose rule as unnecessary for performance improvement: not difficult to fire civil servants; adequate current procedures; anecdotes alleging resistance; surveys manipulated
-- Impact on Scientific and Innovative Capacity: Oppose rule due to negative impact on science and innovation: hampering the scientific review process; uninformed decisions on research funding; weaken innovations; decrease scientific productivity
-- Influence on Federal Government Operations: Oppose rule due to harm on government operations: harmful to federal government operations; non-partisan hiring process; greater corruption; less effective governance
+- Civil Service Protection: Oppose Schedule F Implementation: Phrases like 'strongly oppose', 'undermine civil service protections', and 'politicizing the federal workforce'.
+- Civil Service Protection: Support Schedule F for Accountability: Phrases such as 'bring accountability to federal bureaucracy', 'cut red tape', and 'hold employees accountable for performance'.
+- Political Influence in Government: Oppose Political Appointees in Civil Service: Statements including 'politicization undermines trust', 'nonpartisan civil service is essential', and 'protect institutional knowledge'.
+- Political Influence in Government: Support Political Appointees for Efficiency: Arguments framing the need for 'efficient government operations' and 'agility in implementing the President's agenda'.
+- Meritocracy vs. Loyalty in Employment: Advocate for Merit-Based Employment: Expressions like 'jobs should be awarded based on merit', 'experience and expertise are essential', and 'avoid patronage systems'.
+- Meritocracy vs. Loyalty in Employment: Support Loyalty in Appointments: Comments emphasizing 'dedication to the administration's goals', 'rotate positions for political alignment', and 'new policies reflect voter wishes'.
+- Impact on Scientific Integrity: Oppose Politicization of Science: References like 'science must remain nonpartisan', 'political influence destroys research integrity', and 'funding must be objective'.
+- Impact on Scientific Integrity: Support Political Appointees in Science for Responsiveness: Phrases suggesting 'scientific roles must align with current political priorities' and 'science should serve the administration's policies'.
+- Trust in Government: Oppose Erosion of Trust: Statements such as 'politicizing civil service undermines trust', 'integrity of government is at stake', and 'public service must not be political'.
+- Trust in Government: Support Changes to Restore Confidence: Comments promoting 'transparency in government', 'aligning federal employees with the will of the electorate', and 'returning to a system that holds accountability'.
 
 2. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. Must be verbatim from the text.
 

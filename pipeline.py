@@ -458,7 +458,12 @@ def analyze_comments_parallel(comments: List[Dict[str, Any]], model: str = "gpt-
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 # Create analyzer for each worker (thread-safe)
                 def create_analyzer():
-                    return CommentAnalyzer(model=model)
+                    # Look for config in frontend directory first, then current directory
+                    frontend_config = os.path.join(os.path.dirname(__file__), 'frontend', 'analyzer_config.json')
+                    if os.path.exists(frontend_config):
+                        return CommentAnalyzer(model=model, config_file=frontend_config)
+                    else:
+                        return CommentAnalyzer(model=model)
                 
                 # Submit all comments in this batch
                 future_to_comment = {}
@@ -498,7 +503,12 @@ def analyze_comments(comments: List[Dict[str, Any]], model: str = "gpt-4o-mini",
             logger.info(f"Truncating text to {truncate_chars} characters for LLM analysis")
         
         # Initialize analyzer using configuration file
-        analyzer = CommentAnalyzer(model=model)
+        # Look for config in frontend directory first, then current directory
+        frontend_config = os.path.join(os.path.dirname(__file__), 'frontend', 'analyzer_config.json')
+        if os.path.exists(frontend_config):
+            analyzer = CommentAnalyzer(model=model, config_file=frontend_config)
+        else:
+            analyzer = CommentAnalyzer(model=model)
         
         analyzed_comments = []
         

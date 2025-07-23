@@ -172,8 +172,9 @@ Instructions:
 - Only select stances that are clearly expressed in the comment
 - Be objective and avoid inserting personal opinions"""
             
-            # Save configuration
-            save_config(config)
+            # Save configuration to frontend directory
+            frontend_config_path = os.path.join(os.path.dirname(__file__), 'analyzer_config.json')
+            save_config(config, frontend_config_path)
             
             # Update comment_analyzer.py
             update_comment_analyzer(config)
