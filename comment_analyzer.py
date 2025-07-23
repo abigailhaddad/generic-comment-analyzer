@@ -29,16 +29,11 @@ class TimeoutError(Exception):
 
 # Placeholder enums - will be populated by discover_stances.py
 class Stance(str, Enum):
-    COVID_19_VACCINE_USAGE_SUPPORT_REMOVING_COVID_VACCINES_DUE_TO_SAFETY_CONCERNS = "COVID-19 Vaccine Usage: Support removing COVID vaccines due to safety concerns"
-    COVID_19_VACCINE_USAGE_OPPOSE_REMOVING_COVID_VACCINES_TO_MAINTAIN_PUBLIC_HEALTH_PROTECTION = "COVID-19 Vaccine Usage: Oppose removing COVID vaccines to maintain public health protection"
-    ACIP_COMMITTEE_AUTHORITY_AND_MEMBERSHIP_SUPPORT_CHANGES_TO_ACIP_COMMITTEE_BY_RFK_JR = "ACIP Committee Authority and Membership: Support changes to ACIP committee by RFK Jr."
-    ACIP_COMMITTEE_AUTHORITY_AND_MEMBERSHIP_OPPOSE_CHANGES_TO_ACIP_COMMITTEE_BY_RFK_JR_AND_CALL_FOR_REINSTATEMENT_OF_EXPERT_MEMBERS = "ACIP Committee Authority and Membership: Oppose changes to ACIP committee by RFK Jr. and call for reinstatement of expert members"
-    VACCINE_AVAILABILITY_AND_ACCESS_SUPPORT_UNIVERSAL_ACCESS_TO_VACCINES_FOR_ALL_POPULATIONS = "Vaccine Availability and Access: Support universal access to vaccines for all populations"
-    VACCINE_AVAILABILITY_AND_ACCESS_CONCERN_ABOUT_RESTRICTED_ACCESS_TO_VACCINES_DUE_TO_NEW_POLICIES = "Vaccine Availability and Access: Concern about restricted access to vaccines due to new policies"
-    VACCINE_SAFETY_AND_EFFECTIVENESS_QUESTION_THE_SAFETY_OF_CURRENT_COVID_VACCINES = "Vaccine Safety and Effectiveness: Question the safety of current COVID vaccines"
-    VACCINE_SAFETY_AND_EFFECTIVENESS_CONFIRM_THE_SAFETY_AND_EFFECTIVENESS_OF_VACCINES = "Vaccine Safety and Effectiveness: Confirm the safety and effectiveness of vaccines"
-    CONFLICT_OF_INTEREST_AND_TRANSPARENCY_IN_ACIP_DECISIONS_CONCERN_OVER_CONFLICT_OF_INTEREST_WITHIN_ACIP = "Conflict of Interest and Transparency in ACIP Decisions: Concern over conflict of interest within ACIP"
-    CONFLICT_OF_INTEREST_AND_TRANSPARENCY_IN_ACIP_DECISIONS_TRUST_IN_ACIP_S_CURRENT_TRANSPARENCY_AND_DECISION_MAKING = "Conflict of Interest and Transparency in ACIP Decisions: Trust in ACIP's current transparency and decision-making"
+    JOB_SECURITY_OF_FEDERAL_EMPLOYEES_OPPOSE_RULE_DUE_TO_THREAT_TO_JOB_SECURITY = "Job Security of Federal Employees: Oppose rule due to threat to job security"
+    MERIT_BASED_VS_POLITICAL_APPOINTMENTS_OPPOSE_RULE_DUE_TO_POLITICIZATION_CONCERNS = "Merit-Based vs. Political Appointments: Oppose rule due to politicization concerns"
+    PERFORMANCE_AND_ACCOUNTABILITY_IN_CIVIL_SERVICE_OPPOSE_RULE_AS_UNNECESSARY_FOR_PERFORMANCE_IMPROVEMENT = "Performance and Accountability in Civil Service: Oppose rule as unnecessary for performance improvement"
+    IMPACT_ON_SCIENTIFIC_AND_INNOVATIVE_CAPACITY_OPPOSE_RULE_DUE_TO_NEGATIVE_IMPACT_ON_SCIENCE_AND_INNOVATION = "Impact on Scientific and Innovative Capacity: Oppose rule due to negative impact on science and innovation"
+    INFLUENCE_ON_FEDERAL_GOVERNMENT_OPERATIONS_OPPOSE_RULE_DUE_TO_HARM_ON_GOVERNMENT_OPERATIONS = "Influence on Federal Government Operations: Oppose rule due to harm on government operations"
 
 
 class CommentAnalysisResult(BaseModel):
@@ -214,35 +209,25 @@ def create_regulation_analyzer(model=None, timeout_seconds=None):
     """Create an analyzer configured for regulation analysis"""
     
     stance_options = [
-        "COVID-19 Vaccine Usage: Support removing COVID vaccines due to safety concerns",
-        "COVID-19 Vaccine Usage: Oppose removing COVID vaccines to maintain public health protection",
-        "ACIP Committee Authority and Membership: Support changes to ACIP committee by RFK Jr.",
-        "ACIP Committee Authority and Membership: Oppose changes to ACIP committee by RFK Jr. and call for reinstatement of expert members",
-        "Vaccine Availability and Access: Support universal access to vaccines for all populations",
-        "Vaccine Availability and Access: Concern about restricted access to vaccines due to new policies",
-        "Vaccine Safety and Effectiveness: Question the safety of current COVID vaccines",
-        "Vaccine Safety and Effectiveness: Confirm the safety and effectiveness of vaccines",
-        "Conflict of Interest and Transparency in ACIP Decisions: Concern over conflict of interest within ACIP",
-        "Conflict of Interest and Transparency in ACIP Decisions: Trust in ACIP's current transparency and decision-making"
+        "Job Security of Federal Employees: Oppose rule due to threat to job security",
+        "Merit-Based vs. Political Appointments: Oppose rule due to politicization concerns",
+        "Performance and Accountability in Civil Service: Oppose rule as unnecessary for performance improvement",
+        "Impact on Scientific and Innovative Capacity: Oppose rule due to negative impact on science and innovation",
+        "Influence on Federal Government Operations: Oppose rule due to harm on government operations"
     ]
     
-    system_prompt = """You are analyzing public comments about COVID-19 Vaccine Policy and ACIP Committee Changes.
+    system_prompt = """You are analyzing public comments about OPM Schedule F Rule.
 
-The comments discuss the CDC's Advisory Committee on Immunization Practices (ACIP) and recent changes made to the committee members. There is a debate over the continuation of COVID-19 vaccine use and the implications of new appointments by RFK Jr.
+A proposed rule by the Office of Personnel Management aiming to improve performance, accountability, and responsiveness in civil service but allowing large-scale reclassification of federal jobs as political appointments.
 
 For each comment, identify:
 
 1. Stances: Which of these theme:position combinations does the commenter express? Look for the indicators listed below. (Select ALL that apply, or none if none apply)
-- COVID-19 Vaccine Usage: Support removing COVID vaccines due to safety concerns: remove all currently licensed COVID shots; COVID vaccination in the Vaccine Adverse Event Reporting System; routine and repeated COVID shots; public’s trust
-- COVID-19 Vaccine Usage: Oppose removing COVID vaccines to maintain public health protection: vaccines are vital; COVID vaccines are important; access to COVID vaccines; prevent infections and long COVID; must preserve access
-- ACIP Committee Authority and Membership: Support changes to ACIP committee by RFK Jr.: grateful for new ACIP members; massive change needed; standing up to big pharma; new attitude
-- ACIP Committee Authority and Membership: Oppose changes to ACIP committee by RFK Jr. and call for reinstatement of expert members: recent termination of all members; removed expert advisors; RFK must reverse decision; critical to public health; undermines the process
-- Vaccine Availability and Access: Support universal access to vaccines for all populations: everyone should have access; vaccines available to all; unhindered access; universal COVID-19 vaccine recommendations; covered by insurance
-- Vaccine Availability and Access: Concern about restricted access to vaccines due to new policies: attempts to limit access; shutting down vaccines harms; concerned about limiting vaccinations; restrict access
-- Vaccine Safety and Effectiveness: Question the safety of current COVID vaccines: vaccines cause harm; not safe; adverse events; covert testing
-- Vaccine Safety and Effectiveness: Confirm the safety and effectiveness of vaccines: vaccines are safe and effective; proven efficacy; have saved lives; prevent severe outcomes
-- Conflict of Interest and Transparency in ACIP Decisions: Concern over conflict of interest within ACIP: disclose financial conflicts; independent third-party audit; ensure transparency; concerns about conflicts
-- Conflict of Interest and Transparency in ACIP Decisions: Trust in ACIP's current transparency and decision-making: trust in ACIP; confidence in transparency; trust decisions made; qualified expert inputs
+- Job Security of Federal Employees: Oppose rule due to threat to job security: preserve the jobs; mass layoffs; threatens job stability; replaced by political appointees; harmful to job security
+- Merit-Based vs. Political Appointments: Oppose rule due to politicization concerns: political influence; political appointees; faction-based appointments; politicizes federal employees
+- Performance and Accountability in Civil Service: Oppose rule as unnecessary for performance improvement: not difficult to fire civil servants; adequate current procedures; anecdotes alleging resistance; surveys manipulated
+- Impact on Scientific and Innovative Capacity: Oppose rule due to negative impact on science and innovation: hampering the scientific review process; uninformed decisions on research funding; weaken innovations; decrease scientific productivity
+- Influence on Federal Government Operations: Oppose rule due to harm on government operations: harmful to federal government operations; non-partisan hiring process; greater corruption; less effective governance
 
 2. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. Must be verbatim from the text.
 

@@ -257,11 +257,12 @@ def _fallback_column_detection(columns: List[str]) -> Dict[str, str]:
 def main():
     parser = argparse.ArgumentParser(description='CSV column detection tool')
     parser.add_argument('--model', type=str, default='gpt-4o-mini', help='LLM model to use')
+    parser.add_argument('--csv', type=str, default='comments.csv', help='CSV file to analyze')
     
     args = parser.parse_args()
     
     try:
-        csv_file = 'comments.csv'
+        csv_file = args.csv
         
         # Detect CSV column mappings
         logger.info("🔍 Detecting CSV column mappings...")
@@ -302,7 +303,7 @@ def main():
             print("1. Review and edit column_mapping.json if needed")
             print("2. Review regulation_metadata.json for report titles")
             print("3. Create analyzer_config.json with your regulation-specific configuration")
-            print("4. Run the pipeline: python pipeline.py --csv comments.csv")
+            print(f"4. Run the pipeline: python pipeline.py --csv {csv_file}")
         else:
             logger.error("❌ Failed to detect column mappings")
             return

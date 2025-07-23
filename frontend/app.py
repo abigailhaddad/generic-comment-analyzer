@@ -15,7 +15,7 @@ import glob
 
 # Add parent directory to path to import discover_stances
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from discover_stances import discover_themes_experimental, load_comments_sample, generate_analyzer_config, save_config
+from discover_stances import discover_themes_experimental, load_comments_sample, generate_analyzer_config, save_config, update_comment_analyzer, DiscoveredThemes
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -71,8 +71,16 @@ def discover_stances_endpoint():
         
         logger.info(f"Discovering stances with model={model}, num_comments={num_comments}")
         
-        # Run stance discovery
-        csv_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'comments.csv')
+        # Find the CSV file
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        csv_files = glob.glob(os.path.join(base_dir, '*.csv'))
+        if not csv_files:
+            return jsonify({
+                'success': False,
+                'error': 'No CSV file found. Please upload a CSV file first.'
+            })
+        
+        csv_file = csv_files[0]
         
         # Load comments sample
         comments = load_comments_sample(csv_file, num_comments)
@@ -104,6 +112,70 @@ def discover_stances_endpoint():
         
         # Save the discovered stances
         save_stances(stances)
+        
+        # Update comment_analyzer.py with the new stances
+        try:
+            # Convert to DiscoveredThemes object
+            discovered = DiscoveredThemes(
+                themes=result['themes'],
+                regulation_name=result['regulation_name'],
+                regulation_description=result['regulation_description']
+            )
+            
+            # Generate configuration with theme:position format
+            config = generate_analyzer_config(discovered)
+            
+            # Update to use theme:position format
+            theme_position_options = []
+            theme_position_indicators = {}
+            
+            for theme in discovered.themes:
+                theme_name = theme['name']
+                for position in theme.get('positions', []):
+                    position_name = position['name']
+                    formatted_name = f"{theme_name}: {position_name}"
+                    theme_position_options.append(formatted_name)
+                    
+                    indicators = position['indicators']
+                    if isinstance(indicators, list):
+                        theme_position_indicators[formatted_name] = "; ".join(indicators)
+                    else:
+                        theme_position_indicators[formatted_name] = indicators
+            
+            config.stance_options = theme_position_options
+            config.stance_indicators = theme_position_indicators
+            
+            # Update system prompt for theme:position format
+            stance_list = "\n".join([f"- {name}: {indicators}" for name, indicators in theme_position_indicators.items()])
+            config.system_prompt = f"""You are analyzing public comments about {discovered.regulation_name}.
+
+{discovered.regulation_description}
+
+For each comment, identify:
+
+1. Stances: Which of these theme:position combinations does the commenter express? Look for the indicators listed below. (Select ALL that apply, or none if none apply)
+{stance_list}
+
+2. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. Must be verbatim from the text.
+
+3. Rationale: Briefly explain (1-2 sentences) why you selected these theme:position combinations.
+
+Instructions:
+- A comment may express multiple stances or no clear stance
+- Only select stances that are clearly expressed in the comment
+- Be objective and avoid inserting personal opinions"""
+            
+            # Save configuration
+            save_config(config)
+            
+            # Update comment_analyzer.py
+            update_comment_analyzer(config)
+            
+            logger.info("Successfully updated comment_analyzer.py with new stances")
+            
+        except Exception as e:
+            logger.error(f"Error updating comment_analyzer.py: {e}", exc_info=True)
+            # Don't fail the whole request if this fails
         
         return jsonify({
             'success': True,
@@ -247,7 +319,9 @@ def check_csv_file():
             size = os.path.getsize(csv_path)
             row_count = 0
             with open(csv_path, 'r', encoding='utf-8') as f:
-                row_count = sum(1 for line in f) - 1  # Subtract header
+                # Use CSV reader to properly handle multi-line fields
+                reader = csv.DictReader(f)
+                row_count = sum(1 for row in reader)
             
             return jsonify({
                 'exists': True,
@@ -294,7 +368,9 @@ def upload_csv():
         # Get row count
         row_count = 0
         with open(csv_path, 'r', encoding='utf-8') as f:
-            row_count = sum(1 for line in f) - 1  # Subtract header
+            # Use CSV reader to properly handle multi-line fields
+            reader = csv.DictReader(f)
+            row_count = sum(1 for row in reader)
         
         return jsonify({
             'success': True,
@@ -361,9 +437,19 @@ def run_column_detection():
         base_dir = os.path.dirname(os.path.dirname(__file__))
         detect_script = os.path.join(base_dir, 'detect_columns.py')
         
-        # Run the detection script
+        # Find the CSV file
+        csv_files = glob.glob(os.path.join(base_dir, '*.csv'))
+        if not csv_files:
+            return jsonify({
+                'success': False,
+                'error': 'No CSV file found. Please upload a CSV file first.'
+            })
+        
+        csv_filename = os.path.basename(csv_files[0])
+        
+        # Run the detection script with the CSV filename
         result = subprocess.run(
-            [sys.executable, detect_script],
+            [sys.executable, detect_script, '--csv', csv_filename],
             cwd=base_dir,
             capture_output=True,
             text=True

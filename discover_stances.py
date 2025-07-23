@@ -419,18 +419,19 @@ def print_results(discovered: DiscoveredThemes, config: CommentAnalyzerConfig):
     print("✅ comment_analyzer.py has been updated with enum definitions")
     print("✅ The comment analyzer will now identify support/opposition positions per comment")
     print(f"✅ Found {len(discovered.themes)} themes with {sum(len(theme.get('positions', [])) for theme in discovered.themes)} total positions")
-    print("✅ Ready to run: python pipeline.py --csv comments.csv")
+    print(f"✅ Ready to run: python pipeline.py --csv {csv_file}")
 
 
 def main():
     parser = argparse.ArgumentParser(description='Discover themes and positions in public comments')
     parser.add_argument('--sample', type=int, default=250, help='Number of comments to analyze (default: 250)')
     parser.add_argument('--model', type=str, default='gpt-4o', help='LLM model to use (default: gpt-4o)')
+    parser.add_argument('--csv', type=str, default='comments.csv', help='CSV file to analyze (default: comments.csv)')
     
     args = parser.parse_args()
     
     try:
-        csv_file = 'comments.csv'
+        csv_file = args.csv
         
         # Load comments sample
         logger.info("Loading comment sample...")
