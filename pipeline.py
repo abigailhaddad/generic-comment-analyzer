@@ -130,10 +130,15 @@ def extract_text_with_gemini(file_path: str) -> str:
 
 def process_attachments(comment_data: Dict[str, Any], attachments_dir: str, attachment_col: str = 'Attachment Files') -> tuple[str, Dict[str, Any]]:
     """Download and process attachments for a comment, return combined text and processing status."""
+    comment_id = comment_data.get('Document ID', 'Unknown')
+    logger.info(f"=== PROCESSING ATTACHMENTS FOR {comment_id} ===")
+    
     if attachment_col not in comment_data or not comment_data[attachment_col]:
+        logger.info(f"  No attachments found for {comment_id}")
         return "", {"total": 0, "processed": 0, "failed": 0, "failures": []}
     
     attachment_urls = comment_data[attachment_col].split(',')
+    logger.info(f"  Found {len(attachment_urls)} attachment URLs")
     combined_attachment_text = []
     processing_status = {
         "total": len([url for url in attachment_urls if url.strip()]),
@@ -176,15 +181,20 @@ def process_attachments(comment_data: Dict[str, Any], attachments_dir: str, atta
             
             if text.strip():
                 combined_attachment_text.append(text.strip())
-                logger.info(f"  Extracted {len(text)} characters from {filename}")
+                logger.info(f"  SUCCESS: Extracted {len(text)} characters from {filename}")
+                logger.info(f"  First 100 chars: {text.strip()[:100]}...")
                 processing_status["processed"] += 1
             else:
-                logger.warning(f"  No text extracted from {filename}")
+                logger.warning(f"  FAILED: No text extracted from {filename}")
                 processing_status["failed"] += 1
                 processing_status["failures"].append({"filename": filename, "reason": "no_text_extracted"})
         else:
             processing_status["failed"] += 1
             processing_status["failures"].append({"filename": filename, "reason": "download_failed"})
+    
+    logger.info(f"=== ATTACHMENT PROCESSING COMPLETE FOR {comment_id} ===")
+    logger.info(f"  Status: {processing_status}")
+    logger.info(f"  Total text extracted: {len(''.join(combined_attachment_text))} characters")
     
     return "\n\n--- ATTACHMENT ---\n\n".join(combined_attachment_text), processing_status
 
@@ -210,9 +220,13 @@ def load_column_mapping() -> Dict[str, str]:
         logger.error(f"Failed to load column mapping: {e}")
         return {}
 
-def read_comments_from_csv(csv_file: str, limit: Optional[int] = None, sample_size: Optional[int] = None) -> List[Dict[str, Any]]:
+def read_comments_from_csv(csv_file: str, limit: Optional[int] = None, sample_size: Optional[int] = None, random_seed: int = 42) -> List[Dict[str, Any]]:
     """Read comments from CSV file and return as list of dicts."""
     logger.info(f"Reading comments from {csv_file}")
+    
+    # Set random seed for reproducibility
+    random.seed(random_seed)
+    logger.info(f"Using random seed: {random_seed} for reproducible sampling")
     
     # Load column mappings
     column_mapping = load_column_mapping()
@@ -235,10 +249,11 @@ def read_comments_from_csv(csv_file: str, limit: Optional[int] = None, sample_si
     
     # Apply sampling if requested
     if sample_size and len(all_rows) > sample_size:
-        logger.info(f"Sampling {sample_size} comments from {len(all_rows)} total before processing attachments")
+        logger.info(f"Sampling {sample_size} comments from {len(all_rows)} total")
         all_rows = random.sample(all_rows, sample_size)
     
     # Second pass: process the selected comments with attachments
+    logger.info("Processing comments and downloading attachments...")
     comments = []
     for i, row in enumerate(all_rows):
         # Extract comment ID and text using column mappings

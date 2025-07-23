@@ -948,7 +948,12 @@
                 positionsHTML = '<div class="stance-field"><div class="field-label">Positions:</div>';
                 positions.forEach(pos => {
                     const posName = pos.name || 'Unnamed Position';
-                    const indicators = pos.indicators || [];
+                    // Ensure indicators is always an array
+                    let indicators = pos.indicators || [];
+                    if (!Array.isArray(indicators)) {
+                        // If it's a string, split it; otherwise make it an empty array
+                        indicators = typeof indicators === 'string' ? indicators.split(';').map(s => s.trim()) : [];
+                    }
                     positionsHTML += `
                         <div class="position-item">
                             <div class="position-header">${posName}</div>
@@ -995,7 +1000,12 @@
             let positionsHTML = '<div class="stance-field"><div class="field-label">Positions:</div>';
             positions.forEach((pos, posIndex) => {
                 const posName = pos.name || '';
-                const indicators = pos.indicators || [];
+                // Ensure indicators is always an array
+                let indicators = pos.indicators || [];
+                if (!Array.isArray(indicators)) {
+                    // If it's a string, split it; otherwise make it an empty array
+                    indicators = typeof indicators === 'string' ? indicators.split(';').map(s => s.trim()) : [];
+                }
                 positionsHTML += `
                     <div class="position-item" style="margin-bottom: 15px; padding: 15px; background: white;">
                         <div style="margin-bottom: 10px;">
