@@ -423,41 +423,43 @@ def analyze_comments_parallel(comments: List[Dict[str, Any]], model: str = "gpt-
         logger.info(f"Truncating text to {truncate_chars} characters for LLM analysis")
     
     analyzed_comments = []
+    total_comments = len(comments)
     
-    # Process in batches to avoid overwhelming the API
-    for batch_start in tqdm(range(0, len(comments), batch_size), desc="Processing batches", unit="batch"):
-        batch_end = min(batch_start + batch_size, len(comments))
-        batch_comments = comments[batch_start:batch_end]
-        
-        # Use ThreadPoolExecutor for parallel API calls
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # Create analyzer for each worker (thread-safe)
-            def create_analyzer():
-                return CommentAnalyzer(model=model)
+    # Create overall progress bar
+    with tqdm(total=total_comments, desc="Analyzing comments", unit="comment") as overall_pbar:
+        # Process in batches to avoid overwhelming the API
+        for batch_start in range(0, len(comments), batch_size):
+            batch_end = min(batch_start + batch_size, len(comments))
+            batch_comments = comments[batch_start:batch_end]
             
-            # Submit all comments in this batch
-            future_to_comment = {}
-            for comment in batch_comments:
-                analyzer = create_analyzer()
-                future = executor.submit(analyze_single_comment, analyzer, comment, truncate_chars)
-                future_to_comment[future] = comment
-            
-            # Collect results as they complete
-            batch_results = []
-            with tqdm(total=len(batch_comments), desc=f"Batch {batch_start//batch_size + 1}", leave=False, unit="comment") as pbar:
+            # Use ThreadPoolExecutor for parallel API calls
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                # Create analyzer for each worker (thread-safe)
+                def create_analyzer():
+                    return CommentAnalyzer(model=model)
+                
+                # Submit all comments in this batch
+                future_to_comment = {}
+                for comment in batch_comments:
+                    analyzer = create_analyzer()
+                    future = executor.submit(analyze_single_comment, analyzer, comment, truncate_chars)
+                    future_to_comment[future] = comment
+                
+                # Collect results as they complete
+                batch_results = []
                 for future in as_completed(future_to_comment):
                     result = future.result()
                     batch_results.append(result)
-                    pbar.update(1)
-        
-        # Maintain original order within batch
-        comment_id_to_result = {result['id']: result for result in batch_results}
-        ordered_results = [comment_id_to_result[comment['id']] for comment in batch_comments]
-        analyzed_comments.extend(ordered_results)
-        
-        # Brief pause between batches to be respectful to API
-        if batch_end < len(comments):
-            time.sleep(0.1)
+                    overall_pbar.update(1)  # Update overall progress bar
+                
+                # Maintain original order within batch
+                comment_id_to_result = {result['id']: result for result in batch_results}
+                ordered_results = [comment_id_to_result[comment['id']] for comment in batch_comments]
+                analyzed_comments.extend(ordered_results)
+                
+                # Brief pause between batches to be respectful to API
+                if batch_end < len(comments):
+                    time.sleep(0.1)
     
     logger.info(f"✅ Completed analysis of {len(analyzed_comments)} comments")
     return analyzed_comments

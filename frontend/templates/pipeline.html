@@ -535,7 +535,7 @@
                             <div class="progress-bar-container">
                                 <div class="progress-bar" style="width: 0%"></div>
                             </div>
-                            <div class="progress-text">0 / 0</div>
+                            <div class="progress-text">0%</div>
                         </div>
                     </div>
                     
@@ -621,7 +621,7 @@
                 const step = document.getElementById(`step-${i}`);
                 step.classList.remove('active', 'completed');
                 step.querySelector('.progress-bar').style.width = '0%';
-                step.querySelector('.progress-text').textContent = i === 3 ? '0 / 0' : '0%';
+                step.querySelector('.progress-text').textContent = '0%';
             }
             
             // Reset overall progress
@@ -720,7 +720,7 @@
                 const current = parseInt(tqdmMatch[2]);
                 const total = parseInt(tqdmMatch[3]);
                 
-                updateStepProgress(3, percentage, `${current} / ${total}`);
+                updateStepProgress(3, percentage, `${percentage}%`);
                 analyzedComments = current;
             }
             

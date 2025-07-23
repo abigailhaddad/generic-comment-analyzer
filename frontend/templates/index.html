@@ -137,10 +137,29 @@
         }
         
         .controls-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 140px;
+            display: flex;
+            flex-wrap: wrap;
             gap: 1rem;
             align-items: end;
+        }
+        
+        .controls-grid .form-group:first-child {
+            flex: 1 1 250px;
+        }
+        
+        .controls-grid .form-group:nth-child(2) {
+            flex: 0 0 150px;
+        }
+        
+        .controls-grid .button-group {
+            flex: 1 1 auto;
+            display: flex;
+            gap: 0.75rem;
+        }
+        
+        .controls-grid .button-group button {
+            flex: 1;
+            min-width: 140px;
         }
         
         @media (max-width: 768px) {
@@ -622,25 +641,26 @@
             <div class="controls">
                 <h2 class="controls-header">Discover Themes</h2>
                 <div class="controls-grid">
-            <div class="form-group">
-                <label for="model">Select Model:</label>
-                <select id="model" name="model">
-                    {% for model_id, model_name in models.items() %}
-                    <option value="{{ model_id }}" {% if model_id == 'gpt-4o' %}selected{% endif %}>{{ model_name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="num_comments">Number of Comments to Analyze:</label>
-                <input type="number" id="num_comments" name="num_comments" value="50" min="10" max="500">
-            </div>
-            
-            <div class="button-group">
-                <button class="btn-primary" onclick="discoverStances()">Discover Themes</button>
-                <button class="btn-secondary" onclick="loadExistingStances()">Load Existing Themes</button>
-            </div>
-            
+                    <div class="form-group">
+                        <label for="model">Select Model:</label>
+                        <select id="model" name="model">
+                            {% for model_id, model_name in models.items() %}
+                            <option value="{{ model_id }}" {% if model_id == 'gpt-4o' %}selected{% endif %}>{{ model_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="num_comments">Number of Comments:</label>
+                        <input type="number" id="num_comments" name="num_comments" value="50" min="10" max="500">
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn-primary" onclick="discoverStances()">Discover Themes</button>
+                        <button class="btn-secondary" onclick="loadExistingStances()">Load Existing Themes</button>
+                    </div>
+                </div>
+                
                 <div class="status" id="status"></div>
                 
                 <div class="loading" id="loading">
@@ -650,7 +670,7 @@
                 </div>
             </div>
         
-            <div class="stances-container" id="stancesContainer">
+            <div class="stances-container" id="stancesContainer" style="display: none;">
                 <div class="stances-header">
                     <h2>Discovered Themes</h2>
                     <span class="theme-count" id="themeCount">0 themes</span>
@@ -841,6 +861,14 @@
             console.log('Displaying stances:', currentStances);
             
             list.innerHTML = '';
+            
+            // Show or hide container based on whether we have stances
+            if (currentStances.length > 0) {
+                container.style.display = 'block';
+            } else {
+                container.style.display = 'none';
+                return; // Don't render anything if no stances
+            }
             
             // Update theme count
             themeCount.textContent = `${currentStances.length} theme${currentStances.length !== 1 ? 's' : ''}`;
