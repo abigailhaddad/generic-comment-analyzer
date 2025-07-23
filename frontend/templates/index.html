@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stance Discovery Tool</title>
+    <title>Theme Discovery Tool</title>
     <style>
         * {
             box-sizing: border-box;
@@ -140,6 +140,11 @@
             border: 1px solid #e9ecef;
         }
         
+        .stance-item.editing {
+            border: 2px solid #3498db;
+            background-color: #f0f8ff;
+        }
+        
         .stance-header {
             display: flex;
             justify-content: space-between;
@@ -153,14 +158,19 @@
             font-size: 18px;
         }
         
-        .stance-keywords {
-            font-size: 14px;
-            color: #6c757d;
-            margin-bottom: 10px;
+        .stance-field {
+            margin-bottom: 15px;
         }
         
-        .stance-keywords strong {
+        .field-label {
+            font-weight: 600;
             color: #495057;
+            margin-bottom: 5px;
+        }
+        
+        .field-value {
+            color: #6c757d;
+            line-height: 1.6;
         }
         
         .stance-description {
@@ -171,6 +181,73 @@
             font-size: 14px;
             min-height: 60px;
             resize: vertical;
+        }
+        
+        .edit-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #3498db;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        
+        .btn-edit {
+            background-color: #3498db;
+            color: white;
+            padding: 5px 10px;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .btn-edit:hover {
+            background-color: #2980b9;
+        }
+        
+        .position-item {
+            background-color: #e9ecef;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .position-header {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+        
+        .position-indicators {
+            color: #6c757d;
+            font-style: italic;
+            font-size: 13px;
+        }
+        
+        .new-stance-form {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            border: 2px dashed #dee2e6;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
         }
         
         .loading {
@@ -222,11 +299,51 @@
         .btn-danger:hover {
             background-color: #c0392b;
         }
+        
+        /* Modal styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+        
+        .modal-content h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+        
+        .modal-content p {
+            margin-bottom: 25px;
+            color: #555;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Stance Discovery Tool</h1>
+        <h1>Theme Discovery Tool</h1>
         
         <div class="controls">
             <div class="form-group">
@@ -244,8 +361,8 @@
             </div>
             
             <div class="button-group">
-                <button class="btn-primary" onclick="discoverStances()">Discover Stances</button>
-                <button class="btn-secondary" onclick="loadExistingStances()">Load Existing Stances</button>
+                <button class="btn-primary" onclick="discoverStances()">Discover Themes</button>
+                <button class="btn-secondary" onclick="loadExistingStances()">Load Existing Themes</button>
             </div>
             
             <div class="status" id="status"></div>
@@ -253,19 +370,48 @@
         
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p style="margin-top: 20px;">Discovering stances... This may take a moment.</p>
+            <p style="margin-top: 20px;">Discovering themes and positions... This may take a moment.</p>
             <button class="btn-cancel" onclick="cancelRequest()">Cancel</button>
         </div>
         
         <div class="stances-container" id="stancesContainer">
-            <h2>Discovered Stances</h2>
-            <p style="margin-bottom: 20px;">Edit the descriptions below and click Save to update stances.json</p>
+            <h2>Themes and Positions</h2>
+            <p style="margin-bottom: 20px;">View and manage the themes found in public comments</p>
+            
+            <div class="new-stance-form" id="newStanceForm">
+                <h3 style="margin-bottom: 15px;">Add New Theme</h3>
+                <p style="margin-bottom: 15px; color: #666;">Each theme should have a name, description, and at least one position.</p>
+                <div class="form-row">
+                    <label>Theme Name:</label>
+                    <input type="text" id="newStanceName" placeholder="e.g., Vaccine Safety Concerns">
+                </div>
+                <div class="form-row">
+                    <label>Description:</label>
+                    <textarea id="newStanceDescription" rows="3" placeholder="Brief overview of what this theme represents"></textarea>
+                </div>
+                <div class="button-group">
+                    <button class="btn-success btn-small" onclick="submitNewStance()">Create Theme</button>
+                    <button class="btn-secondary btn-small" onclick="toggleNewStanceForm(false)">Cancel</button>
+                </div>
+            </div>
             
             <div id="stancesList"></div>
             
             <div class="button-group" style="margin-top: 30px;">
-                <button class="btn-success" onclick="saveStances()">Save Changes</button>
-                <button class="btn-primary btn-small" onclick="addNewStance()">Add New Stance</button>
+                <button class="btn-success" onclick="saveStances()">Save All Changes</button>
+                <button class="btn-primary btn-small" onclick="toggleNewStanceForm(true)">Add New Theme</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal" style="display: none;" onclick="modalBackgroundClick(event)">
+        <div class="modal-content">
+            <h3>Replace Existing Themes?</h3>
+            <p>This will replace any existing themes. Are you sure you want to continue?</p>
+            <div class="modal-buttons">
+                <button class="btn btn-primary" onclick="confirmDiscovery()">Yes, Continue</button>
+                <button class="btn btn-secondary" onclick="cancelModal()">Cancel</button>
             </div>
         </div>
     </div>
@@ -273,6 +419,7 @@
     <script>
         let currentStances = [];
         let currentRequest = null;
+        let editBackup = null;
         
         function showStatus(message, type = 'info') {
             const status = document.getElementById('status');
@@ -292,11 +439,40 @@
         }
         
         async function discoverStances() {
+            // Show modal if themes already exist
+            if (currentStances.length > 0) {
+                document.getElementById('confirmModal').style.display = 'flex';
+                return;
+            }
+            
+            // If no existing themes, proceed directly
+            proceedWithDiscovery();
+        }
+        
+        function confirmDiscovery() {
+            document.getElementById('confirmModal').style.display = 'none';
+            // Clear existing themes immediately
+            currentStances = [];
+            displayStances();
+            proceedWithDiscovery();
+        }
+        
+        function cancelModal() {
+            document.getElementById('confirmModal').style.display = 'none';
+        }
+        
+        function modalBackgroundClick(event) {
+            if (event.target.id === 'confirmModal') {
+                cancelModal();
+            }
+        }
+        
+        async function proceedWithDiscovery() {
             const model = document.getElementById('model').value;
             const numComments = parseInt(document.getElementById('num_comments').value);
             
             showLoading(true);
-            showStatus('Discovering stances...', 'info');
+            showStatus('Discovering themes...', 'info');
             
             // Create an AbortController for cancellation
             const controller = new AbortController();
@@ -315,16 +491,21 @@
                     signal: controller.signal
                 });
                 
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const data = await response.json();
                 
                 if (data.success) {
                     currentStances = data.stances;
                     displayStances();
-                    showStatus(`Successfully discovered ${data.count} stances!`, 'success');
+                    showStatus(`Successfully discovered ${data.count} themes!`, 'success');
                 } else {
                     showStatus(`Error: ${data.error}`, 'error');
                 }
             } catch (error) {
+                console.error('Discover themes error:', error);
                 if (error.name === 'AbortError') {
                     showStatus('Request cancelled', 'info');
                 } else {
@@ -352,7 +533,7 @@
                 if (data.success) {
                     currentStances = data.stances;
                     displayStances();
-                    showStatus(`Loaded ${data.stances.length} existing stances`, 'success');
+                    showStatus(`Loaded ${data.stances.length} existing themes`, 'success');
                 } else {
                     showStatus(`Error: ${data.error}`, 'error');
                 }
@@ -360,6 +541,8 @@
                 showStatus(`Error: ${error.message}`, 'error');
             }
         }
+        
+        let editingStanceIndex = null;
         
         function displayStances() {
             const container = document.getElementById('stancesContainer');
@@ -373,61 +556,221 @@
                 console.log(`Processing stance ${index}:`, stance);
                 
                 const stanceDiv = document.createElement('div');
-                stanceDiv.className = 'stance-item';
+                stanceDiv.className = 'stance-item' + (editingStanceIndex === index ? ' editing' : '');
+                stanceDiv.id = `stance-${index}`;
                 
                 // Handle different possible field names and structures
                 const name = stance.name || stance.theme || 'Unnamed Stance';
                 const keywords = stance.keywords || stance.key_terms || [];
                 const description = stance.description || stance.summary || '';
+                const positions = stance.positions || [];
                 
-                stanceDiv.innerHTML = `
-                    <div class="stance-header">
-                        <div class="stance-name">${name}</div>
-                        <div class="stance-actions">
-                            <button class="btn-danger btn-small" onclick="removeStance(${index})">Remove</button>
-                        </div>
-                    </div>
-                    <div class="stance-keywords">
-                        <strong>Keywords:</strong> ${Array.isArray(keywords) ? keywords.join(', ') : keywords}
-                    </div>
-                    <textarea 
-                        class="stance-description" 
-                        data-index="${index}"
-                        onchange="updateStanceDescription(${index}, this.value)"
-                    >${description}</textarea>
-                `;
+                if (editingStanceIndex === index) {
+                    // Edit mode
+                    stanceDiv.innerHTML = renderEditMode(stance, index);
+                } else {
+                    // View mode
+                    stanceDiv.innerHTML = renderViewMode(stance, index);
+                }
+                
                 list.appendChild(stanceDiv);
             });
             
             container.style.display = 'block';
+            
+            // Update button visibility based on whether themes are loaded
+            updateButtonVisibility();
         }
         
-        function updateStanceDescription(index, newDescription) {
-            // Update the appropriate field based on the data structure
-            if (currentStances[index].hasOwnProperty('description')) {
-                currentStances[index].description = newDescription;
-            } else if (currentStances[index].hasOwnProperty('summary')) {
-                currentStances[index].summary = newDescription;
+        function updateButtonVisibility() {
+            const loadButton = document.querySelector('button[onclick="loadExistingStances()"]');
+            if (currentStances.length > 0) {
+                // Hide load button if themes are already shown
+                loadButton.style.display = 'none';
+            } else {
+                loadButton.style.display = 'inline-block';
             }
         }
         
-        function addNewStance() {
-            const name = prompt('Enter stance name:');
-            if (!name) return;
+        function renderViewMode(stance, index) {
+            const name = stance.name || stance.theme || 'Unnamed Stance';
+            const keywords = stance.keywords || stance.key_terms || [];
+            const description = stance.description || stance.summary || '';
+            const positions = stance.positions || [];
             
-            const keywords = prompt('Enter keywords (comma-separated):');
-            if (!keywords) return;
+            let positionsHTML = '';
+            if (positions.length > 0) {
+                positionsHTML = '<div class="stance-field"><div class="field-label">Positions:</div>';
+                positions.forEach(pos => {
+                    const posName = pos.name || 'Unnamed Position';
+                    const indicators = pos.indicators || [];
+                    positionsHTML += `
+                        <div class="position-item">
+                            <div class="position-header">${posName}</div>
+                            ${indicators.length > 0 ? `<div class="position-indicators">Indicators: ${indicators.join(', ')}</div>` : ''}
+                        </div>
+                    `;
+                });
+                positionsHTML += '</div>';
+            }
             
-            const description = prompt('Enter description:');
-            if (!description) return;
+            return `
+                <div class="stance-header">
+                    <div class="stance-name">${name}</div>
+                    <div class="stance-actions">
+                        <button class="btn-edit" onclick="editStance(${index})">Edit</button>
+                        <button class="btn-danger btn-small" onclick="removeStance(${index})">Remove</button>
+                    </div>
+                </div>
+                <div class="stance-field">
+                    <div class="field-label">Description:</div>
+                    <div class="field-value">${description}</div>
+                </div>
+                ${positionsHTML}
+            `;
+        }
+        
+        function renderEditMode(stance, index) {
+            const name = stance.name || stance.theme || 'Unnamed Stance';
+            const keywords = stance.keywords || stance.key_terms || [];
+            const description = stance.description || stance.summary || '';
+            const positions = stance.positions || [];
             
+            let positionsHTML = '<div class="stance-field"><div class="field-label">Positions:</div>';
+            positions.forEach((pos, posIndex) => {
+                const posName = pos.name || '';
+                const indicators = pos.indicators || [];
+                positionsHTML += `
+                    <div class="position-item" style="margin-bottom: 15px; padding: 15px; background: white;">
+                        <div style="margin-bottom: 10px;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px;">Position Name:</label>
+                            <input type="text" class="edit-input" id="pos-name-${index}-${posIndex}" 
+                                   value="${posName}" placeholder="Enter position name">
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px;">Indicators:</label>
+                            <input type="text" class="edit-input" id="pos-indicators-${index}-${posIndex}" 
+                                   value="${indicators.join(', ')}" placeholder="Enter indicators (comma-separated)">
+                        </div>
+                        <button class="btn-danger btn-small" onclick="removePosition(${index}, ${posIndex})">Remove Position</button>
+                    </div>
+                `;
+            });
+            positionsHTML += `<button class="btn-primary btn-small" onclick="addPosition(${index})" style="margin-top: 10px;">Add Position</button></div>`;
+            
+            return `
+                <div class="stance-header">
+                    <input type="text" class="edit-input" id="stance-name-${index}" value="${name}" style="font-size: 18px; font-weight: bold;">
+                    <div class="stance-actions">
+                        <button class="btn-success btn-small" onclick="saveStanceEdit(${index})">Save</button>
+                        <button class="btn-secondary btn-small" onclick="cancelEdit(${index})">Cancel</button>
+                    </div>
+                </div>
+                <div class="stance-field">
+                    <div class="field-label">Description:</div>
+                    <textarea class="stance-description" id="stance-desc-${index}">${description}</textarea>
+                </div>
+                ${positionsHTML}
+            `;
+        }
+        
+        function editStance(index) {
+            // Create a deep copy backup before editing
+            editBackup = JSON.parse(JSON.stringify(currentStances[index]));
+            editingStanceIndex = index;
+            displayStances();
+        }
+        
+        function cancelEdit(index) {
+            // Restore from backup
+            if (editBackup) {
+                currentStances[index] = editBackup;
+                editBackup = null;
+            }
+            editingStanceIndex = null;
+            displayStances();
+        }
+        
+        function saveStanceEdit(index) {
+            const stance = currentStances[index];
+            
+            // Update name
+            stance.name = document.getElementById(`stance-name-${index}`).value.trim();
+            
+            // Update description
+            stance.description = document.getElementById(`stance-desc-${index}`).value.trim();
+            
+            // Update positions
+            if (stance.positions) {
+                stance.positions.forEach((pos, posIndex) => {
+                    pos.name = document.getElementById(`pos-name-${index}-${posIndex}`).value.trim();
+                    const indicatorsValue = document.getElementById(`pos-indicators-${index}-${posIndex}`).value.trim();
+                    pos.indicators = indicatorsValue ? indicatorsValue.split(',').map(i => i.trim()) : [];
+                });
+            }
+            
+            // Clear backup since we're saving
+            editBackup = null;
+            editingStanceIndex = null;
+            displayStances();
+            showStatus('Changes saved locally. Remember to click "Save All Changes" to persist!', 'info');
+        }
+        
+        function addPosition(stanceIndex) {
+            if (!currentStances[stanceIndex].positions) {
+                currentStances[stanceIndex].positions = [];
+            }
+            currentStances[stanceIndex].positions.push({
+                name: '',
+                indicators: []
+            });
+            displayStances();
+        }
+        
+        function removePosition(stanceIndex, posIndex) {
+            currentStances[stanceIndex].positions.splice(posIndex, 1);
+            displayStances();
+        }
+        
+        function toggleNewStanceForm(show) {
+            document.getElementById('newStanceForm').style.display = show ? 'block' : 'none';
+            if (show) {
+                document.getElementById('newStanceName').focus();
+            } else {
+                // Clear form
+                document.getElementById('newStanceName').value = '';
+                document.getElementById('newStanceDescription').value = '';
+            }
+        }
+        
+        function submitNewStance() {
+            const name = document.getElementById('newStanceName').value.trim();
+            const description = document.getElementById('newStanceDescription').value.trim();
+            
+            if (!name || !description) {
+                showStatus('Please fill in theme name and description', 'error');
+                return;
+            }
+            
+            // Add new theme with an empty position to start
+            const newThemeIndex = currentStances.length;
             currentStances.push({
                 name: name,
-                keywords: keywords.split(',').map(k => k.trim()),
-                description: description
+                description: description,
+                positions: [{
+                    name: '',
+                    indicators: []
+                }]
             });
             
             displayStances();
+            toggleNewStanceForm(false);
+            
+            // Automatically put the new theme in edit mode so they can add positions
+            editingStanceIndex = newThemeIndex;
+            displayStances();
+            
+            showStatus('New theme created. Please add at least one position.', 'info');
         }
         
         function removeStance(index) {
@@ -452,7 +795,7 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    showStatus('Stances saved successfully!', 'success');
+                    showStatus('Themes saved successfully!', 'success');
                 } else {
                     showStatus(`Error: ${data.error}`, 'error');
                 }
