@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Regulation Comment Analyzer</title>
+    <title>Stance Discovery - Regulation Comment Analyzer</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
@@ -46,6 +46,74 @@
         
         h1 i {
             color: #4299e1;
+        }
+        
+        .header-subtitle {
+            margin: 0.5rem 0 0 0;
+            color: #718096;
+            font-size: 1rem;
+        }
+        
+        .nav-dots {
+            display: flex;
+            justify-content: center;
+            gap: 4rem;
+            margin: 2rem 0;
+            padding: 1rem;
+        }
+        
+        .nav-dot {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+            background-color: #e2e8f0;
+            color: #718096;
+            position: relative;
+            transition: all 0.2s;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        
+        .nav-dot.active {
+            background-color: #4299e1;
+            color: white;
+            transform: scale(1.1);
+        }
+        
+        .nav-dot.completed {
+            background-color: #48bb78;
+            color: white;
+        }
+        
+        .nav-dot::after {
+            content: '';
+            position: absolute;
+            right: -3.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3rem;
+            height: 2px;
+            background-color: #e2e8f0;
+        }
+        
+        .nav-dot:last-child::after {
+            display: none;
+        }
+        
+        .nav-label {
+            position: absolute;
+            top: 100%;
+            margin-top: 0.5rem;
+            font-size: 0.75rem;
+            color: #718096;
+            white-space: nowrap;
+            left: 50%;
+            transform: translateX(-50%);
         }
         
         .main-content {
@@ -114,6 +182,7 @@
             display: flex;
             gap: 0.75rem;
             flex-wrap: wrap;
+            align-items: center;
         }
         
         button {
@@ -523,11 +592,28 @@
 <body>
     <div class="header">
         <div class="container">
-            <h1><i class="fas fa-comments"></i> Regulation Comment Analyzer</h1>
+            <h1><i class="fas fa-comments"></i> Public Comment Analyzer</h1>
+            <p class="header-subtitle">Analyze public comments on federal regulations to identify stances and key themes</p>
         </div>
     </div>
     
     <div class="container">
+        <!-- Navigation dots -->
+        <div class="nav-dots">
+            <a href="/" class="nav-dot completed">
+                1
+                <span class="nav-label">Setup</span>
+            </a>
+            <div class="nav-dot active">
+                2
+                <span class="nav-label">Discover Stances</span>
+            </div>
+            <a href="/pipeline" class="nav-dot" id="pipelineNavDot">
+                3
+                <span class="nav-label">Run Analysis</span>
+            </a>
+        </div>
+        
         <div class="main-content">
             <div class="controls">
                 <h2 class="controls-header">Discover Themes</h2>
@@ -594,6 +680,9 @@
                     </button>
                     <button class="btn-secondary btn-small" onclick="loadExistingStances()">
                         <i class="fas fa-sync-alt"></i> Reload
+                    </button>
+                    <button class="btn-primary" onclick="proceedToPipeline()" style="margin-left: auto;">
+                        Next: Run Analysis <i class="fas fa-arrow-right"></i>
                     </button>
                 </div>
             </div>
@@ -1015,7 +1104,7 @@
             }
         }
         
-        async function saveStances() {
+        async function saveStances(callback) {
             try {
                 const response = await fetch('/update_stances', {
                     method: 'POST',
@@ -1031,6 +1120,7 @@
                 
                 if (data.success) {
                     showStatus('Themes saved successfully!', 'success');
+                    if (callback) callback();
                 } else {
                     showStatus(`Error: ${data.error}`, 'error');
                 }
@@ -1039,9 +1129,36 @@
             }
         }
         
+        function proceedToPipeline() {
+            // Save any pending changes first
+            if (currentStances.length > 0) {
+                saveStances(() => {
+                    window.location.href = '/pipeline';
+                });
+            } else {
+                alert('Please discover or load themes before proceeding to analysis.');
+            }
+        }
+        
         // Load existing stances on page load
         window.onload = () => {
             loadExistingStances();
+            
+            // Check if stances exist to enable/disable pipeline navigation
+            fetch('/get_stances')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.stances && data.stances.length > 0) {
+                        // Enable pipeline navigation
+                        document.getElementById('pipelineNavDot').style.pointerEvents = 'auto';
+                        document.getElementById('pipelineNavDot').style.opacity = '1';
+                        document.getElementById('pipelineNavDot').classList.add('completed');
+                    } else {
+                        // Disable pipeline navigation
+                        document.getElementById('pipelineNavDot').style.pointerEvents = 'none';
+                        document.getElementById('pipelineNavDot').style.opacity = '0.5';
+                    }
+                });
         };
     </script>
 </body>

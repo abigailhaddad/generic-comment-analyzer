@@ -41,6 +41,22 @@ Works with comment data from [regulations.gov bulk download](https://www.regulat
    ./run_pipeline.sh --csv comments.csv --workers 8 --batch-size 100
    ```
 
+## Web Interface
+
+A web interface is available for discovering stances and running the pipeline:
+
+1. First run `python detect_columns.py` to detect CSV structure
+2. Launch the web interface:
+   ```bash
+   cd frontend
+   python app.py
+   ```
+3. Open http://localhost:5000 in your browser to:
+   - Discover stances from sample comments
+   - Edit and refine discovered themes
+   - Run the analysis pipeline with visual progress tracking
+   - View the generated report
+
 ## How It Works
 
 1. **Column Detection** (`detect_columns.py`): Maps CSV columns to required fields (comment text, ID, date, submitter, attachments) and extracts regulation metadata for report titles.

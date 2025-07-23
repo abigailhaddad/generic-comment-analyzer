@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup - Regulation Comment Analyzer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f7fa;
+            color: #2d3748;
+            line-height: 1.6;
+            margin: 0;
+        }
+        
+        .header {
+            background-color: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1.5rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        h1 {
+            color: #1a202c;
+            margin: 0;
+            font-size: 1.875rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        h1 i {
+            color: #4299e1;
+        }
+        
+        .header-subtitle {
+            margin: 0.5rem 0 0 0;
+            color: #718096;
+            font-size: 1rem;
+        }
+        
+        .nav-dots {
+            display: flex;
+            justify-content: center;
+            gap: 4rem;
+            margin: 2rem 0;
+            padding: 1rem;
+        }
+        
+        .nav-dot {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+            background-color: #e2e8f0;
+            color: #718096;
+            position: relative;
+            transition: all 0.2s;
+        }
+        
+        .nav-dot.active {
+            background-color: #4299e1;
+            color: white;
+            transform: scale(1.1);
+        }
+        
+        .nav-dot.completed {
+            background-color: #48bb78;
+            color: white;
+        }
+        
+        .nav-dot::after {
+            content: '';
+            position: absolute;
+            right: -3.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3rem;
+            height: 2px;
+            background-color: #e2e8f0;
+        }
+        
+        .nav-dot:last-child::after {
+            display: none;
+        }
+        
+        .nav-label {
+            position: absolute;
+            top: 100%;
+            margin-top: 0.5rem;
+            font-size: 0.75rem;
+            color: #718096;
+            white-space: nowrap;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .main-content {
+            display: grid;
+            gap: 1.5rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .status-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+        
+        .status-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .status-ready {
+            color: #48bb78;
+        }
+        
+        .status-setup {
+            color: #4299e1;
+        }
+        
+        .status-message {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+        }
+        
+        .status-detail {
+            color: #718096;
+            font-size: 0.875rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .btn-primary {
+            background-color: #4299e1;
+            color: white;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            background-color: #3182ce;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .btn-secondary {
+            background-color: #718096;
+            color: white;
+        }
+        
+        .btn-secondary:hover:not(:disabled) {
+            background-color: #4a5568;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+        
+        .config-section {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+        }
+        
+        .config-header {
+            padding: 1rem 1.5rem;
+            background-color: #f7fafc;
+            border-bottom: 1px solid #e2e8f0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: background-color 0.2s;
+        }
+        
+        .config-header:hover {
+            background-color: #edf2f7;
+        }
+        
+        .config-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .config-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        .status-check {
+            color: #48bb78;
+        }
+        
+        .status-warning {
+            color: #f6ad55;
+        }
+        
+        .expand-icon {
+            color: #718096;
+            transition: transform 0.2s;
+        }
+        
+        .config-header.expanded .expand-icon {
+            transform: rotate(180deg);
+        }
+        
+        .config-content {
+            display: none;
+            padding: 1.5rem;
+        }
+        
+        .config-content.show {
+            display: block;
+        }
+        
+        .field-group {
+            display: grid;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .field {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 1rem;
+            align-items: center;
+        }
+        
+        .field-label {
+            font-weight: 500;
+            color: #4a5568;
+            font-size: 0.875rem;
+        }
+        
+        .field-value {
+            font-size: 0.875rem;
+            color: #2d3748;
+            padding: 0.5rem 0.75rem;
+            background-color: #f7fafc;
+            border-radius: 0.375rem;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .edit-mode .field-value {
+            display: none;
+        }
+        
+        .field-input {
+            display: none;
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #cbd5e0;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            background-color: white;
+        }
+        
+        .edit-mode .field-input {
+            display: block;
+        }
+        
+        .field-input:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+        }
+        
+        .config-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+        
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .loading i {
+            font-size: 2rem;
+            color: #4299e1;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .auto-detect-info {
+            background-color: #ebf8ff;
+            border: 1px solid #bee3f8;
+            border-radius: 0.375rem;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+            color: #2c5282;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .sample-preview {
+            margin-top: 0.5rem;
+            padding: 0.75rem;
+            background-color: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            display: none;
+        }
+        
+        .edit-mode .sample-preview {
+            display: block;
+        }
+        
+        .sample-item {
+            padding: 0.5rem 0.75rem;
+            background-color: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.25rem;
+            margin-bottom: 0.375rem;
+            color: #4a5568;
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+        
+        .sample-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .preview-label {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .preview-label i {
+            color: #718096;
+            font-size: 0.625rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <h1><i class="fas fa-comments"></i> Public Comment Analyzer</h1>
+            <p class="header-subtitle">Analyze public comments on federal regulations to identify stances and key themes</p>
+        </div>
+    </div>
+    
+    <div class="container">
+        <!-- Navigation dots -->
+        <div class="nav-dots">
+            <div class="nav-dot active">
+                1
+                <span class="nav-label">Setup</span>
+            </div>
+            <a href="/stance_discovery" class="nav-dot" id="stanceNavDot">
+                2
+                <span class="nav-label">Discover Stances</span>
+            </a>
+            <a href="/pipeline" class="nav-dot" id="pipelineNavDot">
+                3
+                <span class="nav-label">Run Analysis</span>
+            </a>
+        </div>
+        
+        <div class="main-content">
+            <!-- Status Card -->
+            <div class="status-card" id="statusCard">
+                <div class="loading" id="loadingIndicator">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p style="margin-top: 1rem;">Checking setup...</p>
+                </div>
+                <div id="statusContent" style="display: none;">
+                    <i class="fas fa-check-circle status-icon" id="statusIcon"></i>
+                    <div class="status-message" id="statusMessage">Setup Complete</div>
+                    <div class="status-detail" id="statusDetail">Your data source and configuration are ready</div>
+                    <div class="action-buttons">
+                        <button id="autoDetectBtn" class="btn btn-primary" onclick="runAutoDetect()" style="display: none;">
+                            <i class="fas fa-magic"></i> Auto-Detect Settings
+                        </button>
+                        <button id="proceedBtn" class="btn btn-primary" onclick="proceedToNext()">
+                            <i class="fas fa-arrow-right"></i> Continue to Stance Discovery
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Column Mapping Section -->
+            <div class="config-section">
+                <div class="config-header" onclick="toggleSection('columns')">
+                    <div class="config-title">
+                        <i class="fas fa-table"></i>
+                        <span>Column Settings</span>
+                    </div>
+                    <div class="config-status">
+                        <span id="columnsStatus">Configured</span>
+                        <i class="fas fa-chevron-down expand-icon"></i>
+                    </div>
+                </div>
+                <div class="config-content" id="columnsContent">
+                    <div class="field-group" id="columnFields">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                    <div class="config-actions">
+                        <button class="btn btn-secondary btn-small" onclick="editColumns()">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn btn-primary btn-small" onclick="saveColumns()" style="display: none;" id="saveColumnsBtn">
+                            <i class="fas fa-save"></i> Save
+                        </button>
+                        <button class="btn btn-secondary btn-small" onclick="cancelEditColumns()" style="display: none;" id="cancelColumnsBtn">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Regulation Info Section -->
+            <div class="config-section">
+                <div class="config-header" onclick="toggleSection('regulation')">
+                    <div class="config-title">
+                        <i class="fas fa-file-alt"></i>
+                        <span>Regulation Information</span>
+                    </div>
+                    <div class="config-status">
+                        <span id="regulationStatus">Configured</span>
+                        <i class="fas fa-chevron-down expand-icon"></i>
+                    </div>
+                </div>
+                <div class="config-content" id="regulationContent">
+                    <div class="field-group" id="regulationFields">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                    <div class="config-actions">
+                        <button class="btn btn-secondary btn-small" onclick="editRegulation()">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn btn-primary btn-small" onclick="saveRegulation()" style="display: none;" id="saveRegulationBtn">
+                            <i class="fas fa-save"></i> Save
+                        </button>
+                        <button class="btn btn-secondary btn-small" onclick="cancelEditRegulation()" style="display: none;" id="cancelRegulationBtn">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let csvColumns = [];
+        let currentMapping = {};
+        let currentMetadata = {};
+        let originalMapping = {};
+        let originalMetadata = {};
+        let setupComplete = false;
+        
+        // Field configurations
+        const columnFields = {
+            'text': { label: 'Comment Text', required: true },
+            'id': { label: 'Document ID', required: true },
+            'date': { label: 'Date', required: false },
+            'submitter': { label: 'Submitter', required: false },
+            'organization': { label: 'Organization', required: false },
+            'attachment_files': { label: 'Attachments', required: false }
+        };
+        
+        const regulationFields = {
+            'regulation_name': { label: 'Regulation Name', required: true },
+            'docket_id': { label: 'Docket ID', required: true },
+            'agency': { label: 'Agency', required: true },
+            'brief_description': { label: 'Description', required: false }
+        };
+        
+        // Check status on page load
+        window.onload = function() {
+            checkStatus();
+        };
+        
+        function checkStatus() {
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('statusContent').style.display = 'none';
+            
+            fetch('/check_detection_status')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('loadingIndicator').style.display = 'none';
+                    document.getElementById('statusContent').style.display = 'block';
+                    
+                    csvColumns = data.csv_columns || [];
+                    currentMapping = data.mapping || {};
+                    currentMetadata = data.metadata || {};
+                    originalMapping = {...currentMapping};
+                    originalMetadata = {...currentMetadata};
+                    
+                    // Update status
+                    if (!data.csv_exists) {
+                        updateMainStatus('setup', 'Data Source Missing', 'Please place your comments data file in the root directory');
+                        document.getElementById('proceedBtn').style.display = 'none';
+                        document.getElementById('autoDetectBtn').style.display = 'none';
+                        // Disable forward navigation
+                        document.getElementById('stanceNavDot').style.pointerEvents = 'none';
+                        document.getElementById('stanceNavDot').style.opacity = '0.5';
+                        document.getElementById('pipelineNavDot').style.pointerEvents = 'none';
+                        document.getElementById('pipelineNavDot').style.opacity = '0.5';
+                    } else if (!data.mapping_exists || !data.metadata_exists) {
+                        updateMainStatus('setup', 'Setup Required', 'Click Auto-Detect to configure your data columns');
+                        document.getElementById('proceedBtn').style.display = 'none';
+                        document.getElementById('autoDetectBtn').style.display = 'inline-flex';
+                        // Disable forward navigation
+                        document.getElementById('stanceNavDot').style.pointerEvents = 'none';
+                        document.getElementById('stanceNavDot').style.opacity = '0.5';
+                        document.getElementById('pipelineNavDot').style.pointerEvents = 'none';
+                        document.getElementById('pipelineNavDot').style.opacity = '0.5';
+                    } else {
+                        setupComplete = true;
+                        updateMainStatus('ready', 'Setup Complete', 'Your data source and configuration are ready');
+                        document.getElementById('proceedBtn').style.display = 'inline-flex';
+                        document.getElementById('autoDetectBtn').style.display = 'none';
+                        // Enable forward navigation
+                        document.getElementById('stanceNavDot').style.pointerEvents = 'auto';
+                        document.getElementById('stanceNavDot').style.opacity = '1';
+                        document.getElementById('stanceNavDot').classList.add('completed');
+                        document.getElementById('pipelineNavDot').style.pointerEvents = 'auto';
+                        document.getElementById('pipelineNavDot').style.opacity = '1';
+                    }
+                    
+                    // Update sections
+                    updateColumnSection();
+                    updateRegulationSection();
+                })
+                .catch(error => {
+                    console.error('Error checking status:', error);
+                    document.getElementById('loadingIndicator').style.display = 'none';
+                    document.getElementById('statusContent').style.display = 'block';
+                    updateMainStatus('setup', 'Error', 'Failed to check setup status');
+                });
+        }
+        
+        function updateMainStatus(type, message, detail) {
+            const icon = document.getElementById('statusIcon');
+            const msg = document.getElementById('statusMessage');
+            const det = document.getElementById('statusDetail');
+            
+            if (type === 'ready') {
+                icon.className = 'fas fa-check-circle status-icon status-ready';
+            } else {
+                icon.className = 'fas fa-exclamation-circle status-icon status-setup';
+            }
+            
+            msg.textContent = message;
+            det.textContent = detail;
+        }
+        
+        function toggleSection(section) {
+            const header = document.querySelector(`#${section}Content`).previousElementSibling;
+            const content = document.getElementById(`${section}Content`);
+            
+            header.classList.toggle('expanded');
+            content.classList.toggle('show');
+        }
+        
+        function updateColumnSection() {
+            const status = document.getElementById('columnsStatus');
+            const fields = document.getElementById('columnFields');
+            
+            // Check if configured
+            const hasRequired = currentMapping.text && currentMapping.id;
+            if (hasRequired) {
+                status.innerHTML = '<i class="fas fa-check-circle status-check"></i> Configured';
+            } else {
+                status.innerHTML = '<i class="fas fa-exclamation-circle status-warning"></i> Not Configured';
+            }
+            
+            // Display fields
+            fields.innerHTML = '';
+            for (const [key, config] of Object.entries(columnFields)) {
+                const value = currentMapping[key] || 'Not set';
+                const fieldContainer = document.createElement('div');
+                fieldContainer.style.marginBottom = '1rem';
+                
+                const field = document.createElement('div');
+                field.className = 'field';
+                field.innerHTML = `
+                    <div class="field-label">${config.label}${config.required ? ' *' : ''}</div>
+                    <div class="field-value">${value}</div>
+                    <select class="field-input" id="column_${key}" onchange="loadPreview('${key}')">
+                        <option value="">Not set</option>
+                        ${csvColumns.map(col => 
+                            `<option value="${col}" ${col === currentMapping[key] ? 'selected' : ''}>${col}</option>`
+                        ).join('')}
+                    </select>
+                `;
+                
+                fieldContainer.appendChild(field);
+                
+                // Add preview div
+                const preview = document.createElement('div');
+                preview.className = 'sample-preview';
+                preview.id = `preview_${key}`;
+                preview.style.gridColumn = '1 / -1';
+                fieldContainer.appendChild(preview);
+                
+                fields.appendChild(fieldContainer);
+            }
+        }
+        
+        function updateRegulationSection() {
+            const status = document.getElementById('regulationStatus');
+            const fields = document.getElementById('regulationFields');
+            
+            // Check if configured
+            const hasRequired = currentMetadata.regulation_name && currentMetadata.docket_id && currentMetadata.agency;
+            if (hasRequired) {
+                status.innerHTML = '<i class="fas fa-check-circle status-check"></i> Configured';
+            } else {
+                status.innerHTML = '<i class="fas fa-exclamation-circle status-warning"></i> Not Configured';
+            }
+            
+            // Display fields
+            fields.innerHTML = '';
+            for (const [key, config] of Object.entries(regulationFields)) {
+                const value = currentMetadata[key] || 'Not set';
+                const field = document.createElement('div');
+                field.className = 'field';
+                field.innerHTML = `
+                    <div class="field-label">${config.label}${config.required ? ' *' : ''}</div>
+                    <div class="field-value">${value}</div>
+                    <input type="text" class="field-input" id="regulation_${key}" value="${currentMetadata[key] || ''}">
+                `;
+                fields.appendChild(field);
+            }
+        }
+        
+        function runAutoDetect() {
+            document.getElementById('autoDetectBtn').disabled = true;
+            document.getElementById('autoDetectBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Detecting...';
+            
+            // Add info message
+            const statusCard = document.getElementById('statusCard');
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'auto-detect-info';
+            infoDiv.innerHTML = '<i class="fas fa-info-circle"></i> Analyzing your data to automatically detect column mappings...';
+            statusCard.appendChild(infoDiv);
+            
+            fetch('/run_column_detection', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentMapping = data.mapping;
+                    currentMetadata = data.metadata;
+                    originalMapping = {...currentMapping};
+                    originalMetadata = {...currentMetadata};
+                    
+                    updateColumnSection();
+                    updateRegulationSection();
+                    
+                    // Expand both sections to show results
+                    document.querySelector('#columnsContent').previousElementSibling.classList.add('expanded');
+                    document.getElementById('columnsContent').classList.add('show');
+                    document.querySelector('#regulationContent').previousElementSibling.classList.add('expanded');
+                    document.getElementById('regulationContent').classList.add('show');
+                    
+                    checkStatus();
+                    
+                    // Remove info message
+                    if (infoDiv.parentNode) {
+                        infoDiv.parentNode.removeChild(infoDiv);
+                    }
+                } else {
+                    alert('Auto-detection failed: ' + data.error);
+                    document.getElementById('autoDetectBtn').disabled = false;
+                    document.getElementById('autoDetectBtn').innerHTML = '<i class="fas fa-magic"></i> Auto-Detect Settings';
+                    if (infoDiv.parentNode) {
+                        infoDiv.parentNode.removeChild(infoDiv);
+                    }
+                }
+            });
+        }
+        
+        function editColumns() {
+            document.getElementById('columnsContent').classList.add('edit-mode');
+            document.querySelector('#columnsContent .btn-secondary').style.display = 'none';
+            document.getElementById('saveColumnsBtn').style.display = 'inline-flex';
+            document.getElementById('cancelColumnsBtn').style.display = 'inline-flex';
+            
+            // Load previews for all current values
+            for (const key of Object.keys(columnFields)) {
+                if (currentMapping[key]) {
+                    loadPreview(key);
+                }
+            }
+        }
+        
+        function saveColumns() {
+            const mapping = {};
+            for (const key of Object.keys(columnFields)) {
+                const value = document.getElementById(`column_${key}`).value;
+                if (value) {
+                    mapping[key] = value;
+                }
+            }
+            
+            // Validate required fields
+            if (!mapping.text || !mapping.id) {
+                alert('Comment Text and Document ID are required');
+                return;
+            }
+            
+            fetch('/save_column_mapping', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mapping })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentMapping = mapping;
+                    originalMapping = {...mapping};
+                    document.getElementById('columnsContent').classList.remove('edit-mode');
+                    document.querySelector('#columnsContent .btn-secondary').style.display = 'inline-flex';
+                    document.getElementById('saveColumnsBtn').style.display = 'none';
+                    document.getElementById('cancelColumnsBtn').style.display = 'none';
+                    updateColumnSection();
+                    checkStatus();
+                } else {
+                    alert('Failed to save: ' + data.error);
+                }
+            });
+        }
+        
+        function cancelEditColumns() {
+            // Reset to original values
+            for (const key of Object.keys(columnFields)) {
+                document.getElementById(`column_${key}`).value = originalMapping[key] || '';
+            }
+            document.getElementById('columnsContent').classList.remove('edit-mode');
+            document.querySelector('#columnsContent .btn-secondary').style.display = 'inline-flex';
+            document.getElementById('saveColumnsBtn').style.display = 'none';
+            document.getElementById('cancelColumnsBtn').style.display = 'none';
+        }
+        
+        function editRegulation() {
+            document.getElementById('regulationContent').classList.add('edit-mode');
+            document.querySelector('#regulationContent .btn-secondary').style.display = 'none';
+            document.getElementById('saveRegulationBtn').style.display = 'inline-flex';
+            document.getElementById('cancelRegulationBtn').style.display = 'inline-flex';
+        }
+        
+        function saveRegulation() {
+            const metadata = {};
+            for (const key of Object.keys(regulationFields)) {
+                metadata[key] = document.getElementById(`regulation_${key}`).value;
+            }
+            
+            // Validate required fields
+            if (!metadata.regulation_name || !metadata.docket_id || !metadata.agency) {
+                alert('Regulation Name, Docket ID, and Agency are required');
+                return;
+            }
+            
+            fetch('/save_regulation_metadata', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ metadata })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentMetadata = metadata;
+                    originalMetadata = {...metadata};
+                    document.getElementById('regulationContent').classList.remove('edit-mode');
+                    document.querySelector('#regulationContent .btn-secondary').style.display = 'inline-flex';
+                    document.getElementById('saveRegulationBtn').style.display = 'none';
+                    document.getElementById('cancelRegulationBtn').style.display = 'none';
+                    updateRegulationSection();
+                    checkStatus();
+                } else {
+                    alert('Failed to save: ' + data.error);
+                }
+            });
+        }
+        
+        function cancelEditRegulation() {
+            // Reset to original values
+            for (const key of Object.keys(regulationFields)) {
+                document.getElementById(`regulation_${key}`).value = originalMetadata[key] || '';
+            }
+            document.getElementById('regulationContent').classList.remove('edit-mode');
+            document.querySelector('#regulationContent .btn-secondary').style.display = 'inline-flex';
+            document.getElementById('saveRegulationBtn').style.display = 'none';
+            document.getElementById('cancelRegulationBtn').style.display = 'none';
+        }
+        
+        function proceedToNext() {
+            window.location.href = '/stance_discovery';
+        }
+        
+        function loadPreview(key) {
+            const select = document.getElementById(`column_${key}`);
+            const preview = document.getElementById(`preview_${key}`);
+            const column = select.value;
+            
+            if (!column) {
+                preview.innerHTML = '';
+                return;
+            }
+            
+            preview.innerHTML = '<div class="preview-label"><i class="fas fa-spinner fa-spin"></i> Loading samples...</div>';
+            
+            fetch(`/get_column_samples?column=${encodeURIComponent(column)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.samples && data.samples.length > 0) {
+                        let html = '<div class="preview-label"><i class="fas fa-eye"></i> Sample values:</div>';
+                        data.samples.forEach(sample => {
+                            html += `<div class="sample-item">${escapeHtml(sample)}</div>`;
+                        });
+                        if (data.stats) {
+                            html += `<div style="margin-top: 0.5rem; color: #718096; font-size: 0.7rem;">
+                                ${data.stats.non_empty} non-empty values found in first ${data.stats.total} rows
+                            </div>`;
+                        }
+                        preview.innerHTML = html;
+                    } else {
+                        preview.innerHTML = '<div class="preview-label"><i class="fas fa-exclamation-circle"></i> No data found in this column</div>';
+                    }
+                })
+                .catch(error => {
+                    preview.innerHTML = '<div class="preview-label"><i class="fas fa-exclamation-triangle"></i> Error loading samples</div>';
+                });
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

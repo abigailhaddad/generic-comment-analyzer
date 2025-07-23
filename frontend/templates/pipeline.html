@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Run Analysis Pipeline - Regulation Comment Analyzer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f7fa;
+            color: #2d3748;
+            line-height: 1.6;
+            margin: 0;
+        }
+        
+        .header {
+            background-color: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1.5rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        h1 {
+            color: #1a202c;
+            margin: 0;
+            font-size: 1.875rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        h1 i {
+            color: #4299e1;
+        }
+        
+        .header-subtitle {
+            margin: 0.5rem 0 0 0;
+            color: #718096;
+            font-size: 1rem;
+        }
+        
+        .nav-dots {
+            display: flex;
+            justify-content: center;
+            gap: 4rem;
+            margin: 2rem 0;
+            padding: 1rem;
+        }
+        
+        .nav-dot {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+            background-color: #e2e8f0;
+            color: #718096;
+            position: relative;
+            transition: all 0.2s;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        
+        .nav-dot.active {
+            background-color: #4299e1;
+            color: white;
+            transform: scale(1.1);
+        }
+        
+        .nav-dot.completed {
+            background-color: #48bb78;
+            color: white;
+        }
+        
+        .nav-dot::after {
+            content: '';
+            position: absolute;
+            right: -3.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3rem;
+            height: 2px;
+            background-color: #e2e8f0;
+        }
+        
+        .nav-dot:last-child::after {
+            display: none;
+        }
+        
+        .nav-label {
+            position: absolute;
+            top: 100%;
+            margin-top: 0.5rem;
+            font-size: 0.75rem;
+            color: #718096;
+            white-space: nowrap;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .main-content {
+            display: grid;
+            gap: 1.5rem;
+        }
+        
+        .controls {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .controls-header {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 1rem;
+        }
+        
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 140px;
+            gap: 1rem;
+            align-items: end;
+        }
+        
+        @media (max-width: 768px) {
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .form-group {
+            margin-bottom: 0;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #4a5568;
+            font-size: 0.875rem;
+        }
+        
+        select, input[type="number"] {
+            width: 100%;
+            padding: 0.625rem 0.875rem;
+            border: 1px solid #cbd5e0;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            background-color: #f7fafc;
+            transition: all 0.2s;
+        }
+        
+        select:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #4299e1;
+            background-color: white;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+        }
+        
+        button {
+            padding: 0.625rem 1.25rem;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .btn-primary {
+            background-color: #4299e1;
+            color: white;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            background-color: #3182ce;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .btn-success {
+            background-color: #48bb78;
+            color: white;
+        }
+        
+        .btn-success:hover:not(:disabled) {
+            background-color: #38a169;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .progress-container {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+            display: none;
+        }
+        
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        .progress-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .progress-steps {
+            display: grid;
+            gap: 1rem;
+        }
+        
+        .step-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background-color: #f7fafc;
+            border-radius: 0.5rem;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+        
+        .step-item.active {
+            background-color: #ebf8ff;
+            border-color: #4299e1;
+        }
+        
+        .step-item.completed {
+            background-color: #f0fff4;
+            border-color: #48bb78;
+        }
+        
+        .step-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #e2e8f0;
+            color: #718096;
+            font-size: 1.125rem;
+            transition: all 0.3s ease;
+        }
+        
+        .step-item.active .step-icon {
+            background-color: #4299e1;
+            color: white;
+            animation: pulse 2s infinite;
+        }
+        
+        .step-item.completed .step-icon {
+            background-color: #48bb78;
+            color: white;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(66, 153, 225, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(66, 153, 225, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(66, 153, 225, 0);
+            }
+        }
+        
+        .step-content {
+            flex: 1;
+        }
+        
+        .step-title {
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 0.9rem;
+        }
+        
+        .step-progress {
+            margin-left: auto;
+            text-align: right;
+        }
+        
+        .progress-bar-container {
+            width: 120px;
+            height: 8px;
+            background-color: #e2e8f0;
+            border-radius: 9999px;
+            overflow: hidden;
+            margin-bottom: 0.25rem;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background-color: #4299e1;
+            transition: width 0.3s ease;
+        }
+        
+        .progress-text {
+            font-size: 0.75rem;
+            color: #718096;
+            font-weight: 500;
+        }
+        
+        .overall-progress {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .overall-progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        
+        .overall-progress-title {
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .overall-progress-percentage {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #4299e1;
+        }
+        
+        .overall-progress-bar-container {
+            width: 100%;
+            height: 12px;
+            background-color: #e2e8f0;
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+        
+        .overall-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4299e1 0%, #3182ce 100%);
+            transition: width 0.5s ease;
+        }
+        
+        .results {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+            display: none;
+        }
+        
+        .results-header {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .results-header i {
+            color: #48bb78;
+        }
+        
+        .results-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .status-running {
+            background-color: #bee3f8;
+            color: #2c5282;
+        }
+        
+        .status-complete {
+            background-color: #c6f6d5;
+            color: #276749;
+        }
+        
+        .status-error {
+            background-color: #fed7d7;
+            color: #742a2a;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <h1><i class="fas fa-comments"></i> Public Comment Analyzer</h1>
+            <p class="header-subtitle">Analyze public comments on federal regulations to identify stances and key themes</p>
+        </div>
+    </div>
+    
+    <div class="container">
+        <!-- Navigation dots -->
+        <div class="nav-dots">
+            <a href="/" class="nav-dot completed">
+                1
+                <span class="nav-label">Setup</span>
+            </a>
+            <a href="/stance_discovery" class="nav-dot completed">
+                2
+                <span class="nav-label">Discover Stances</span>
+            </a>
+            <div class="nav-dot active">
+                3
+                <span class="nav-label">Run Analysis</span>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="controls">
+                <h2 class="controls-header">Pipeline Configuration</h2>
+                <div class="controls-grid">
+                    <div class="form-group">
+                        <label for="model">Select Model:</label>
+                        <select id="model" name="model">
+                            {% for model_id, model_name in models.items() %}
+                            <option value="{{ model_id }}" {% if model_id == 'gpt-4o-mini' %}selected{% endif %}>{{ model_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="num_comments">Number of Comments:</label>
+                        <input type="number" id="num_comments" name="num_comments" value="100" min="10" max="10000">
+                    </div>
+                    
+                    <button id="runBtn" class="btn-primary" onclick="runPipeline()">
+                        <i class="fas fa-play"></i> Run Pipeline
+                    </button>
+                </div>
+            </div>
+            
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-header">
+                    <div class="progress-title">Pipeline Progress</div>
+                    <span id="statusBadge" class="status-badge status-running">
+                        <i class="fas fa-spinner fa-spin"></i> Running
+                    </span>
+                </div>
+                
+                <div class="progress-steps" id="progressSteps">
+                    <div class="step-item" id="step-1">
+                        <div class="step-icon">
+                            <i class="fas fa-file-csv"></i>
+                        </div>
+                        <div class="step-content">
+                            <div class="step-title">Loading Comments - Reading from CSV file</div>
+                        </div>
+                        <div class="step-progress">
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" style="width: 0%"></div>
+                            </div>
+                            <div class="progress-text">0%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="step-item" id="step-2">
+                        <div class="step-icon">
+                            <i class="fas fa-filter"></i>
+                        </div>
+                        <div class="step-content">
+                            <div class="step-title">Deduplication - Removing duplicate comments</div>
+                        </div>
+                        <div class="step-progress">
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" style="width: 0%"></div>
+                            </div>
+                            <div class="progress-text">0%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="step-item" id="step-3">
+                        <div class="step-icon">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <div class="step-content">
+                            <div class="step-title">Analyzing Comments - Processing with {{ model or 'GPT-4o Mini' }}</div>
+                        </div>
+                        <div class="step-progress">
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" style="width: 0%"></div>
+                            </div>
+                            <div class="progress-text">0 / 0</div>
+                        </div>
+                    </div>
+                    
+                    <div class="step-item" id="step-4">
+                        <div class="step-icon">
+                            <i class="fas fa-compress-alt"></i>
+                        </div>
+                        <div class="step-content">
+                            <div class="step-title">Merging Results - Combining analysis data</div>
+                        </div>
+                        <div class="step-progress">
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" style="width: 0%"></div>
+                            </div>
+                            <div class="progress-text">0%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="step-item" id="step-5">
+                        <div class="step-icon">
+                            <i class="fas fa-save"></i>
+                        </div>
+                        <div class="step-content">
+                            <div class="step-title">Saving Results - Generating report files</div>
+                        </div>
+                        <div class="step-progress">
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" style="width: 0%"></div>
+                            </div>
+                            <div class="progress-text">0%</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="overall-progress">
+                    <div class="overall-progress-header">
+                        <div class="overall-progress-title">Overall Progress</div>
+                        <div class="overall-progress-percentage" id="overallPercentage">0%</div>
+                    </div>
+                    <div class="overall-progress-bar-container">
+                        <div class="overall-progress-bar" id="overallProgressBar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="results" id="results">
+                <div class="results-header">
+                    <i class="fas fa-check-circle"></i> Pipeline Complete!
+                </div>
+                <p style="margin-bottom: 1rem;">The analysis has been completed successfully. You can now view the results.</p>
+                <div class="results-actions">
+                    <button class="btn-success" onclick="viewReport()">
+                        <i class="fas fa-chart-bar"></i> View Analysis Report
+                    </button>
+                    <button class="btn-primary" onclick="runAgain()">
+                        <i class="fas fa-redo"></i> Run Again
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let eventSource = null;
+        let currentStep = 0;
+        let totalComments = 0;
+        let analyzedComments = 0;
+        
+        function runPipeline() {
+            const model = document.getElementById('model').value;
+            const numComments = parseInt(document.getElementById('num_comments').value);
+            
+            // Reset state
+            currentStep = 0;
+            totalComments = numComments;
+            analyzedComments = 0;
+            
+            // Update model name in step 3
+            document.querySelector('#step-3 .step-title').textContent = `Analyzing Comments - Processing with ${document.querySelector('#model option:checked').textContent}`;
+            
+            // Reset all steps
+            for (let i = 1; i <= 5; i++) {
+                const step = document.getElementById(`step-${i}`);
+                step.classList.remove('active', 'completed');
+                step.querySelector('.progress-bar').style.width = '0%';
+                step.querySelector('.progress-text').textContent = i === 3 ? '0 / 0' : '0%';
+            }
+            
+            // Reset overall progress
+            document.getElementById('overallPercentage').textContent = '0%';
+            document.getElementById('overallProgressBar').style.width = '0%';
+            
+            // Disable button
+            document.getElementById('runBtn').disabled = true;
+            
+            // Show progress container
+            document.getElementById('progressContainer').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            
+            // Update status
+            updateStatus('running', 'Running');
+            
+            // Use fetch with POST
+            fetch('/run_pipeline', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    model: model,
+                    num_comments: numComments
+                })
+            }).then(response => {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                
+                function read() {
+                    reader.read().then(({done, value}) => {
+                        if (done) {
+                            return;
+                        }
+                        
+                        const text = decoder.decode(value);
+                        const lines = text.split('\n');
+                        
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const data = JSON.parse(line.substring(6));
+                                    handleMessage(data);
+                                } catch (e) {
+                                    // Ignore parse errors
+                                }
+                            }
+                        }
+                        
+                        read();
+                    });
+                }
+                
+                read();
+            });
+        }
+        
+        function handleMessage(data) {
+            if (data.status === 'complete') {
+                completeAllSteps();
+                updateStatus('complete', 'Complete');
+                document.getElementById('results').style.display = 'block';
+                document.getElementById('runBtn').disabled = false;
+            } else if (data.status === 'error') {
+                updateStatus('error', 'Failed');
+                document.getElementById('runBtn').disabled = false;
+            } else if (data.message) {
+                // Parse the message to update progress
+                parseAndUpdateProgress(data.message);
+            }
+        }
+        
+        function parseAndUpdateProgress(message) {
+            // Check for step transitions
+            if (message.includes('STEP 1: Loading Comments')) {
+                activateStep(1);
+            } else if (message.includes('STEP 2: Creating Deduplication')) {
+                completeStep(1);
+                activateStep(2);
+            } else if (message.includes('STEP 3: Analyzing')) {
+                completeStep(2);
+                activateStep(3);
+            } else if (message.includes('STEP 4: Merging Results')) {
+                completeStep(3);
+                activateStep(4);
+            } else if (message.includes('STEP 5: Saving Results')) {
+                completeStep(4);
+                activateStep(5);
+            }
+            
+            // Parse progress from tqdm output (e.g., "100%|██████████| 50/50")
+            const tqdmMatch = message.match(/(\d+)%\|[█▏▎▍▌▋▊▉ ]+\|\s*(\d+)\/(\d+)/);
+            if (tqdmMatch && currentStep === 3) {
+                const percentage = parseInt(tqdmMatch[1]);
+                const current = parseInt(tqdmMatch[2]);
+                const total = parseInt(tqdmMatch[3]);
+                
+                updateStepProgress(3, percentage, `${current} / ${total}`);
+                analyzedComments = current;
+            }
+            
+            // Update overall progress
+            updateOverallProgress();
+        }
+        
+        function activateStep(stepNum) {
+            currentStep = stepNum;
+            const step = document.getElementById(`step-${stepNum}`);
+            step.classList.add('active');
+            step.querySelector('.step-icon i').classList.remove('fa-check');
+            
+            if (stepNum === 3) {
+                step.querySelector('.step-icon i').classList.add('fa-spin');
+            }
+        }
+        
+        function completeStep(stepNum) {
+            const step = document.getElementById(`step-${stepNum}`);
+            step.classList.remove('active');
+            step.classList.add('completed');
+            step.querySelector('.step-icon i').classList.remove('fa-spin');
+            step.querySelector('.step-icon i').classList.add('fa-check');
+            updateStepProgress(stepNum, 100, '100%');
+        }
+        
+        function updateStepProgress(stepNum, percentage, text) {
+            const step = document.getElementById(`step-${stepNum}`);
+            step.querySelector('.progress-bar').style.width = percentage + '%';
+            step.querySelector('.progress-text').textContent = text || percentage + '%';
+        }
+        
+        function completeAllSteps() {
+            for (let i = 1; i <= 5; i++) {
+                completeStep(i);
+            }
+            updateOverallProgress();
+        }
+        
+        function updateOverallProgress() {
+            const weights = [10, 10, 60, 10, 10]; // Step weights
+            let totalProgress = 0;
+            
+            for (let i = 1; i <= 5; i++) {
+                const step = document.getElementById(`step-${i}`);
+                if (step.classList.contains('completed')) {
+                    totalProgress += weights[i - 1];
+                } else if (step.classList.contains('active') && i === 3) {
+                    // Special handling for analysis step
+                    const percentage = analyzedComments / totalComments * 100;
+                    totalProgress += weights[i - 1] * (percentage / 100);
+                }
+            }
+            
+            document.getElementById('overallPercentage').textContent = Math.round(totalProgress) + '%';
+            document.getElementById('overallProgressBar').style.width = totalProgress + '%';
+        }
+        
+        function updateStatus(status, text) {
+            const badge = document.getElementById('statusBadge');
+            badge.className = `status-badge status-${status}`;
+            
+            let icon = '';
+            if (status === 'running') {
+                icon = '<i class="fas fa-spinner fa-spin"></i>';
+            } else if (status === 'complete') {
+                icon = '<i class="fas fa-check"></i>';
+            } else if (status === 'error') {
+                icon = '<i class="fas fa-times"></i>';
+            }
+            
+            badge.innerHTML = `${icon} ${text}`;
+        }
+        
+        function viewReport() {
+            // Open the generated report in a new tab
+            window.open('/view_report', '_blank');
+        }
+        
+        function runAgain() {
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('progressContainer').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

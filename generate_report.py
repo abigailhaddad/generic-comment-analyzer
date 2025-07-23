@@ -445,7 +445,7 @@ def generate_field_distribution_html(field_name: str, field_info: Dict[str, Any]
         
         return f'''
         <div class="section">
-            <h2>📊 {field_label} Distribution</h2>
+            <h2><i class="fas fa-chart-pie"></i> {field_label} Distribution</h2>
             <div class="stats-grid">
                 {"".join(f'''
                 <div class="stat-card">
@@ -459,7 +459,7 @@ def generate_field_distribution_html(field_name: str, field_info: Dict[str, Any]
         # For text fields with many values, show top 10 as a list
         return f'''
         <div class="section">
-            <h2>📝 Top {field_label}s</h2>
+            <h2><i class="fas fa-list"></i> Top {field_label}s</h2>
             <ul class="field-list">
                 {"".join(f'''<li>
                     <span class="field-name">{value}</span>
@@ -565,7 +565,7 @@ def generate_stance_cooccurrence_html(sorted_items, stats, field_info):
                 theme_cards.append(f'''
                     <div class="theme-card">
                         <div class="theme-header" onclick="toggleThemeDetails('{theme_id}')">
-                            <span class="theme-name">🔹 {theme_name}</span>
+                            <span class="theme-name"><i class="fas fa-tag"></i> {theme_name}</span>
                             <span class="theme-count">({len(positions)} positions)</span>
                             <span class="expand-icon" id="theme-icon-{theme_id}">▼</span>
                         </div>
@@ -577,7 +577,7 @@ def generate_stance_cooccurrence_html(sorted_items, stats, field_info):
             
             return f'''
             <div class="section">
-                <h2>📊 Themes Distribution</h2>
+                <h2><i class="fas fa-tags"></i> Themes Distribution</h2>
                 <p style="color: #666; margin-bottom: 20px; font-style: italic;">Click on any theme to see positions, then click positions to see relationships</p>
                 <div class="theme-stances">
                     {"".join(theme_cards)}
@@ -794,7 +794,7 @@ def generate_stance_cooccurrence_html(sorted_items, stats, field_info):
         
         return f'''
         <div class="section">
-            <h2>📊 Stances Distribution</h2>
+            <h2><i class="fas fa-chart-pie"></i> Stances Distribution</h2>
             <p style="color: #666; margin-bottom: 20px; font-style: italic;">Click on any stance to see how it relates to others</p>
             <div class="expandable-stances">
                 {"".join(stance_cards)}
@@ -988,6 +988,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{regulation_metadata['regulation_name']} - Comment Analysis Report</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         * {{
@@ -997,79 +998,111 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         }}
         
         body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-            line-height: 1.5;
-            background: #f8f9fa;
-            color: #333;
-        }}
-        
-        .container {{
-            max-width: 1600px;
-            margin: 0 auto;
-            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f7fa;
+            color: #2d3748;
+            line-height: 1.6;
+            margin: 0;
         }}
         
         .header {{
-            text-align: center;
-            margin-bottom: 40px;
-            padding: 20px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background-color: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1.5rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }}
+        
+        .container {{
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
         }}
         
         h1 {{
-            font-size: 2em;
-            color: #333;
-            margin-bottom: 10px;
+            color: #1a202c;
+            margin: 0 0 0.5rem 0;
+            font-size: 1.875rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }}
+        
+        h1 i {{
+            color: #4299e1;
         }}
         
         .subtitle {{
-            color: #666;
-            font-size: 1.1em;
+            color: #718096;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }}
+        
+        .regulation-link {{
+            color: #4299e1;
+            text-decoration: none;
+            font-size: 0.875rem;
+        }}
+        
+        .regulation-link:hover {{
+            text-decoration: underline;
         }}
         
         .stats-grid {{
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin: 30px 0;
+            gap: 1.5rem;
+            margin: 2rem 0;
         }}
         
         .stat-card {{
             background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
             text-align: center;
+            transition: all 0.2s;
+        }}
+        
+        .stat-card:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }}
         
         .stat-number {{
-            font-size: 2em;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 5px;
+            font-size: 2rem;
+            font-weight: 700;
+            color: #4299e1;
+            margin-bottom: 0.25rem;
         }}
         
         .stat-label {{
-            color: #666;
-            font-size: 0.9em;
+            color: #718096;
+            font-size: 0.875rem;
+            font-weight: 500;
         }}
         
         .section {{
             background: white;
-            margin: 30px 0;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
         }}
         
         h2 {{
-            font-size: 1.5em;
-            color: #333;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #e9ecef;
-            padding-bottom: 10px;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }}
         
         .filters-container {{
@@ -1181,31 +1214,34 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         table {{
             width: 100%;
             border-collapse: collapse;
-            font-size: 14px;
+            font-size: 0.875rem;
         }}
         
         th {{
-            background: #e9ecef;
-            padding: 12px 8px;
+            background: #f7fafc;
+            padding: 0.75rem;
             text-align: left;
             font-weight: 600;
-            border-bottom: 2px solid #dee2e6;
+            color: #4a5568;
+            border-bottom: 2px solid #e2e8f0;
             position: sticky;
             top: 0;
+            font-size: 0.875rem;
         }}
         
         td {{
-            padding: 10px 8px;
-            border-bottom: 1px solid #dee2e6;
+            padding: 0.75rem;
+            border-bottom: 1px solid #e2e8f0;
             vertical-align: top;
+            color: #2d3748;
         }}
         
         tr:nth-child(even) {{
-            background-color: #f8f9fa;
+            background-color: #f7fafc;
         }}
         
         tr:hover {{
-            background-color: #e3f2fd;
+            background-color: #edf2f7;
         }}
         
         .stance-for {{
@@ -1252,12 +1288,13 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         }}
         
         .stance-tag {{
-            background: #e3f2fd;
-            color: #1976d2;
-            padding: 2px 6px;
-            border-radius: 8px;
-            font-size: 10px;
-            border: 1px solid #bbdefb;
+            background: #ebf8ff;
+            color: #2c5282;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            border: 1px solid #bee3f8;
         }}
         
         .text-preview {{
@@ -1275,9 +1312,22 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
             font-size: 11px;
         }}
         
+        .comment-id {{
+            font-family: 'SF Mono', Monaco, monospace;
+            background: #f7fafc;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+        }}
+        
+        .comment-id a {{
+            color: #4299e1;
+            text-decoration: none;
+        }}
+        
         .comment-id a:hover {{
-            color: #0056b3 !important;
-            background-color: #e3f2fd;
+            color: #3182ce;
+            text-decoration: underline;
         }}
         
         .date-cell {{
@@ -1309,32 +1359,35 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         }}
         
         .meta-info {{
-            background: #343a40;
+            background: #2d3748;
             color: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-top: 30px;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin-top: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }}
         
         .meta-grid {{
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
+            gap: 1.5rem;
         }}
         
         .meta-item {{
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 0.25rem;
         }}
         
         .meta-label {{
-            font-size: 0.8em;
+            font-size: 0.875rem;
             opacity: 0.8;
+            font-weight: 500;
         }}
         
         .meta-value {{
             font-weight: 600;
+            font-size: 1rem;
         }}
         
         .pagination-controls {{
@@ -1350,23 +1403,29 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         }}
         
         .pagination-button {{
-            background: #007bff;
+            background: #4299e1;
             color: white;
             border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
         }}
         
         .pagination-button:hover {{
-            background: #0056b3;
+            background: #3182ce;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }}
         
         .pagination-button:disabled {{
-            background: #6c757d;
+            background: #a0aec0;
             cursor: not-allowed;
             opacity: 0.6;
+            transform: none;
+            box-shadow: none;
         }}
         
         .table-controls {{
@@ -1385,34 +1444,41 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         }}
         
         
-        .clear-filters {{
-            background: #dc3545;
-            color: white;
+        button {{
+            padding: 0.5rem 1rem;
             border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
+            border-radius: 0.375rem;
             cursor: pointer;
-            font-size: 14px;
-            margin-right: 10px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }}
+        
+        .clear-filters {{
+            background: #f56565;
+            color: white;
+            margin-right: 0.75rem;
         }}
         
         .clear-filters:hover {{
-            background: #c82333;
+            background: #e53e3e;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }}
         
         .show-hide-columns {{
-            background: #007bff;
+            background: #4299e1;
             color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            margin-right: 10px;
+            margin-right: 0.75rem;
         }}
         
         .show-hide-columns:hover {{
-            background: #0056b3;
+            background: #3182ce;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }}
         
         .column-visibility-dropdown {{
@@ -1541,12 +1607,15 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>{regulation_metadata['regulation_name']}</h1>
+    <div class="header">
+        <div class="container">
+            <h1><i class="fas fa-chart-bar"></i> {regulation_metadata['regulation_name']}</h1>
             <div class="subtitle">{regulation_metadata['brief_description']}</div>
-            {f'<div style="margin-top: 10px; color: #666; font-size: 0.9em;">{regulation_metadata["agency"]} Docket: <a href="https://www.regulations.gov/docket/{regulation_metadata["docket_id"]}" target="_blank" style="color: #007bff; text-decoration: none;">{regulation_metadata["docket_id"]}</a></div>' if regulation_metadata['docket_id'] else ''}
+            {f'<div class="regulation-link">{regulation_metadata["agency"]} Docket: <a href="https://www.regulations.gov/docket/{regulation_metadata["docket_id"]}" target="_blank" class="regulation-link">{regulation_metadata["docket_id"]}</a></div>' if regulation_metadata['docket_id'] else ''}
         </div>
+    </div>
+    
+    <div class="container">
         
         <!-- Summary Statistics -->
         <div class="stats-grid">
@@ -1571,7 +1640,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
 
         <!-- Comments Table -->
         <div class="section">
-            <h2>Comments</h2>
+            <h2><i class="fas fa-comments"></i> Comments</h2>
             <div class="table-controls">
                 <div class="controls-left">
                     <button class="clear-filters" onclick="clearAllFilters()">Clear All Filters</button>
@@ -1841,7 +1910,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
 
         <!-- Meta Information -->
         <div class="meta-info">
-            <h3 style="color: white; margin-bottom: 20px;">📋 Report Details</h3>
+            <h3 style="color: white; margin-bottom: 1.5rem; font-size: 1.25rem; font-weight: 600;"><i class="fas fa-info-circle"></i> Report Details</h3>
             <div class="meta-grid">
                 <div class="meta-item">
                     <div class="meta-label">Generated</div>
