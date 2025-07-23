@@ -9,6 +9,9 @@ import threading
 import queue
 import time
 import csv
+import shutil
+from werkzeug.utils import secure_filename
+import glob
 
 # Add parent directory to path to import discover_stances
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -40,7 +43,12 @@ def save_stances(stances):
 
 @app.route('/')
 def index():
-    """Main page - always start with column detection"""
+    """Main page - start with file upload"""
+    return render_template('upload.html')
+
+@app.route('/setup')
+def setup():
+    """Setup page for column detection"""
     return render_template('column_detection.html')
 
 @app.route('/stance_discovery')
@@ -155,11 +163,20 @@ def run_pipeline():
     num_comments = data.get('num_comments', 100)
     
     def generate():
+        # Find the CSV file
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        csv_files = glob.glob(os.path.join(base_dir, '*.csv'))
+        if not csv_files:
+            yield f"data: {json.dumps({'status': 'error', 'message': 'No CSV file found'})}\n\n"
+            return
+        
+        csv_filename = os.path.basename(csv_files[0])
+        
         # Build command
         cmd = [
             sys.executable,
-            os.path.join(os.path.dirname(os.path.dirname(__file__)), 'pipeline.py'),
-            '--csv', 'comments.csv',
+            os.path.join(base_dir, 'pipeline.py'),
+            '--csv', csv_filename,
             '--sample', str(num_comments),
             '--model', model,
             '--output', 'analyzed_comments.parquet'
@@ -212,16 +229,97 @@ def view_report():
     else:
         return "Report not found. Please run the analysis pipeline first.", 404
 
+@app.route('/check_csv_file')
+def check_csv_file():
+    """Check if a CSV file exists in the project directory"""
+    base_dir = os.path.dirname(os.path.dirname(__file__))
+    
+    # Look for any CSV file
+    csv_files = glob.glob(os.path.join(base_dir, '*.csv'))
+    
+    if csv_files:
+        # Use the first CSV file found
+        csv_path = csv_files[0]
+        filename = os.path.basename(csv_path)
+        
+        # Get file info
+        try:
+            size = os.path.getsize(csv_path)
+            row_count = 0
+            with open(csv_path, 'r', encoding='utf-8') as f:
+                row_count = sum(1 for line in f) - 1  # Subtract header
+            
+            return jsonify({
+                'exists': True,
+                'filename': filename,
+                'size': size,
+                'row_count': row_count
+            })
+        except Exception as e:
+            logger.error(f"Error reading CSV file: {e}")
+            return jsonify({'exists': False})
+    
+    return jsonify({'exists': False})
+
+@app.route('/upload_csv', methods=['POST'])
+def upload_csv():
+    """Handle CSV file upload"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No file provided'})
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'})
+        
+        if not file.filename.endswith('.csv'):
+            return jsonify({'success': False, 'error': 'File must be a CSV'})
+        
+        # Save the file
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        
+        # Remove any existing CSV files first
+        existing_csvs = glob.glob(os.path.join(base_dir, '*.csv'))
+        for existing in existing_csvs:
+            try:
+                os.remove(existing)
+            except Exception as e:
+                logger.error(f"Error removing existing CSV: {e}")
+        
+        # Save new file with secure filename
+        filename = secure_filename(file.filename)
+        csv_path = os.path.join(base_dir, filename)
+        file.save(csv_path)
+        
+        # Get row count
+        row_count = 0
+        with open(csv_path, 'r', encoding='utf-8') as f:
+            row_count = sum(1 for line in f) - 1  # Subtract header
+        
+        return jsonify({
+            'success': True,
+            'filename': filename,
+            'row_count': row_count
+        })
+        
+    except Exception as e:
+        logger.error(f"Error uploading file: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/check_detection_status')
 def check_detection_status():
     """Check if column detection has been done"""
     base_dir = os.path.dirname(os.path.dirname(__file__))
-    csv_path = os.path.join(base_dir, 'comments.csv')
+    
+    # Find the CSV file
+    csv_files = glob.glob(os.path.join(base_dir, '*.csv'))
+    csv_path = csv_files[0] if csv_files else None
+    
     mapping_path = os.path.join(base_dir, 'column_mapping.json')
     metadata_path = os.path.join(base_dir, 'regulation_metadata.json')
     
     result = {
-        'csv_exists': os.path.exists(csv_path),
+        'csv_exists': bool(csv_path and os.path.exists(csv_path)),
         'mapping_exists': os.path.exists(mapping_path),
         'metadata_exists': os.path.exists(metadata_path),
         'csv_columns': [],
@@ -293,11 +391,13 @@ def run_column_detection():
                 metadata = json.load(f)
         
         # Get CSV columns
-        csv_path = os.path.join(base_dir, 'comments.csv')
+        csv_files = glob.glob(os.path.join(base_dir, '*.csv'))
+        csv_path = csv_files[0] if csv_files else None
         csv_columns = []
-        with open(csv_path, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            csv_columns = reader.fieldnames or []
+        if csv_path:
+            with open(csv_path, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                csv_columns = reader.fieldnames or []
         
         return jsonify({
             'success': True,
@@ -321,7 +421,11 @@ def get_column_sample():
         return jsonify({'sample': None})
     
     try:
-        csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'comments.csv')
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        csv_files = glob.glob(os.path.join(base_dir, '*.csv'))
+        if not csv_files:
+            return jsonify({'sample': 'No CSV file found'})
+        csv_path = csv_files[0]
         with open(csv_path, 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
@@ -343,7 +447,11 @@ def get_column_samples():
         return jsonify({'samples': [], 'stats': None})
     
     try:
-        csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'comments.csv')
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        csv_files = glob.glob(os.path.join(base_dir, '*.csv'))
+        if not csv_files:
+            return jsonify({'samples': [], 'stats': None})
+        csv_path = csv_files[0]
         samples = []
         total_rows = 0
         non_empty_count = 0

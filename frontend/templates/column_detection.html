@@ -81,6 +81,7 @@
             background-color: #4299e1;
             color: white;
             transform: scale(1.1);
+            cursor: pointer;
         }
         
         .nav-dot.completed {
@@ -413,16 +414,20 @@
     <div class="container">
         <!-- Navigation dots -->
         <div class="nav-dots">
-            <div class="nav-dot active">
+            <a href="/" class="nav-dot completed">
                 1
-                <span class="nav-label">Setup</span>
-            </div>
-            <a href="/stance_discovery" class="nav-dot" id="stanceNavDot">
+                <span class="nav-label">Upload Data</span>
+            </a>
+            <a href="/setup" class="nav-dot active">
                 2
+                <span class="nav-label">Setup</span>
+            </a>
+            <a href="/stance_discovery" class="nav-dot" id="stanceNavDot">
+                3
                 <span class="nav-label">Discover Stances</span>
             </a>
             <a href="/pipeline" class="nav-dot" id="pipelineNavDot">
-                3
+                4
                 <span class="nav-label">Run Analysis</span>
             </a>
         </div>
