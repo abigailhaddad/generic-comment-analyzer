@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Theme Discovery Tool</title>
+    <title>Regulation Comment Analyzer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
             box-sizing: border-box;
@@ -12,91 +13,159 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background-color: #f5f5f5;
-            color: #333;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f7fa;
+            color: #2d3748;
             line-height: 1.6;
+            margin: 0;
+        }
+        
+        .header {
+            background-color: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1.5rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
         
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 0 20px;
         }
         
         h1 {
-            color: #2c3e50;
-            margin-bottom: 30px;
-            text-align: center;
+            color: #1a202c;
+            margin: 0;
+            font-size: 1.875rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        h1 i {
+            color: #4299e1;
+        }
+        
+        .main-content {
+            display: grid;
+            gap: 1.5rem;
         }
         
         .controls {
             background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .controls-header {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 1rem;
+        }
+        
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 140px;
+            gap: 1rem;
+            align-items: end;
+        }
+        
+        @media (max-width: 768px) {
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
         }
         
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 0;
         }
         
         label {
             display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #555;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #4a5568;
+            font-size: 0.875rem;
         }
         
         select, input[type="number"] {
             width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
+            padding: 0.625rem 0.875rem;
+            border: 1px solid #cbd5e0;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            background-color: #f7fafc;
+            transition: all 0.2s;
+        }
+        
+        select:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #4299e1;
+            background-color: white;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
         }
         
         .button-group {
             display: flex;
-            gap: 10px;
-            margin-top: 20px;
+            gap: 0.75rem;
+            flex-wrap: wrap;
         }
         
         button {
-            padding: 10px 20px;
+            padding: 0.625rem 1.25rem;
             border: none;
-            border-radius: 4px;
-            font-size: 16px;
+            border-radius: 0.375rem;
             cursor: pointer;
-            transition: background-color 0.3s;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
         
         .btn-primary {
-            background-color: #3498db;
+            background-color: #4299e1;
             color: white;
         }
         
-        .btn-primary:hover {
-            background-color: #2980b9;
+        .btn-primary:hover:not(:disabled) {
+            background-color: #3182ce;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         
         .btn-success {
-            background-color: #27ae60;
+            background-color: #48bb78;
             color: white;
         }
         
-        .btn-success:hover {
-            background-color: #229954;
+        .btn-success:hover:not(:disabled) {
+            background-color: #38a169;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         
         .btn-secondary {
-            background-color: #95a5a6;
+            background-color: #718096;
             color: white;
         }
         
-        .btn-secondary:hover {
-            background-color: #7f8c8d;
+        .btn-secondary:hover:not(:disabled) {
+            background-color: #4a5568;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         
         .status {
@@ -126,36 +195,143 @@
         
         .stances-container {
             background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
             display: none;
         }
         
-        .stance-item {
-            margin-bottom: 20px;
-            padding: 20px;
-            background-color: #f8f9fa;
-            border-radius: 6px;
-            border: 1px solid #e9ecef;
-        }
-        
-        .stance-item.editing {
-            border: 2px solid #3498db;
-            background-color: #f0f8ff;
-        }
-        
-        .stance-header {
+        .stances-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .stances-header h2 {
+            color: #2d3748;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .theme-count {
+            background-color: #edf2f7;
+            color: #4a5568;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .stance-item {
+            background-color: white;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 0.75rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+            overflow: hidden;
+        }
+        
+        .stance-item:hover {
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border-color: #cbd5e0;
+        }
+        
+        .stance-item.editing {
+            border: 2px solid #4299e1;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+        }
+        
+        .stance-header {
+            padding: 1rem 1.25rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #f7fafc;
+            transition: background-color 0.2s;
+            user-select: none;
+        }
+        
+        .stance-header:hover {
+            background-color: #edf2f7;
+        }
+        
+        .stance-item.expanded .stance-header {
+            background-color: #edf2f7;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .stance-info {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .stance-text {
+            flex: 1;
         }
         
         .stance-name {
-            font-weight: bold;
-            color: #2c3e50;
-            font-size: 18px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin: 0 0 0.25rem 0;
+        }
+        
+        .stance-description {
+            color: #718096;
+            font-size: 0.875rem;
+            margin: 0;
+        }
+        
+        .stance-meta {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        
+        .position-count {
+            background-color: #e6fffa;
+            color: #047857;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .expand-icon {
+            color: #718096;
+            font-size: 0.75rem;
+            transition: transform 0.2s;
+        }
+        
+        .stance-item.expanded .expand-icon {
+            transform: rotate(180deg);
+        }
+        
+        .stance-content {
+            padding: 1.25rem;
+            display: none;
+            animation: slideDown 0.2s ease-out;
+        }
+        
+        .stance-item.expanded .stance-content {
+            display: block;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         
         .stance-field {
@@ -287,18 +463,21 @@
         }
         
         .btn-small {
-            padding: 5px 10px;
-            font-size: 14px;
+            padding: 0.375rem 0.75rem;
+            font-size: 0.75rem;
         }
         
         .btn-danger {
-            background-color: #e74c3c;
+            background-color: #f56565;
             color: white;
         }
         
-        .btn-danger:hover {
-            background-color: #c0392b;
+        .btn-danger:hover:not(:disabled) {
+            background-color: #e53e3e;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
+        
         
         /* Modal styles */
         .modal {
@@ -342,10 +521,17 @@
     </style>
 </head>
 <body>
+    <div class="header">
+        <div class="container">
+            <h1><i class="fas fa-comments"></i> Regulation Comment Analyzer</h1>
+        </div>
+    </div>
+    
     <div class="container">
-        <h1>Theme Discovery Tool</h1>
-        
-        <div class="controls">
+        <div class="main-content">
+            <div class="controls">
+                <h2 class="controls-header">Discover Themes</h2>
+                <div class="controls-grid">
             <div class="form-group">
                 <label for="model">Select Model:</label>
                 <select id="model" name="model">
@@ -365,41 +551,51 @@
                 <button class="btn-secondary" onclick="loadExistingStances()">Load Existing Themes</button>
             </div>
             
-            <div class="status" id="status"></div>
-        </div>
-        
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <p style="margin-top: 20px;">Discovering themes and positions... This may take a moment.</p>
-            <button class="btn-cancel" onclick="cancelRequest()">Cancel</button>
-        </div>
-        
-        <div class="stances-container" id="stancesContainer">
-            <h2>Themes and Positions</h2>
-            <p style="margin-bottom: 20px;">View and manage the themes found in public comments</p>
-            
-            <div class="new-stance-form" id="newStanceForm">
-                <h3 style="margin-bottom: 15px;">Add New Theme</h3>
-                <p style="margin-bottom: 15px; color: #666;">Each theme should have a name, description, and at least one position.</p>
-                <div class="form-row">
-                    <label>Theme Name:</label>
-                    <input type="text" id="newStanceName" placeholder="e.g., Vaccine Safety Concerns">
-                </div>
-                <div class="form-row">
-                    <label>Description:</label>
-                    <textarea id="newStanceDescription" rows="3" placeholder="Brief overview of what this theme represents"></textarea>
-                </div>
-                <div class="button-group">
-                    <button class="btn-success btn-small" onclick="submitNewStance()">Create Theme</button>
-                    <button class="btn-secondary btn-small" onclick="toggleNewStanceForm(false)">Cancel</button>
+                <div class="status" id="status"></div>
+                
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Discovering themes and positions... This may take a moment.</p>
+                    <button class="btn-secondary" onclick="cancelRequest()">Cancel</button>
                 </div>
             </div>
-            
-            <div id="stancesList"></div>
-            
-            <div class="button-group" style="margin-top: 30px;">
-                <button class="btn-success" onclick="saveStances()">Save All Changes</button>
-                <button class="btn-primary btn-small" onclick="toggleNewStanceForm(true)">Add New Theme</button>
+        
+            <div class="stances-container" id="stancesContainer">
+                <div class="stances-header">
+                    <h2>Discovered Themes</h2>
+                    <span class="theme-count" id="themeCount">0 themes</span>
+                </div>
+                
+                <div class="new-stance-form" id="newStanceForm">
+                    <h3 style="margin-bottom: 15px;">Add New Theme</h3>
+                    <p style="margin-bottom: 15px; color: #666;">Each theme should have a name, description, and at least one position.</p>
+                    <div class="form-row">
+                        <label>Theme Name:</label>
+                        <input type="text" id="newStanceName" placeholder="e.g., Vaccine Safety Concerns">
+                    </div>
+                    <div class="form-row">
+                        <label>Description:</label>
+                        <textarea id="newStanceDescription" rows="3" placeholder="Brief overview of what this theme represents"></textarea>
+                    </div>
+                    <div class="button-group">
+                        <button class="btn-success btn-small" onclick="submitNewStance()">Create Theme</button>
+                        <button class="btn-secondary btn-small" onclick="toggleNewStanceForm(false)">Cancel</button>
+                    </div>
+                </div>
+                
+                <div id="stancesList"></div>
+                
+                <div class="button-group" style="margin-top: 1.5rem;">
+                    <button class="btn-success" onclick="saveStances()">
+                        <i class="fas fa-save"></i> Save All Changes
+                    </button>
+                    <button class="btn-primary btn-small" onclick="toggleNewStanceForm(true)">
+                        <i class="fas fa-plus"></i> Add Theme
+                    </button>
+                    <button class="btn-secondary btn-small" onclick="loadExistingStances()">
+                        <i class="fas fa-sync-alt"></i> Reload
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -547,16 +743,34 @@
         function displayStances() {
             const container = document.getElementById('stancesContainer');
             const list = document.getElementById('stancesList');
+            const themeCount = document.getElementById('themeCount');
             
             console.log('Displaying stances:', currentStances);
             
             list.innerHTML = '';
             
+            // Update theme count
+            themeCount.textContent = `${currentStances.length} theme${currentStances.length !== 1 ? 's' : ''}`;
+            
+            if (currentStances.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>No themes discovered yet</p>
+                        <button class="btn-primary" onclick="discoverStances()">
+                            <i class="fas fa-search"></i> Discover Themes
+                        </button>
+                    </div>
+                `;
+                container.style.display = 'block';
+                return;
+            }
+            
             currentStances.forEach((stance, index) => {
                 console.log(`Processing stance ${index}:`, stance);
                 
                 const stanceDiv = document.createElement('div');
-                stanceDiv.className = 'stance-item' + (editingStanceIndex === index ? ' editing' : '');
+                stanceDiv.className = 'stance-item' + (editingStanceIndex === index ? ' editing expanded' : '');
                 stanceDiv.id = `stance-${index}`;
                 
                 // Handle different possible field names and structures
@@ -584,12 +798,22 @@
         
         function updateButtonVisibility() {
             const loadButton = document.querySelector('button[onclick="loadExistingStances()"]');
-            if (currentStances.length > 0) {
-                // Hide load button if themes are already shown
-                loadButton.style.display = 'none';
-            } else {
-                loadButton.style.display = 'inline-block';
+            if (loadButton) {
+                if (currentStances.length > 0) {
+                    // Hide load button if themes are already shown
+                    loadButton.style.display = 'none';
+                } else {
+                    loadButton.style.display = 'inline-flex';
+                }
             }
+        }
+        
+        function toggleStance(index) {
+            if (editingStanceIndex === index) {
+                return; // Don't toggle when in edit mode
+            }
+            const stanceItem = document.getElementById(`stance-${index}`);
+            stanceItem.classList.toggle('expanded');
         }
         
         function renderViewMode(stance, index) {
@@ -615,18 +839,29 @@
             }
             
             return `
-                <div class="stance-header">
-                    <div class="stance-name">${name}</div>
-                    <div class="stance-actions">
-                        <button class="btn-edit" onclick="editStance(${index})">Edit</button>
-                        <button class="btn-danger btn-small" onclick="removeStance(${index})">Remove</button>
+                <div class="stance-header" onclick="toggleStance(${index})">
+                    <div class="stance-info">
+                        <div class="stance-text">
+                            <div class="stance-name">${name}</div>
+                            <div class="stance-description">${description}</div>
+                        </div>
+                    </div>
+                    <div class="stance-meta">
+                        <span class="position-count">${positions.length} position${positions.length !== 1 ? 's' : ''}</span>
+                        <i class="fas fa-chevron-down expand-icon"></i>
                     </div>
                 </div>
-                <div class="stance-field">
-                    <div class="field-label">Description:</div>
-                    <div class="field-value">${description}</div>
+                <div class="stance-content">
+                    <div class="stance-actions" style="margin-bottom: 1rem;">
+                        <button class="btn-primary btn-small" onclick="event.stopPropagation(); editStance(${index})">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn-danger btn-small" onclick="event.stopPropagation(); removeStance(${index})">
+                            <i class="fas fa-trash"></i> Remove
+                        </button>
+                    </div>
+                    ${positionsHTML}
                 </div>
-                ${positionsHTML}
             `;
         }
         

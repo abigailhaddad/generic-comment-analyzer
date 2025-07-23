@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 # Model configurations
 MODELS = {
-    "gpt-4o": "GPT-4o (More capable, higher cost)",
-    "gpt-4o-mini": "GPT-4o Mini (Faster, lower cost)"
+    "gpt-4o": "GPT-4o",
+    "gpt-4o-mini": "GPT-4o Mini"
 }
 
 def load_stances():
@@ -89,7 +89,7 @@ def discover_stances_endpoint():
         })
         
     except Exception as e:
-        logger.error(f"Error discovering stances: {e}")
+        logger.error(f"Error discovering stances: {e}", exc_info=True)
         return jsonify({
             'success': False,
             'error': str(e)

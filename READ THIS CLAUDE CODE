@@ -19,3 +19,9 @@
 **Don't add unasked for functionality** If you think something is necessary, ask. 
 
 **Don't 'back things up'** by creating new files of other files. Rather, commit code regularly with descriptive commit messages. Data or other untracked files should be the only things 'backed up' by renaming them or putting them in backup folders.
+
+**Don't 'make up models** If I'm doing LLM calls, use the models I give you, don't make up old modelso
+
+**Generate your reqirements files** via pip freeze, don't make them.
+
+**Don't write readmes** without being asked.
