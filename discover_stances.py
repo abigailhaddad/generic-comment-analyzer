@@ -143,51 +143,39 @@ Output as structured JSON."""
     elif prompt_strategy == "mutually_exclusive":
         system_prompt = f"""You are analyzing public comments to identify the main THEMES (topics) being discussed and the POSITIONS people take on each theme.
 
-IMPORTANT: Focus on identifying themes with positions that are MUTUALLY EXCLUSIVE or at least distinct enough that individual commenters would typically hold only one position per theme. People who strongly support one position are unlikely to also strongly support an opposing position on the same theme.
+IMPORTANT: For each theme, create genuinely OPPOSING positions that represent different viewpoints, even if one viewpoint is not well-represented in the sample.
 
 Your task is to:
-1. Identify exactly {target_count} distinct THEMES (topics/subjects) that people are discussing
-2. For each theme, identify 2-3 distinct POSITIONS that represent different sides of debates or different priorities that don't typically overlap
-3. For each position, provide specific indicators that help identify when someone holds that stance
-4. Determine what regulation/issue is being discussed
+1. Identify UP TO {target_count} distinct THEMES (topics/subjects) that people are discussing
+2. For each theme, create EXACTLY 2 positions (maximum 3 only if there's a genuine third viewpoint) that represent opposing viewpoints
+3. For each position, provide specific indicators (these can be hypothetical for underrepresented positions)
+4. Ensure positions are truly opposing, not just reworded versions of the same stance
 
-Think of positions as representing different "camps" or "sides" within each theme:
-- People in Camp A are unlikely to also be in Camp B if they're opposing positions on the same theme
-- People might have nuanced views, but typically align more strongly with one position per theme
-- Look for natural divisions and conflicts in the comments
+CRITICAL RULES for creating opposing positions:
+1. Positions must represent fundamentally DIFFERENT viewpoints, not the same view with different emphasis
+2. BAD example (these are the same position):
+   - "Support protecting environmental regulations from industry influence"
+   - "Oppose weakening environmental protections"
+   These both support environmental protection - they're the same position!
 
-Examples of themes with mutually exclusive positions:
-- Theme: "Policy Implementation" 
-  - Position: "Support for immediate implementation"
-  - Position: "Oppose immediate implementation"
-- Theme: "Regulatory Authority"
-  - Position: "Support for current authority"
-  - Position: "Oppose current authority"
+3. GOOD example (these are genuinely opposing):
+   - "Support stricter environmental regulations for public health"
+   - "Support reducing regulations to promote business growth"
+   These represent different priorities and viewpoints!
 
-CRITICAL: When positions are opposites within a theme, one must be "Support" and the other must be "Oppose" - never two "Support for" statements that contradict each other.
+4. Another GOOD example:
+   - "Support mandatory vaccination requirements for public safety"
+   - "Support individual choice in medical decisions"
 
-FORBIDDEN PATTERNS (fix these immediately):
-- "Support for X" + "Support for Y" where X and Y are opposites
-- "Support for keeping Z" + "Support for removing Z" → Change to "Support for keeping Z" + "Oppose keeping Z"
-- "Support for expanding A" + "Support for restricting A" → Change to "Support for expanding A" + "Oppose expanding A"
-
-Each theme should:
-- Be a clear topic/subject area that people discuss
-- Have 2-3 distinct positions that represent different viewpoints
-- Be actually present in multiple comments
+For each theme:
+- Create positions that someone could reasonably hold
+- Even if 99% of comments oppose something, create a position representing why someone might support it
+- Base opposing positions on reasonable policy arguments, even if not in your sample
 
 Each position should:
-- Be DETAILED and SPECIFIC - include the reasoning or context in the position name (8-15 words)
-- Examples of good opposing positions within a theme:
-  - "Support removing COVID vaccines due to safety concerns and adverse event reports"
-  - "Oppose removing COVID vaccines to maintain protection for vulnerable populations"
-- When positions are opposites, frame them as clear contradictions:
-  - One as "Support X because of Y"
-  - Other as "Oppose X because of Z"
-- Represent a distinct viewpoint that commenters typically hold exclusively within that theme
-- NEVER have two "Support for" positions that are opposites - use "Support for X" vs "Oppose X" instead
-- Have specific indicators: phrases, keywords, concepts, or argument patterns
-- Not significantly overlap with other positions within the same theme
+- Represent a distinct policy preference or priority
+- Include plausible indicators (what someone with this view might say)
+- Be clearly differentiated from other positions on the theme
 
 Output as structured JSON."""
 
