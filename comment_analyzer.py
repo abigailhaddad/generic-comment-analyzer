@@ -29,16 +29,16 @@ class TimeoutError(Exception):
 
 # Placeholder enums - will be populated by discover_stances.py
 class Stance(str, Enum):
-    CIVIL_SERVICE_PROTECTION_OPPOSE_SCHEDULE_F_IMPLEMENTATION = "Civil Service Protection: Oppose Schedule F Implementation"
-    CIVIL_SERVICE_PROTECTION_SUPPORT_SCHEDULE_F_FOR_ACCOUNTABILITY = "Civil Service Protection: Support Schedule F for Accountability"
-    POLITICAL_INFLUENCE_IN_GOVERNMENT_OPPOSE_POLITICAL_APPOINTEES_IN_CIVIL_SERVICE = "Political Influence in Government: Oppose Political Appointees in Civil Service"
-    POLITICAL_INFLUENCE_IN_GOVERNMENT_SUPPORT_POLITICAL_APPOINTEES_FOR_EFFICIENCY = "Political Influence in Government: Support Political Appointees for Efficiency"
-    MERITOCRACY_VS_LOYALTY_IN_EMPLOYMENT_ADVOCATE_FOR_MERIT_BASED_EMPLOYMENT = "Meritocracy vs. Loyalty in Employment: Advocate for Merit-Based Employment"
-    MERITOCRACY_VS_LOYALTY_IN_EMPLOYMENT_SUPPORT_LOYALTY_IN_APPOINTMENTS = "Meritocracy vs. Loyalty in Employment: Support Loyalty in Appointments"
-    IMPACT_ON_SCIENTIFIC_INTEGRITY_OPPOSE_POLITICIZATION_OF_SCIENCE = "Impact on Scientific Integrity: Oppose Politicization of Science"
-    IMPACT_ON_SCIENTIFIC_INTEGRITY_SUPPORT_POLITICAL_APPOINTEES_IN_SCIENCE_FOR_RESPONSIVENESS = "Impact on Scientific Integrity: Support Political Appointees in Science for Responsiveness"
-    TRUST_IN_GOVERNMENT_OPPOSE_EROSION_OF_TRUST = "Trust in Government: Oppose Erosion of Trust"
-    TRUST_IN_GOVERNMENT_SUPPORT_CHANGES_TO_RESTORE_CONFIDENCE = "Trust in Government: Support Changes to Restore Confidence"
+    DIGITAL_HEALTH_INFRASTRUCTURE_SUPPORT_FOR_DIGITAL_HEALTH_INFRASTRUCTURE = "Digital Health Infrastructure: Support for Digital Health Infrastructure"
+    DIGITAL_HEALTH_INFRASTRUCTURE_OPPOSE_DIGITAL_HEALTH_INFRASTRUCTURE = "Digital Health Infrastructure: Oppose Digital Health Infrastructure"
+    PATIENT_PRIVACY_AND_DATA_SECURITY_SUPPORT_ENHANCED_DATA_PRIVACY_MEASURES = "Patient Privacy and Data Security: Support Enhanced Data Privacy Measures"
+    PATIENT_PRIVACY_AND_DATA_SECURITY_OPPOSE_ADDITIONAL_DATA_PRIVACY_REGULATIONS = "Patient Privacy and Data Security: Oppose Additional Data Privacy Regulations"
+    INTEROPERABILITY_AND_DATA_EXCHANGE_SUPPORT_INTEROPERABILITY_INITIATIVES = "Interoperability and Data Exchange: Support Interoperability Initiatives"
+    INTEROPERABILITY_AND_DATA_EXCHANGE_OPPOSE_BROAD_INTEROPERABILITY_MANDATES = "Interoperability and Data Exchange: Oppose Broad Interoperability Mandates"
+    USE_OF_BIOMETRIC_DATA_AND_DIGITAL_IDS_SUPPORT_USE_OF_BIOMETRIC_DATA_AND_DIGITAL_IDS = "Use of Biometric Data and Digital IDs: Support Use of Biometric Data and Digital IDs"
+    USE_OF_BIOMETRIC_DATA_AND_DIGITAL_IDS_OPPOSE_USE_OF_BIOMETRIC_DATA_AND_DIGITAL_IDS = "Use of Biometric Data and Digital IDs: Oppose Use of Biometric Data and Digital IDs"
+    AUTONOMY_IN_HEALTHCARE_DECISIONS_SUPPORT_INDIVIDUAL_AUTONOMY_IN_HEALTHCARE = "Autonomy in Healthcare Decisions: Support Individual Autonomy in Healthcare"
+    AUTONOMY_IN_HEALTHCARE_DECISIONS_SUPPORT_CENTRALIZED_HEALTHCARE_MANAGEMENT = "Autonomy in Healthcare Decisions: Support Centralized Healthcare Management"
 
 
 class CommentAnalysisResult(BaseModel):
@@ -214,35 +214,35 @@ def create_regulation_analyzer(model=None, timeout_seconds=None):
     """Create an analyzer configured for regulation analysis"""
     
     stance_options = [
-        "Civil Service Protection: Oppose Schedule F Implementation",
-        "Civil Service Protection: Support Schedule F for Accountability",
-        "Political Influence in Government: Oppose Political Appointees in Civil Service",
-        "Political Influence in Government: Support Political Appointees for Efficiency",
-        "Meritocracy vs. Loyalty in Employment: Advocate for Merit-Based Employment",
-        "Meritocracy vs. Loyalty in Employment: Support Loyalty in Appointments",
-        "Impact on Scientific Integrity: Oppose Politicization of Science",
-        "Impact on Scientific Integrity: Support Political Appointees in Science for Responsiveness",
-        "Trust in Government: Oppose Erosion of Trust",
-        "Trust in Government: Support Changes to Restore Confidence"
+        "Digital Health Infrastructure: Support for Digital Health Infrastructure",
+        "Digital Health Infrastructure: Oppose Digital Health Infrastructure",
+        "Patient Privacy and Data Security: Support Enhanced Data Privacy Measures",
+        "Patient Privacy and Data Security: Oppose Additional Data Privacy Regulations",
+        "Interoperability and Data Exchange: Support Interoperability Initiatives",
+        "Interoperability and Data Exchange: Oppose Broad Interoperability Mandates",
+        "Use of Biometric Data and Digital IDs: Support Use of Biometric Data and Digital IDs",
+        "Use of Biometric Data and Digital IDs: Oppose Use of Biometric Data and Digital IDs",
+        "Autonomy in Healthcare Decisions: Support Individual Autonomy in Healthcare",
+        "Autonomy in Healthcare Decisions: Support Centralized Healthcare Management"
     ]
     
-    system_prompt = """You are analyzing public comments about Schedule F Proposed Rule.
+    system_prompt = """You are analyzing public comments about CMS Health Technology Ecosystem RFI (CMS-0042-NC).
 
-A proposed rule by the Office of Personnel Management to reclassify certain federal employee positions, primarily affecting civil servants, allowing them to be classified as political appointees without the standard protections against dismissal.
+The Centers for Medicare & Medicaid Services (CMS) and the Assistant Secretary for Technology Policy/Office of the National Coordinator for Health Information Technology (ASTP/ONC) issued a Request for Information (RFI) regarding digital health, interoperability, and development of a patient-centered health technology ecosystem.
 
 For each comment, identify:
 
 1. Stances: Which of these theme:position combinations does the commenter express? Look for the indicators listed below. (Select ALL that apply, or none if none apply)
-- Civil Service Protection: Oppose Schedule F Implementation: Phrases like 'strongly oppose', 'undermine civil service protections', and 'politicizing the federal workforce'.
-- Civil Service Protection: Support Schedule F for Accountability: Phrases such as 'bring accountability to federal bureaucracy', 'cut red tape', and 'hold employees accountable for performance'.
-- Political Influence in Government: Oppose Political Appointees in Civil Service: Statements including 'politicization undermines trust', 'nonpartisan civil service is essential', and 'protect institutional knowledge'.
-- Political Influence in Government: Support Political Appointees for Efficiency: Arguments framing the need for 'efficient government operations' and 'agility in implementing the President's agenda'.
-- Meritocracy vs. Loyalty in Employment: Advocate for Merit-Based Employment: Expressions like 'jobs should be awarded based on merit', 'experience and expertise are essential', and 'avoid patronage systems'.
-- Meritocracy vs. Loyalty in Employment: Support Loyalty in Appointments: Comments emphasizing 'dedication to the administration's goals', 'rotate positions for political alignment', and 'new policies reflect voter wishes'.
-- Impact on Scientific Integrity: Oppose Politicization of Science: References like 'science must remain nonpartisan', 'political influence destroys research integrity', and 'funding must be objective'.
-- Impact on Scientific Integrity: Support Political Appointees in Science for Responsiveness: Phrases suggesting 'scientific roles must align with current political priorities' and 'science should serve the administration's policies'.
-- Trust in Government: Oppose Erosion of Trust: Statements such as 'politicizing civil service undermines trust', 'integrity of government is at stake', and 'public service must not be political'.
-- Trust in Government: Support Changes to Restore Confidence: Comments promoting 'transparency in government', 'aligning federal employees with the will of the electorate', and 'returning to a system that holds accountability'.
+- Digital Health Infrastructure: Support for Digital Health Infrastructure: advocate for digital health solutions; support interoperability advancements; emphasize improving patient outcomes through digital tools
+- Digital Health Infrastructure: Oppose Digital Health Infrastructure: concerns about data privacy and security; fear of government overreach; believe technology is complicating healthcare
+- Patient Privacy and Data Security: Support Enhanced Data Privacy Measures: advocate for stronger data privacy protections; ensure patients control their data; oppose compulsory data sharing without consent
+- Patient Privacy and Data Security: Oppose Additional Data Privacy Regulations: believe existing regulations are sufficient; concern over hindering technological progress; view more regulations as burdensome
+- Interoperability and Data Exchange: Support Interoperability Initiatives: advocate for interoperability standards like FHIR; support seamless data exchange; emphasize improved care coordination
+- Interoperability and Data Exchange: Oppose Broad Interoperability Mandates: worry about data privacy risks; view current systems as adequate; fear data breaches from expanded sharing
+- Use of Biometric Data and Digital IDs: Support Use of Biometric Data and Digital IDs: believe they enhance security and efficiency; support their use for easy access to healthcare records; view digital IDs as modernizing healthcare systems
+- Use of Biometric Data and Digital IDs: Oppose Use of Biometric Data and Digital IDs: oppose mandatory biometric data collection; fear privacy violations; concern over government tracking
+- Autonomy in Healthcare Decisions: Support Individual Autonomy in Healthcare: oppose mandatory technological solutions; advocate for informed consent; support patients' right to control their healthcare data
+- Autonomy in Healthcare Decisions: Support Centralized Healthcare Management: advocate for streamlined technological integration; believe standardization improves care; view centralized data as enhancing efficiency
 
 2. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. Must be verbatim from the text.
 

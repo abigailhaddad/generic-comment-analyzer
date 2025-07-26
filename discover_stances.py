@@ -375,7 +375,7 @@ def update_comment_analyzer(config: CommentAnalyzerConfig):
     
     logger.info(f"✅ Updated comment_analyzer.py with {len(config.stance_options)} stances")
 
-def print_results(discovered: DiscoveredThemes, config: CommentAnalyzerConfig):
+def print_results(discovered: DiscoveredThemes, config: CommentAnalyzerConfig, csv_file: str = 'comments.csv'):
     """Print discovered positions and configuration."""
     print("\n" + "="*80)
     print("DISCOVERED POSITIONS AND STANCES")
@@ -499,7 +499,7 @@ Instructions:
         update_comment_analyzer(config)
         
         # Print results
-        print_results(discovered, config)
+        print_results(discovered, config, csv_file)
         
     except Exception as e:
         logger.error(f"Discovery failed: {e}")

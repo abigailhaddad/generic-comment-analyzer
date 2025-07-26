@@ -41,6 +41,28 @@ from comment_analyzer import CommentAnalyzer
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+def load_regulation_info():
+    """Load regulation name and docket ID from analyzer_config.json"""
+    config_file = 'analyzer_config.json'
+    
+    if os.path.exists(config_file):
+        try:
+            with open(config_file, 'r') as f:
+                config = json.load(f)
+                regulation_name = config.get('regulation_name', 'Unknown Regulation')
+                # Try to extract docket ID from regulation description or use a default
+                regulation_desc = config.get('regulation_description', '')
+                docket_id = 'REG-2025-001'  # Default docket ID
+                
+                logger.info(f"Loaded regulation info from {config_file}: {regulation_name}")
+                return regulation_name, docket_id
+        except Exception as e:
+            logger.warning(f"Failed to load config from {config_file}: {e}")
+    
+    # Fallback defaults
+    logger.warning("No analyzer_config.json found, using default regulation name")
+    return "Unknown Regulation", "REG-2025-001"
+
 def download_attachment(attachment_url: str, output_path: str) -> bool:
     """Download an attachment file."""
     try:
@@ -165,32 +187,60 @@ def process_attachments(comment_data: Dict[str, Any], attachments_dir: str, atta
             filename += '.pdf'  # Default extension
             
         file_path = os.path.join(comment_attachment_dir, filename)
+        text_cache_path = os.path.join(comment_attachment_dir, f"{filename}.extracted.txt")
         
-        # Download attachment
-        logger.info(f"  Downloading attachment: {filename}")
-        if download_attachment(url, file_path):
-            # Extract text locally first
-            text = extract_text_local(file_path)
-            
-            # If local extraction yields minimal text, try Gemini
-            if len(text.strip()) < 50:
-                logger.info(f"  Minimal text from local extraction, trying Gemini...")
-                gemini_text = extract_text_with_gemini(file_path)
-                if len(gemini_text.strip()) > len(text.strip()):
-                    text = gemini_text
-            
-            if text.strip():
-                combined_attachment_text.append(text.strip())
-                logger.info(f"  SUCCESS: Extracted {len(text)} characters from {filename}")
-                logger.info(f"  First 100 chars: {text.strip()[:100]}...")
-                processing_status["processed"] += 1
-            else:
-                logger.warning(f"  FAILED: No text extracted from {filename}")
-                processing_status["failed"] += 1
-                processing_status["failures"].append({"filename": filename, "reason": "no_text_extracted"})
+        # Check if we already have extracted text
+        if os.path.exists(text_cache_path):
+            logger.info(f"  Found cached text for {filename}, loading...")
+            try:
+                with open(text_cache_path, 'r', encoding='utf-8') as f:
+                    text = f.read()
+                if text.strip():
+                    combined_attachment_text.append(text.strip())
+                    logger.info(f"  SUCCESS: Loaded {len(text)} characters from cache")
+                    processing_status["processed"] += 1
+                    continue
+            except Exception as e:
+                logger.warning(f"  Failed to load cached text: {e}")
+        
+        # Check if attachment file already exists
+        if os.path.exists(file_path):
+            logger.info(f"  Attachment {filename} already exists, skipping download")
         else:
+            # Download attachment
+            logger.info(f"  Downloading attachment: {filename}")
+            if not download_attachment(url, file_path):
+                processing_status["failed"] += 1
+                processing_status["failures"].append({"filename": filename, "reason": "download_failed"})
+                continue
+        
+        # Extract text
+        text = extract_text_local(file_path)
+        
+        # If local extraction yields minimal text, try Gemini
+        if len(text.strip()) < 50:
+            logger.info(f"  Minimal text from local extraction, trying Gemini...")
+            gemini_text = extract_text_with_gemini(file_path)
+            if len(gemini_text.strip()) > len(text.strip()):
+                text = gemini_text
+        
+        if text.strip():
+            # Save extracted text to cache
+            try:
+                with open(text_cache_path, 'w', encoding='utf-8') as f:
+                    f.write(text.strip())
+                logger.info(f"  Saved extracted text to cache: {text_cache_path}")
+            except Exception as e:
+                logger.warning(f"  Failed to save text cache: {e}")
+            
+            combined_attachment_text.append(text.strip())
+            logger.info(f"  SUCCESS: Extracted {len(text)} characters from {filename}")
+            logger.info(f"  First 100 chars: {text.strip()[:100]}...")
+            processing_status["processed"] += 1
+        else:
+            logger.warning(f"  FAILED: No text extracted from {filename}")
             processing_status["failed"] += 1
-            processing_status["failures"].append({"filename": filename, "reason": "download_failed"})
+            processing_status["failures"].append({"filename": filename, "reason": "no_text_extracted"})
     
     logger.info(f"=== ATTACHMENT PROCESSING COMPLETE FOR {comment_id} ===")
     logger.info(f"  Status: {processing_status}")
@@ -458,12 +508,8 @@ def analyze_comments_parallel(comments: List[Dict[str, Any]], model: str = "gpt-
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 # Create analyzer for each worker (thread-safe)
                 def create_analyzer():
-                    # Look for config in frontend directory first, then current directory
-                    frontend_config = os.path.join(os.path.dirname(__file__), 'frontend', 'analyzer_config.json')
-                    if os.path.exists(frontend_config):
-                        return CommentAnalyzer(model=model, config_file=frontend_config)
-                    else:
-                        return CommentAnalyzer(model=model)
+                    # Use analyzer_config.json from current directory
+                    return CommentAnalyzer(model=model, config_file='analyzer_config.json')
                 
                 # Submit all comments in this batch
                 future_to_comment = {}
@@ -502,13 +548,8 @@ def analyze_comments(comments: List[Dict[str, Any]], model: str = "gpt-4o-mini",
         if truncate_chars:
             logger.info(f"Truncating text to {truncate_chars} characters for LLM analysis")
         
-        # Initialize analyzer using configuration file
-        # Look for config in frontend directory first, then current directory
-        frontend_config = os.path.join(os.path.dirname(__file__), 'frontend', 'analyzer_config.json')
-        if os.path.exists(frontend_config):
-            analyzer = CommentAnalyzer(model=model, config_file=frontend_config)
-        else:
-            analyzer = CommentAnalyzer(model=model)
+        # Initialize analyzer using configuration file from current directory
+        analyzer = CommentAnalyzer(model=model, config_file='analyzer_config.json')
         
         analyzed_comments = []
         
@@ -542,7 +583,7 @@ def get_db_connection():
         logger.error(f"Failed to connect to database: {e}")
         return None
 
-def check_database_status(regulation_name: str = "Schedule F Civil Service Rule"):
+def check_database_status(regulation_name: str):
     """Check database status and get user confirmation for deletion if needed."""
     conn = get_db_connection()
     if not conn:
@@ -602,7 +643,7 @@ def check_database_status(regulation_name: str = "Schedule F Civil Service Rule"
     finally:
         conn.close()
 
-def store_in_postgres_from_parquet(parquet_file: str, regulation_name: str = "Schedule F Civil Service Rule", docket_id: str = "OPM-2025-0004"):
+def store_in_postgres_from_parquet(parquet_file: str, regulation_name: str, docket_id: str):
     """Store analyzed comments in PostgreSQL database from Parquet file."""
     conn = get_db_connection()
     if not conn:
@@ -686,7 +727,7 @@ def store_in_postgres_from_parquet(parquet_file: str, regulation_name: str = "Sc
 
 def main():
     parser = argparse.ArgumentParser(description='Generic regulation comment analysis pipeline')
-    parser.add_argument('--csv', type=str, required=True, help='Path to comments CSV file')
+    parser.add_argument('--csv', type=str, default='comments.csv', help='Path to comments CSV file (default: comments.csv)')
     parser.add_argument('--output', type=str, default='analyzed_comments.parquet', help='Output Parquet file')
     parser.add_argument('--sample', type=int, help='Process only N random comments for testing')
     parser.add_argument('--model', type=str, default='gpt-4o-mini', help='LLM model to use')
@@ -699,10 +740,13 @@ def main():
     args = parser.parse_args()
     
     try:
+        # Load regulation info from config
+        regulation_name, docket_id = load_regulation_info()
+        
         # Check database status early if database storage is requested
         if args.to_database:
             logger.info("=== DATABASE CHECK ===")
-            if not check_database_status():
+            if not check_database_status(regulation_name):
                 logger.info("Exiting due to database check cancellation")
                 return
         
@@ -733,7 +777,7 @@ def main():
         # Step 6: Store in PostgreSQL
         if args.to_database:
             logger.info("=== STEP 6: Database Storage ===")
-            store_in_postgres_from_parquet(args.output)
+            store_in_postgres_from_parquet(args.output, regulation_name, docket_id)
         else:
             logger.info("=== STEP 6: Skipping Database Storage ===")
             logger.info("Use --to-database flag to store in PostgreSQL")
