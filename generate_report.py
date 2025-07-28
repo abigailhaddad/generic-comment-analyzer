@@ -46,7 +46,8 @@ def analyze_field_types(comments: List[Dict[str, Any]]) -> Dict[str, Dict[str, A
     
     # Standard fields we expect - only show stats for checkbox fields
     fields = {
-        'stances': {'type': 'checkbox', 'is_list': True}
+        'stances': {'type': 'checkbox', 'is_list': True},
+        'entity_type': {'type': 'checkbox', 'is_list': False}
     }
     
     for field_name, field_info in fields.items():
@@ -1695,6 +1696,10 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                             <input type="checkbox" id="col-11" onchange="toggleColumn(11)">
                             <label for="col-11">Rationale (LLM)</label>
                         </div>
+                        <div class="column-visibility-item">
+                            <input type="checkbox" id="col-12" onchange="toggleColumn(12)">
+                            <label for="col-12">Entity Type</label>
+                        </div>
                     </div>
                 </div>
                 </div>
@@ -1799,9 +1804,21 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                                     <input type="text" class="filter-input" data-column="11" placeholder="Search rationale..." onkeyup="filterTable()">
                                 </div>
                             </th>
+                            <th class="filterable" data-column="12" style="display: none;">
+                                Entity Type <span class="filter-arrow" onclick="toggleFilter(12)">▼</span>
+                                <div class="filter-dropdown" id="filter-12" style="display: none;">"""
+    
+    # Build entity type checkboxes
+    entity_checkboxes = ''.join(f'<label class="filter-checkbox"><input type="checkbox" data-filter="entity_type" value="{entity}" onchange="filterTable()"> {entity}</label>' 
+                                for entity in field_analysis.get('entity_type', {}).get('unique_values', []))
+    
+    html_template += entity_checkboxes
+    html_template += """
+                                </div>
+                            </th>
                         </tr>
                     </thead>
-                        <tbody>
+                    <tbody>
 """
 
     # Add table rows
@@ -1824,6 +1841,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         
         key_quote = analysis.get('key_quote', '')
         rationale = analysis.get('rationale', '')
+        entity_type = analysis.get('entity_type', 'Other/Unknown')
         
         # Format date
         date_str = comment.get('date', '')
@@ -1881,6 +1899,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         # Create tooltip cells for truncated content
         key_quote_cell = create_tooltip_cell(key_quote, 300, tooltip_max_length=500).replace('<td', '<td style="display: none;"')
         rationale_cell = create_tooltip_cell(rationale, 500, tooltip_max_length=500).replace('<td', '<td style="display: none;"')
+        entity_type_cell = f'<td style="display: none;">{entity_type}</td>'
         submitter_cell = create_tooltip_cell(comment.get('submitter', ''), 50, tooltip_max_length=200)
         organization_cell = create_tooltip_cell(comment.get('organization', ''), 50, tooltip_max_length=200)
 
@@ -1898,6 +1917,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                                 {attachment_cell}
                                 {key_quote_cell}
                                 {rationale_cell}
+                                {entity_type_cell}
                             </tr>
 """
 
@@ -2036,12 +2056,14 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
             const attachmentCheckboxes = document.querySelectorAll('input[data-filter="attachments"]:checked');
             const duplicationCountCheckboxes = document.querySelectorAll('input[data-filter="duplication_count"]:checked');
             const duplicationRatioCheckboxes = document.querySelectorAll('input[data-filter="duplication_ratio"]:checked');
+            const entityTypeCheckboxes = document.querySelectorAll('input[data-filter="entity_type"]:checked');
             
             const selectedStances = Array.from(stanceCheckboxes).map(cb => cb.value.toLowerCase());
             const filterUnusualCombos = unusualComboCheckboxes.length > 0;
             const selectedAttachments = Array.from(attachmentCheckboxes).map(cb => cb.value);
             const selectedDuplicationCounts = Array.from(duplicationCountCheckboxes).map(cb => parseInt(cb.value));
             const selectedDuplicationRatios = Array.from(duplicationRatioCheckboxes).map(cb => parseInt(cb.value));
+            const selectedEntityTypes = Array.from(entityTypeCheckboxes).map(cb => cb.value);
 
             
             // Filter each row
@@ -2125,6 +2147,14 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                     const ratioValue = ratioMatch ? parseInt(ratioMatch[1]) : 1;
                     
                     if (!selectedDuplicationRatios.includes(ratioValue)) {
+                        showRow = false;
+                    }
+                }
+                
+                // Check entity type filter (column 12)
+                if (showRow && selectedEntityTypes.length > 0) {
+                    const entityTypeText = cells[12].textContent.trim();
+                    if (!selectedEntityTypes.includes(entityTypeText)) {
                         showRow = false;
                     }
                 }

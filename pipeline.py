@@ -472,7 +472,14 @@ def analyze_single_comment(analyzer, comment, truncate_chars=None):
         if truncate_chars and len(analysis_text) > truncate_chars:
             analysis_text = analysis_text[:truncate_chars]
         
-        analysis_result = analyzer.analyze(analysis_text, comment_id=comment['id'])
+        # Get organization and submitter info
+        organization = comment.get('Organization Name', '')
+        submitter = comment.get('Title', '')
+        
+        analysis_result = analyzer.analyze(analysis_text, 
+                                         comment_id=comment['id'],
+                                         organization=organization,
+                                         submitter=submitter)
         
         return {
             **comment,

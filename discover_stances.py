@@ -32,6 +32,9 @@ class DiscoveredThemes(BaseModel):
     regulation_description: str = Field(
         description="Brief 1-2 sentence description of the issue/regulation"
     )
+    entity_types: List[str] = Field(
+        description="List of types of entities submitting comments (e.g., 'Individual', 'Healthcare Provider', 'Insurance Company', 'Technology Company', etc.)"
+    )
 
 class CommentAnalyzerConfig(BaseModel):
     """Complete configuration for comment analyzer."""
@@ -42,6 +45,9 @@ class CommentAnalyzerConfig(BaseModel):
     )
     stance_indicators: Dict[str, str] = Field(
         description="Mapping of stance names to their detection indicators"
+    )
+    entity_types: List[str] = Field(
+        description="List of entity types that are submitting comments"
     )
     system_prompt: str
 
@@ -81,7 +87,9 @@ def load_comments_sample(csv_file: str, sample_size: int = 500) -> List[Dict[str
         if text.strip():
             comments.append({
                 'text': text,
-                'id': comment.get(column_mapping.get('id', 'Document ID'), '')
+                'id': comment.get(column_mapping.get('id', 'Document ID'), ''),
+                'submitter': comment.get(column_mapping.get('submitter', 'Title'), ''),
+                'organization': comment.get(column_mapping.get('organization', 'Organization Name'), '')
             })
     
     logger.info(f"Loaded {len(comments)} comments with text content")
@@ -94,8 +102,24 @@ def discover_themes_experimental(comments: List[Dict[str, Any]], model: str = "g
     # Prepare text sample for analysis
     comment_texts = []
     for i, comment in enumerate(comments[:150]):  # First 150 for better position discovery
-        text = comment['text'][:500]  # Truncate very long comments
-        comment_texts.append(f"Comment {i+1}: {text}")
+        org = comment.get('organization', '').strip()
+        submitter = comment.get('submitter', '').strip()
+        
+        # Build comment header with submitter info
+        header_parts = [f"Comment {i+1}"]
+        if org:
+            header_parts.append(f"Organization: {org}")
+        if submitter:
+            header_parts.append(f"Submitter: {submitter}")
+        
+        header = " | ".join(header_parts)
+        full_entry = f"{header}: {comment['text']}"
+        
+        # Truncate the full entry (header + text) to 1000 characters
+        if len(full_entry) > 1000:
+            full_entry = full_entry[:1000] + "..."
+            
+        comment_texts.append(full_entry)
     
     combined_text = "\n\n".join(comment_texts)
     
@@ -108,6 +132,7 @@ Your task is to:
 2. For each theme, identify 2-3 distinct POSITIONS that people are taking (support/opposition stances)
 3. For each position, provide specific indicators that help identify when someone holds that stance
 4. Determine what regulation/issue is being discussed
+5. Identify the types of entities submitting comments based on organization names, titles, AND content of comments (e.g., when they say "as a physician" or "our bank")
 
 Themes are topics like:
 - "Vaccine safety and efficacy"
@@ -150,6 +175,7 @@ Your task is to:
 2. For each theme, create EXACTLY 2 positions (maximum 3 only if there's a genuine third viewpoint) that represent opposing viewpoints
 3. For each position, provide specific indicators (these can be hypothetical for underrepresented positions)
 4. Ensure positions are truly opposing, not just reworded versions of the same stance
+5. Identify the types of entities submitting comments based on organization names, titles, AND content of comments (e.g., when they say "as a physician" or "our bank")
 
 CRITICAL RULES for creating opposing positions:
 1. Positions must represent fundamentally DIFFERENT viewpoints, not the same view with different emphasis
@@ -195,6 +221,11 @@ For each position within a theme, provide:
 
 Also identify:
 - What regulation/issue this is about
+- What types of entities are submitting comments (look for clues in organization names, submitter titles, AND the comment text itself)
+  Examples: Individual/Citizen, Healthcare Provider, Insurance Company, Technology Company, 
+  Professional Association, Advocacy Group, Government Agency, Academic Institution, etc.
+  Look for phrases like "As a small business owner", "Our hospital", "I am a patient", "We are a trade association", etc.
+  Be specific to the regulation domain (e.g., for health regulations: Hospital System, Medical Device Manufacturer, Pharmacy, etc.)
 
 Focus on creating actionable indicators that an AI can use to detect these support/opposition positions in new comments."""
 
@@ -223,7 +254,17 @@ Focus on creating actionable indicators that an AI can use to detect these suppo
             actual_data = result_data['properties']
             result_data = actual_data
         
+        # Log what we got for debugging
+        logger.info(f"Response includes entity_types: {'entity_types' in result_data}")
+        if 'entity_types' in result_data:
+            logger.info(f"Entity types found: {result_data['entity_types']}")
+        else:
+            logger.warning("No entity_types in response! Keys found: " + str(list(result_data.keys())))
+        
         result = DiscoveredThemes(**result_data)
+        
+        # Debug: Check if entity_types made it to the model
+        logger.info(f"DiscoveredThemes object has {len(result.entity_types)} entity types")
         
         # Flatten themes and positions for backward compatibility
         all_positions = []
@@ -242,6 +283,7 @@ Focus on creating actionable indicators that an AI can use to detect these suppo
             "regulation_name": result.regulation_name,
             "regulation_description": result.regulation_description,
             "themes": result.themes,
+            "entity_types": result.entity_types,
             "positions": all_positions,  # For backward compatibility
             "timestamp": datetime.now().isoformat()
         }
@@ -278,6 +320,7 @@ def generate_analyzer_config(discovered: DiscoveredThemes) -> CommentAnalyzerCon
     
     # Create system prompt
     stance_list = "\n".join([f"- {name}: {indicators}" for name, indicators in stance_indicators.items()])
+    entity_list = "\n".join([f"- {entity}" for entity in discovered.entity_types])
     
     system_prompt = f"""You are analyzing public comments about {discovered.regulation_name}.
 
@@ -288,9 +331,12 @@ For each comment, identify:
 1. Stances: Which of these positions/arguments does the commenter express? Look for the indicators listed below. (Select ALL that apply, or none if none apply)
 {stance_list}
 
-2. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. Must be verbatim from the text.
+2. Entity Type: Identify what type of entity is submitting this comment. Look for clues in the organization name, submitter title, and the comment text itself (e.g., "As a physician", "Our hospital", "I am a patient"). Only select a specific entity type if there's clear evidence. If you cannot determine the entity type from the available information, select "Other/Unknown". Choose from:
+{entity_list}
 
-3. Rationale: Briefly explain (1-2 sentences) why you selected these stances.
+3. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. Must be verbatim from the text.
+
+4. Rationale: Briefly explain (1-2 sentences) why you selected these stances.
 
 Instructions:
 - A comment may express multiple stances or no clear stance
@@ -302,6 +348,7 @@ Instructions:
         regulation_description=discovered.regulation_description,
         stance_options=stance_options,
         stance_indicators=stance_indicators,
+        entity_types=discovered.entity_types,
         system_prompt=system_prompt
     )
 
@@ -312,6 +359,7 @@ def save_config(config: CommentAnalyzerConfig, output_file: str = "analyzer_conf
         "regulation_description": config.regulation_description,
         "stance_options": config.stance_options,
         "stance_indicators": config.stance_indicators,
+        "entity_types": config.entity_types,
         "system_prompt": config.system_prompt,
         "generated_at": "2025-06-25"
     }
@@ -339,8 +387,32 @@ def update_comment_analyzer(config: CommentAnalyzerConfig):
     # Build the new enum definitions
     stance_enum = "class Stance(str, Enum):\n" + "\n".join(stance_enum_items)
     
+    # Create EntityType enum definitions
+    entity_enum_items = []
+    # Ensure we have a full list including Other/Unknown
+    entity_types_with_other = config.entity_types.copy()
+    if "Other/Unknown" not in entity_types_with_other:
+        entity_types_with_other.append("Other/Unknown")
+    
+    for entity in entity_types_with_other:
+        # Create valid enum names by replacing spaces and special chars
+        enum_name = re.sub(r'[^A-Za-z0-9]+', '_', entity.upper()).strip('_')
+        entity_enum_items.append(f'    {enum_name} = "{entity}"')
+    
+    entity_enum = "class EntityType(str, Enum):\n" + "\n".join(entity_enum_items)
+    
     # Replace existing enum definitions
-    # First, find and replace Stance enum
+    # First, find and replace EntityType enum
+    entity_pattern = r'class EntityType\(str, Enum\):\n(?:    .*\n)*'
+    if re.search(entity_pattern, content):
+        content = re.sub(entity_pattern, entity_enum + "\n", content)
+    else:
+        # If no EntityType enum exists, add it before Stance enum
+        stance_start = content.find('class Stance(str, Enum):')
+        if stance_start > 0:
+            content = content[:stance_start] + entity_enum + "\n\n\n" + content[stance_start:]
+    
+    # Then, find and replace Stance enum
     stance_pattern = r'class Stance\(str, Enum\):\n(?:    .*\n)*'
     if re.search(stance_pattern, content):
         content = re.sub(stance_pattern, stance_enum + "\n", content)
@@ -384,6 +456,10 @@ def print_results(discovered: DiscoveredThemes, config: CommentAnalyzerConfig, c
     print(f"\nRegulation: {discovered.regulation_name}")
     print(f"Description: {discovered.regulation_description}")
     
+    print(f"\nEntity Types ({len(discovered.entity_types)}):")
+    for entity_type in discovered.entity_types:
+        print(f"  • {entity_type}")
+    
     print(f"\nThemes ({len(discovered.themes)}):")
     for i, theme in enumerate(discovered.themes, 1):
         print(f"\n  {i}. {theme['name']}")
@@ -407,6 +483,7 @@ def print_results(discovered: DiscoveredThemes, config: CommentAnalyzerConfig, c
     print("✅ comment_analyzer.py has been updated with enum definitions")
     print("✅ The comment analyzer will now identify support/opposition positions per comment")
     print(f"✅ Found {len(discovered.themes)} themes with {sum(len(theme.get('positions', [])) for theme in discovered.themes)} total positions")
+    print(f"✅ Found {len(discovered.entity_types)} entity types: {', '.join(discovered.entity_types)}")
     print(f"✅ Ready to run: python pipeline.py --csv {csv_file}")
 
 
@@ -446,7 +523,8 @@ def main():
         discovered = DiscoveredThemes(
             themes=result['themes'],
             regulation_name=result['regulation_name'],
-            regulation_description=result['regulation_description']
+            regulation_description=result['regulation_description'],
+            entity_types=result.get('entity_types', [])
         )
         
         # Generate configuration with theme:position format
@@ -471,9 +549,16 @@ def main():
         
         config.stance_options = theme_position_options
         config.stance_indicators = theme_position_indicators
+        # Ensure Other/Unknown is in entity_types
+        entity_types_with_other = discovered.entity_types.copy()
+        if "Other/Unknown" not in entity_types_with_other:
+            entity_types_with_other.append("Other/Unknown")
+        config.entity_types = entity_types_with_other
         
         # Update system prompt for theme:position format
         stance_list = "\n".join([f"- {name}: {indicators}" for name, indicators in theme_position_indicators.items()])
+        entity_list = "\n".join([f"- {entity}" for entity in config.entity_types])
+        
         config.system_prompt = f"""You are analyzing public comments about {discovered.regulation_name}.
 
 {discovered.regulation_description}
@@ -483,9 +568,12 @@ For each comment, identify:
 1. Stances: Which of these theme:position combinations does the commenter express? Look for the indicators listed below. (Select ALL that apply, or none if none apply)
 {stance_list}
 
-2. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. Must be verbatim from the text.
+2. Entity Type: Identify what type of entity is submitting this comment. Look for clues in the organization name, submitter title, and the comment text itself (e.g., "As a physician", "Our hospital", "I am a patient"). Only select a specific entity type if there's clear evidence. If you cannot determine the entity type from the available information, select "Other/Unknown". Choose from:
+{entity_list}
 
-3. Rationale: Briefly explain (1-2 sentences) why you selected these theme:position combinations.
+3. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. Must be verbatim from the text.
+
+4. Rationale: Briefly explain (1-2 sentences) why you selected these theme:position combinations.
 
 Instructions:
 - A comment may express multiple stances or no clear stance

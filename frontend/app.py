@@ -35,18 +35,65 @@ MODELS = {
 }
 
 def load_stances():
-    """Load existing stances from stances.json"""
-    stances_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'stances.json')
-    if os.path.exists(stances_path):
-        with open(stances_path, 'r') as f:
-            return json.load(f)
+    """Load existing stances from analyzer_config.json"""
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'analyzer_config.json')
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+            # Extract themes from stance_options
+            themes = []
+            theme_dict = {}
+            for stance_option in config.get('stance_options', []):
+                if ': ' in stance_option:
+                    theme_name, position_name = stance_option.split(': ', 1)
+                    if theme_name not in theme_dict:
+                        theme_dict[theme_name] = {
+                            'name': theme_name,
+                            'description': '',  # We don't store descriptions separately
+                            'positions': []
+                        }
+                    indicators = config.get('stance_indicators', {}).get(stance_option, '')
+                    theme_dict[theme_name]['positions'].append({
+                        'name': position_name,
+                        'indicators': indicators.split('; ') if indicators else []
+                    })
+            return list(theme_dict.values())
     return []
 
 def save_stances(stances):
-    """Save stances to stances.json"""
-    stances_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'stances.json')
-    with open(stances_path, 'w') as f:
-        json.dump(stances, f, indent=2)
+    """Save stances by updating analyzer_config.json"""
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'analyzer_config.json')
+    
+    # Load existing config
+    config = {}
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+    
+    # Convert stances back to stance_options and stance_indicators format
+    stance_options = []
+    stance_indicators = {}
+    
+    for theme in stances:
+        theme_name = theme['name']
+        for position in theme.get('positions', []):
+            position_name = position['name']
+            formatted_name = f"{theme_name}: {position_name}"
+            stance_options.append(formatted_name)
+            
+            indicators = position['indicators']
+            if isinstance(indicators, list):
+                stance_indicators[formatted_name] = "; ".join(indicators)
+            else:
+                stance_indicators[formatted_name] = indicators
+    
+    # Update config
+    config['stance_options'] = stance_options
+    config['stance_indicators'] = stance_indicators
+    
+    # Save updated config
+    with open(config_path, 'w') as f:
+        json.dump(config, f, indent=2)
 
 @app.route('/')
 def index():
@@ -117,16 +164,14 @@ def discover_stances_endpoint():
         
         logger.info(f"Discovered themes structure: {json.dumps(stances, indent=2)}")
         
-        # Save the discovered stances
-        save_stances(stances)
-        
         # Update comment_analyzer.py with the new stances
         try:
             # Convert to DiscoveredThemes object
             discovered = DiscoveredThemes(
                 themes=result['themes'],
                 regulation_name=result['regulation_name'],
-                regulation_description=result['regulation_description']
+                regulation_description=result['regulation_description'],
+                entity_types=result.get('entity_types', [])
             )
             
             # Generate configuration with theme:position format
@@ -172,9 +217,9 @@ Instructions:
 - Only select stances that are clearly expressed in the comment
 - Be objective and avoid inserting personal opinions"""
             
-            # Save configuration to frontend directory
-            frontend_config_path = os.path.join(os.path.dirname(__file__), 'analyzer_config.json')
-            save_config(config, frontend_config_path)
+            # Save configuration to root directory (not frontend directory)
+            root_config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'analyzer_config.json')
+            save_config(config, root_config_path)
             
             # Update comment_analyzer.py
             update_comment_analyzer(config)
@@ -188,7 +233,8 @@ Instructions:
         return jsonify({
             'success': True,
             'stances': stances,
-            'count': len(stances)
+            'count': len(stances),
+            'entity_types': result.get('entity_types', [])
         })
         
     except Exception as e:
@@ -203,9 +249,19 @@ def get_stances():
     """Get current stances"""
     try:
         stances = load_stances()
+        
+        # Also load entity types from analyzer_config.json in root directory
+        entity_types = []
+        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'analyzer_config.json')
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+                entity_types = config.get('entity_types', [])
+        
         return jsonify({
             'success': True,
-            'stances': stances
+            'stances': stances,
+            'entity_types': entity_types
         })
     except Exception as e:
         return jsonify({
@@ -219,9 +275,20 @@ def update_stances():
     try:
         data = request.json
         stances = data.get('stances', [])
+        entity_types = data.get('entity_types', [])
         
         # Save updated stances
         save_stances(stances)
+        
+        # Also update entity_types in analyzer_config.json in root directory if provided
+        if entity_types:
+            config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'analyzer_config.json')
+            if os.path.exists(config_path):
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+                config['entity_types'] = entity_types
+                with open(config_path, 'w') as f:
+                    json.dump(config, f, indent=2)
         
         return jsonify({
             'success': True,

@@ -28,17 +28,28 @@ class TimeoutError(Exception):
     pass
 
 # Placeholder enums - will be populated by discover_stances.py
+class EntityType(str, Enum):
+    INDIVIDUAL_CITIZEN = "Individual/Citizen"
+    HEALTHCARE_PROVIDER = "Healthcare Provider"
+    TECHNOLOGY_COMPANY = "Technology Company"
+    ADVOCACY_GROUP = "Advocacy Group"
+    PROFESSIONAL_ASSOCIATION = "Professional Association"
+    MEDICAL_DEVICE_MANUFACTURER = "Medical Device Manufacturer"
+    INSURANCE_COMPANY = "Insurance Company"
+    OTHER_UNKNOWN = "Other/Unknown"
+
+
 class Stance(str, Enum):
-    DIGITAL_HEALTH_INFRASTRUCTURE_SUPPORT_FOR_DIGITAL_HEALTH_INFRASTRUCTURE = "Digital Health Infrastructure: Support for Digital Health Infrastructure"
-    DIGITAL_HEALTH_INFRASTRUCTURE_OPPOSE_DIGITAL_HEALTH_INFRASTRUCTURE = "Digital Health Infrastructure: Oppose Digital Health Infrastructure"
-    PATIENT_PRIVACY_AND_DATA_SECURITY_SUPPORT_ENHANCED_DATA_PRIVACY_MEASURES = "Patient Privacy and Data Security: Support Enhanced Data Privacy Measures"
-    PATIENT_PRIVACY_AND_DATA_SECURITY_OPPOSE_ADDITIONAL_DATA_PRIVACY_REGULATIONS = "Patient Privacy and Data Security: Oppose Additional Data Privacy Regulations"
-    INTEROPERABILITY_AND_DATA_EXCHANGE_SUPPORT_INTEROPERABILITY_INITIATIVES = "Interoperability and Data Exchange: Support Interoperability Initiatives"
-    INTEROPERABILITY_AND_DATA_EXCHANGE_OPPOSE_BROAD_INTEROPERABILITY_MANDATES = "Interoperability and Data Exchange: Oppose Broad Interoperability Mandates"
-    USE_OF_BIOMETRIC_DATA_AND_DIGITAL_IDS_SUPPORT_USE_OF_BIOMETRIC_DATA_AND_DIGITAL_IDS = "Use of Biometric Data and Digital IDs: Support Use of Biometric Data and Digital IDs"
-    USE_OF_BIOMETRIC_DATA_AND_DIGITAL_IDS_OPPOSE_USE_OF_BIOMETRIC_DATA_AND_DIGITAL_IDS = "Use of Biometric Data and Digital IDs: Oppose Use of Biometric Data and Digital IDs"
-    AUTONOMY_IN_HEALTHCARE_DECISIONS_SUPPORT_INDIVIDUAL_AUTONOMY_IN_HEALTHCARE = "Autonomy in Healthcare Decisions: Support Individual Autonomy in Healthcare"
-    AUTONOMY_IN_HEALTHCARE_DECISIONS_SUPPORT_CENTRALIZED_HEALTHCARE_MANAGEMENT = "Autonomy in Healthcare Decisions: Support Centralized Healthcare Management"
+    DIGITAL_IDENTIFICATION_AND_BIOMETRIC_DATA_SUPPORT_DIGITAL_IDS_AND_BIOMETRICS = "Digital Identification and Biometric Data: Support Digital IDs and Biometrics"
+    DIGITAL_IDENTIFICATION_AND_BIOMETRIC_DATA_OPPOSE_DIGITAL_IDS_AND_BIOMETRICS = "Digital Identification and Biometric Data: Oppose Digital IDs and Biometrics"
+    HEALTH_DATA_INTEROPERABILITY_SUPPORT_STANDARDIZED_PROTOCOLS_FOR_INTEROPERABILITY = "Health Data Interoperability: Support Standardized Protocols for Interoperability"
+    HEALTH_DATA_INTEROPERABILITY_OPPOSE_MANDATING_SPECIFIC_PLATFORMS = "Health Data Interoperability: Oppose Mandating Specific Platforms"
+    PATIENT_PRIVACY_AND_CONSENT_PRIORITIZE_PATIENT_CONSENT_AND_PRIVACY = "Patient Privacy and Consent: Prioritize Patient Consent and Privacy"
+    PATIENT_PRIVACY_AND_CONSENT_FLEXIBLE_USE_OF_PATIENT_DATA_FOR_IMPROVED_CARE = "Patient Privacy and Consent: Flexible Use of Patient Data for Improved Care"
+    ADOPTION_AND_INTEGRATION_OF_DIGITAL_HEALTH_TOOLS_PROMOTE_BROAD_ADOPTION_OF_DIGITAL_HEALTH_TOOLS = "Adoption and Integration of Digital Health Tools: Promote Broad Adoption of Digital Health Tools"
+    ADOPTION_AND_INTEGRATION_OF_DIGITAL_HEALTH_TOOLS_CAUTIOUS_INTEGRATION_OF_DIGITAL_HEALTH_TOOLS = "Adoption and Integration of Digital Health Tools: Cautious Integration of Digital Health Tools"
+    GOVERNMENT_ROLE_IN_HEALTH_TECHNOLOGY_ACTIVE_GOVERNMENT_ROLE_IN_STANDARDIZING_HEALTH_TECH = "Government Role in Health Technology: Active Government Role in Standardizing Health Tech"
+    GOVERNMENT_ROLE_IN_HEALTH_TECHNOLOGY_LIMIT_GOVERNMENT_CONTROL_OVER_HEALTH_TECHNOLOGY = "Government Role in Health Technology: Limit Government Control Over Health Technology"
 
 
 class CommentAnalysisResult(BaseModel):
@@ -46,6 +57,9 @@ class CommentAnalysisResult(BaseModel):
     stances: List[Stance] = Field(
         default_factory=list,
         description="List of stances/arguments expressed in the comment (0 or more)"
+    )
+    entity_type: str = Field(
+        description="Type of entity submitting the comment (must be one of the predefined entity types)"
     )
     key_quote: str = Field(
         description="The most important quote that captures the essence of the comment (max 100 words)"
@@ -72,10 +86,15 @@ class CommentAnalyzer:
         # Load configuration from file
         self.config = self._load_config(config_file)
         self.stance_options = self.config.get('stance_options', [])
+        self.entity_types = self.config.get('entity_types', [])
+        # Always ensure Other/Unknown is in the list
+        if "Other/Unknown" not in self.entity_types:
+            self.entity_types.append("Other/Unknown")
         self.system_prompt = self.config.get('system_prompt')
         
         logger.info(f"Loaded configuration for: {self.config.get('regulation_name', 'Unknown Regulation')}")
         logger.info(f"Using {len(self.stance_options)} stance options")
+        logger.info(f"Using {len(self.entity_types)} entity types")
         
         # Ensure API key is available
         if "OPENAI_API_KEY" not in os.environ:
@@ -101,21 +120,34 @@ class CommentAnalyzer:
             
         # Default generic prompt
         stance_list = "\n".join([f"- {stance}" for stance in self.stance_options])
+        entity_list = "\n".join([f"- {entity}" for entity in self.entity_types])
         
         return f"""You are analyzing public comments submitted regarding a proposed regulation.
 
 1. Stance: Determine the commenter's position on the proposed regulation. Choose from:
 {stance_list}
 
-2. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. The quote must be exactly present in the original text - do not paraphrase or modify.
+2. Entity Type: Identify what type of entity is submitting this comment. Look for clues in the organization name, submitter title, and the comment text itself (e.g., "As a physician", "Our hospital", "I am a patient"). Only select a specific entity type if there's clear evidence. If you cannot determine the entity type from the available information, select "Other/Unknown". Choose from:
+{entity_list}
 
-3. Rationale: Briefly explain (1-2 sentences) why you classified the stance as you did.
+3. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. The quote must be exactly present in the original text - do not paraphrase or modify.
+
+4. Rationale: Briefly explain (1-2 sentences) why you classified the stance as you did.
 
 Analyze objectively and avoid inserting personal opinions or biases."""
 
-    def analyze_with_timeout(self, comment_text, comment_id=None):
+    def analyze_with_timeout(self, comment_text, comment_id=None, organization=None, submitter=None):
         """Analyze a comment with timeout protection"""
         identifier = f" (ID: {comment_id})" if comment_id else ""
+        
+        # Build context about the submitter
+        context_parts = []
+        if organization:
+            context_parts.append(f"Organization: {organization}")
+        if submitter:
+            context_parts.append(f"Submitter: {submitter}")
+        
+        context = " | ".join(context_parts) if context_parts else ""
         
         # Create a thread-safe container for the result
         result_container = {'result': None, 'error': None}
@@ -127,7 +159,7 @@ Analyze objectively and avoid inserting personal opinions or biases."""
                     model=self.model,
                     messages=[
                         {"role": "system", "content": self.get_system_prompt()},
-                        {"role": "user", "content": f"Analyze the following public comment{identifier}:\n\n{comment_text}"}
+                        {"role": "user", "content": f"Analyze the following public comment{identifier}:\n\n{context}\n\n{comment_text}" if context else f"Analyze the following public comment{identifier}:\n\n{comment_text}"}
                     ],
                     response_format=CommentAnalysisResult,
                     timeout=self.timeout_seconds
@@ -165,7 +197,7 @@ Analyze objectively and avoid inserting personal opinions or biases."""
         
         return result_container['result']
     
-    def analyze(self, comment_text, comment_id=None, max_retries=3):
+    def analyze(self, comment_text, comment_id=None, organization=None, submitter=None, max_retries=3):
         """
         Analyze a comment with retries for robustness.
         
@@ -181,7 +213,7 @@ Analyze objectively and avoid inserting personal opinions or biases."""
         
         for attempt in range(max_retries + 1):
             try:
-                result = self.analyze_with_timeout(comment_text, comment_id)
+                result = self.analyze_with_timeout(comment_text, comment_id, organization, submitter)
                 
                 # Validate the result has required fields
                 if not isinstance(result, dict):
@@ -195,6 +227,12 @@ Analyze objectively and avoid inserting personal opinions or biases."""
                 # Convert string values to enum values if needed
                 if 'stances' in result and isinstance(result['stances'], list):
                     result['stances'] = [s if isinstance(s, Stance) else s for s in result['stances']]
+                
+                # Handle entity_type - keep as string since LLM returns string
+                if 'entity_type' in result:
+                    # Ensure it's one of the allowed values
+                    if result['entity_type'] not in self.entity_types:
+                        result['entity_type'] = "Other/Unknown"
                 
                 return result
                 
@@ -214,39 +252,49 @@ def create_regulation_analyzer(model=None, timeout_seconds=None):
     """Create an analyzer configured for regulation analysis"""
     
     stance_options = [
-        "Digital Health Infrastructure: Support for Digital Health Infrastructure",
-        "Digital Health Infrastructure: Oppose Digital Health Infrastructure",
-        "Patient Privacy and Data Security: Support Enhanced Data Privacy Measures",
-        "Patient Privacy and Data Security: Oppose Additional Data Privacy Regulations",
-        "Interoperability and Data Exchange: Support Interoperability Initiatives",
-        "Interoperability and Data Exchange: Oppose Broad Interoperability Mandates",
-        "Use of Biometric Data and Digital IDs: Support Use of Biometric Data and Digital IDs",
-        "Use of Biometric Data and Digital IDs: Oppose Use of Biometric Data and Digital IDs",
-        "Autonomy in Healthcare Decisions: Support Individual Autonomy in Healthcare",
-        "Autonomy in Healthcare Decisions: Support Centralized Healthcare Management"
+        "Digital Identification and Biometric Data: Support Digital IDs and Biometrics",
+        "Digital Identification and Biometric Data: Oppose Digital IDs and Biometrics",
+        "Health Data Interoperability: Support Standardized Protocols for Interoperability",
+        "Health Data Interoperability: Oppose Mandating Specific Platforms",
+        "Patient Privacy and Consent: Prioritize Patient Consent and Privacy",
+        "Patient Privacy and Consent: Flexible Use of Patient Data for Improved Care",
+        "Adoption and Integration of Digital Health Tools: Promote Broad Adoption of Digital Health Tools",
+        "Adoption and Integration of Digital Health Tools: Cautious Integration of Digital Health Tools",
+        "Government Role in Health Technology: Active Government Role in Standardizing Health Tech",
+        "Government Role in Health Technology: Limit Government Control Over Health Technology"
     ]
     
-    system_prompt = """You are analyzing public comments about CMS Health Technology Ecosystem RFI (CMS-0042-NC).
+    system_prompt = """You are analyzing public comments about CMS Health Technology Ecosystem.
 
-The Centers for Medicare & Medicaid Services (CMS) and the Assistant Secretary for Technology Policy/Office of the National Coordinator for Health Information Technology (ASTP/ONC) issued a Request for Information (RFI) regarding digital health, interoperability, and development of a patient-centered health technology ecosystem.
+A request for information on advancing interoperability, data sharing, patient empowerment, and digital standards within the health technology ecosystem, specifically under Medicare and Medicaid systems.
 
 For each comment, identify:
 
 1. Stances: Which of these theme:position combinations does the commenter express? Look for the indicators listed below. (Select ALL that apply, or none if none apply)
-- Digital Health Infrastructure: Support for Digital Health Infrastructure: advocate for digital health solutions; support interoperability advancements; emphasize improving patient outcomes through digital tools
-- Digital Health Infrastructure: Oppose Digital Health Infrastructure: concerns about data privacy and security; fear of government overreach; believe technology is complicating healthcare
-- Patient Privacy and Data Security: Support Enhanced Data Privacy Measures: advocate for stronger data privacy protections; ensure patients control their data; oppose compulsory data sharing without consent
-- Patient Privacy and Data Security: Oppose Additional Data Privacy Regulations: believe existing regulations are sufficient; concern over hindering technological progress; view more regulations as burdensome
-- Interoperability and Data Exchange: Support Interoperability Initiatives: advocate for interoperability standards like FHIR; support seamless data exchange; emphasize improved care coordination
-- Interoperability and Data Exchange: Oppose Broad Interoperability Mandates: worry about data privacy risks; view current systems as adequate; fear data breaches from expanded sharing
-- Use of Biometric Data and Digital IDs: Support Use of Biometric Data and Digital IDs: believe they enhance security and efficiency; support their use for easy access to healthcare records; view digital IDs as modernizing healthcare systems
-- Use of Biometric Data and Digital IDs: Oppose Use of Biometric Data and Digital IDs: oppose mandatory biometric data collection; fear privacy violations; concern over government tracking
-- Autonomy in Healthcare Decisions: Support Individual Autonomy in Healthcare: oppose mandatory technological solutions; advocate for informed consent; support patients' right to control their healthcare data
-- Autonomy in Healthcare Decisions: Support Centralized Healthcare Management: advocate for streamlined technological integration; believe standardization improves care; view centralized data as enhancing efficiency
+- Digital Identification and Biometric Data: Support Digital IDs and Biometrics: support digital ID for secure access; biometric data enhances security; advocating for digital identity in healthcare
+- Digital Identification and Biometric Data: Oppose Digital IDs and Biometrics: absolutely no digital ID requirement; never forced to provide biometric data; mandated wearable technologies; right to be forgotten
+- Health Data Interoperability: Support Standardized Protocols for Interoperability: adopt open, standardized protocols; importance of HL7 FHIR standards; universal EMR system for patient data sharing
+- Health Data Interoperability: Oppose Mandating Specific Platforms: fragmented by proprietary systems; do not mandate or favor specific platforms; services should communicate regardless of hardware
+- Patient Privacy and Consent: Prioritize Patient Consent and Privacy: right to control personal data; informed consent must be standard; privacy rights must be protected
+- Patient Privacy and Consent: Flexible Use of Patient Data for Improved Care: data sharing empowers better decision making; enhanced care through shared data; technology to improve outcomes despite privacy concerns
+- Adoption and Integration of Digital Health Tools: Promote Broad Adoption of Digital Health Tools: expand Medicare coverage for digital tools; integrate RPM and telehealth tools; encourage the use of digital health products
+- Adoption and Integration of Digital Health Tools: Cautious Integration of Digital Health Tools: concerns over privacy in digital health; importance of safeguarding patient interactions; require rigorous validation before adoption
+- Government Role in Health Technology: Active Government Role in Standardizing Health Tech: government should create EMR standards; CMS involvement in tech innovation; government-owned solutions for standardization
+- Government Role in Health Technology: Limit Government Control Over Health Technology: government intrusion risks privacy; focus on innovations not mandates; avoid government-mandated tech solutions
 
-2. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. Must be verbatim from the text.
+2. Entity Type: Identify what type of entity is submitting this comment. Look for clues in the organization name, submitter title, and the comment text itself (e.g., "As a physician", "Our hospital", "I am a patient"). Only select a specific entity type if there's clear evidence. If you cannot determine the entity type from the available information, select "Other/Unknown". Choose from:
+- Individual/Citizen
+- Healthcare Provider
+- Technology Company
+- Advocacy Group
+- Professional Association
+- Medical Device Manufacturer
+- Insurance Company
+- Other/Unknown
 
-3. Rationale: Briefly explain (1-2 sentences) why you selected these theme:position combinations.
+3. Key Quote: Select the most important quote (max 100 words) that best captures the essence of the comment. Must be verbatim from the text.
+
+4. Rationale: Briefly explain (1-2 sentences) why you selected these theme:position combinations.
 
 Instructions:
 - A comment may express multiple stances or no clear stance
