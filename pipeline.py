@@ -13,11 +13,13 @@ import json
 import os
 import csv
 import logging
-import requests
 import base64
 import time
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+
+# Import attachment utilities
+from attachment_utils import download_attachment, extract_text_from_file, process_attachments
 import random
 from dotenv import load_dotenv
 from PyPDF2 import PdfReader
@@ -63,190 +65,7 @@ def load_regulation_info():
     logger.warning("No analyzer_config.json found, using default regulation name")
     return "Unknown Regulation", "REG-2025-001"
 
-def download_attachment(attachment_url: str, output_path: str) -> bool:
-    """Download an attachment file."""
-    try:
-        response = requests.get(attachment_url, stream=True, timeout=30)
-        response.raise_for_status()
-        
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        with open(output_path, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
-        return True
-    except Exception as e:
-        logger.error(f"Failed to download {attachment_url}: {e}")
-        return False
 
-def extract_text_local(file_path: str) -> str:
-    """Extract text using local libraries (PDF, DOCX, TXT)."""
-    ext = file_path.lower().split('.')[-1]
-    try:
-        if ext == 'pdf':
-            reader = PdfReader(file_path)
-            return "\n".join(page.extract_text() or '' for page in reader.pages)
-        elif ext == 'docx':
-            doc = docx.Document(file_path)
-            return "\n".join(para.text for para in doc.paragraphs)
-        elif ext == 'txt':
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                return f.read()
-        else:
-            return ""
-    except Exception as e:
-        logger.warning(f"Local extraction failed for {file_path}: {e}")
-        return ""
-
-def extract_text_with_gemini(file_path: str) -> str:
-    """Extract text using Gemini API for images and complex PDFs."""
-    gemini_api_key = os.getenv("GEMINI_API_KEY")
-    if not gemini_api_key:
-        logger.warning("GEMINI_API_KEY not found, skipping Gemini extraction")
-        return ""
-    
-    # Check file size (skip large files)
-    file_size = os.path.getsize(file_path)
-    if file_size > 5 * 1024 * 1024:  # 5MB limit
-        logger.warning(f"File too large for Gemini: {file_path}")
-        return ""
-    
-    try:
-        # Read and encode file
-        with open(file_path, "rb") as f:
-            encoded_data = base64.b64encode(f.read()).decode("utf-8")
-        
-        # Determine MIME type
-        ext = file_path.lower().split('.')[-1]
-        mime_types = {
-            'pdf': 'application/pdf',
-            'png': 'image/png', 
-            'jpg': 'image/jpeg',
-            'jpeg': 'image/jpeg',
-            'gif': 'image/gif',
-            'bmp': 'image/bmp',
-        }
-        mime_type = mime_types.get(ext, 'application/pdf')
-        
-        # Call Gemini API
-        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={gemini_api_key}"
-        payload = {
-            "contents": [{
-                "parts": [
-                    {"text": "Extract all text from this document. Return only the raw text content."},
-                    {"inlineData": {"mimeType": mime_type, "data": encoded_data}}
-                ]
-            }],
-            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 8192}
-        }
-        
-        response = requests.post(url, json=payload, timeout=60)
-        response.raise_for_status()
-        
-        result = response.json()
-        text = result['candidates'][0]['content']['parts'][0]['text']
-        return text.strip()
-        
-    except Exception as e:
-        logger.error(f"Gemini extraction failed for {file_path}: {e}")
-        return ""
-
-def process_attachments(comment_data: Dict[str, Any], attachments_dir: str, attachment_col: str = 'Attachment Files') -> tuple[str, Dict[str, Any]]:
-    """Download and process attachments for a comment, return combined text and processing status."""
-    comment_id = comment_data.get('Document ID', 'Unknown')
-    logger.info(f"=== PROCESSING ATTACHMENTS FOR {comment_id} ===")
-    
-    if attachment_col not in comment_data or not comment_data[attachment_col]:
-        logger.info(f"  No attachments found for {comment_id}")
-        return "", {"total": 0, "processed": 0, "failed": 0, "failures": []}
-    
-    attachment_urls = comment_data[attachment_col].split(',')
-    logger.info(f"  Found {len(attachment_urls)} attachment URLs")
-    combined_attachment_text = []
-    processing_status = {
-        "total": len([url for url in attachment_urls if url.strip()]),
-        "processed": 0,
-        "failed": 0,
-        "failures": []
-    }
-    
-    # Get comment ID using multiple possible field names
-    comment_id = (comment_data.get('Document ID') or 
-                 comment_data.get('id') or 
-                 comment_data.get('Comment ID') or 
-                 'unknown_comment')
-    comment_attachment_dir = os.path.join(attachments_dir, comment_id)
-    
-    for i, url in enumerate(attachment_urls):
-        url = url.strip()
-        if not url:
-            continue
-            
-        # Generate filename from URL
-        filename = f"attachment_{i+1}_{url.split('/')[-1]}"
-        if '.' not in filename:
-            filename += '.pdf'  # Default extension
-            
-        file_path = os.path.join(comment_attachment_dir, filename)
-        text_cache_path = os.path.join(comment_attachment_dir, f"{filename}.extracted.txt")
-        
-        # Check if we already have extracted text
-        if os.path.exists(text_cache_path):
-            logger.info(f"  Found cached text for {filename}, loading...")
-            try:
-                with open(text_cache_path, 'r', encoding='utf-8') as f:
-                    text = f.read()
-                if text.strip():
-                    combined_attachment_text.append(text.strip())
-                    logger.info(f"  SUCCESS: Loaded {len(text)} characters from cache")
-                    processing_status["processed"] += 1
-                    continue
-            except Exception as e:
-                logger.warning(f"  Failed to load cached text: {e}")
-        
-        # Check if attachment file already exists
-        if os.path.exists(file_path):
-            logger.info(f"  Attachment {filename} already exists, skipping download")
-        else:
-            # Download attachment
-            logger.info(f"  Downloading attachment: {filename}")
-            if not download_attachment(url, file_path):
-                processing_status["failed"] += 1
-                processing_status["failures"].append({"filename": filename, "reason": "download_failed"})
-                continue
-        
-        # Extract text
-        text = extract_text_local(file_path)
-        
-        # If local extraction yields minimal text, try Gemini
-        if len(text.strip()) < 50:
-            logger.info(f"  Minimal text from local extraction, trying Gemini...")
-            gemini_text = extract_text_with_gemini(file_path)
-            if len(gemini_text.strip()) > len(text.strip()):
-                text = gemini_text
-        
-        if text.strip():
-            # Save extracted text to cache
-            try:
-                with open(text_cache_path, 'w', encoding='utf-8') as f:
-                    f.write(text.strip())
-                logger.info(f"  Saved extracted text to cache: {text_cache_path}")
-            except Exception as e:
-                logger.warning(f"  Failed to save text cache: {e}")
-            
-            combined_attachment_text.append(text.strip())
-            logger.info(f"  SUCCESS: Extracted {len(text)} characters from {filename}")
-            logger.info(f"  First 100 chars: {text.strip()[:100]}...")
-            processing_status["processed"] += 1
-        else:
-            logger.warning(f"  FAILED: No text extracted from {filename}")
-            processing_status["failed"] += 1
-            processing_status["failures"].append({"filename": filename, "reason": "no_text_extracted"})
-    
-    logger.info(f"=== ATTACHMENT PROCESSING COMPLETE FOR {comment_id} ===")
-    logger.info(f"  Status: {processing_status}")
-    logger.info(f"  Total text extracted: {len(''.join(combined_attachment_text))} characters")
-    
-    return "\n\n--- ATTACHMENT ---\n\n".join(combined_attachment_text), processing_status
 
 def load_column_mapping() -> Dict[str, str]:
     """Load column mappings from config file."""
@@ -270,7 +89,7 @@ def load_column_mapping() -> Dict[str, str]:
         logger.error(f"Failed to load column mapping: {e}")
         return {}
 
-def read_comments_from_csv(csv_file: str, limit: Optional[int] = None, sample_size: Optional[int] = None, random_seed: int = 42) -> List[Dict[str, Any]]:
+def read_comments_from_csv(csv_file: str, limit: Optional[int] = None, sample_size: Optional[int] = None, random_seed: int = 42, use_gemini: bool = False) -> List[Dict[str, Any]]:
     """Read comments from CSV file and return as list of dicts."""
     logger.info(f"Reading comments from {csv_file}")
     
@@ -328,7 +147,7 @@ def read_comments_from_csv(csv_file: str, limit: Optional[int] = None, sample_si
         attachment_status = None
         if has_attachments:
             logger.info(f"Processing attachments for comment {comment_id}")
-            attachment_text, attachment_status = process_attachments(row, attachments_dir, attachment_col)
+            attachment_text, attachment_status = process_attachments(row, attachments_dir, attachment_col, use_gemini=use_gemini)
         
         # Combine comment text and attachment text
         full_text = comment_text
@@ -743,6 +562,7 @@ def main():
     parser.add_argument('--workers', type=int, default=8, help='Number of parallel workers for LLM calls (default: 8)')
     parser.add_argument('--batch-size', type=int, default=50, help='Batch size for parallel processing (default: 50)')
     parser.add_argument('--no-parallel', action='store_true', help='Disable parallel processing (use sequential)')
+    parser.add_argument('--use-gemini', action='store_true', help='Use Gemini API for attachment text extraction (requires GEMINI_API_KEY)')
     
     args = parser.parse_args()
     
@@ -759,7 +579,7 @@ def main():
         
         # Step 1: Read comments from CSV with attachments (sampling applied inside)
         logger.info("=== STEP 1: Loading Comments ===")
-        comments = read_comments_from_csv(args.csv, sample_size=args.sample)
+        comments = read_comments_from_csv(args.csv, sample_size=args.sample, use_gemini=args.use_gemini)
         
         # Step 2: Create deduplication table
         logger.info("=== STEP 2: Creating Deduplication Table ===")

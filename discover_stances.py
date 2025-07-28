@@ -17,6 +17,9 @@ from pydantic import BaseModel, Field
 import litellm
 from datetime import datetime
 
+# Import attachment utilities
+from attachment_utils import process_attachments
+
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -51,7 +54,7 @@ class CommentAnalyzerConfig(BaseModel):
     )
     system_prompt: str
 
-def load_comments_sample(csv_file: str, sample_size: int = 500) -> List[Dict[str, Any]]:
+def load_comments_sample(csv_file: str, sample_size: int = 500, include_attachments: bool = True, use_gemini: bool = True) -> List[Dict[str, Any]]:
     """Load a random sample of comments from CSV file."""
     logger.info(f"Loading comments from {csv_file}")
     
@@ -64,6 +67,11 @@ def load_comments_sample(csv_file: str, sample_size: int = 500) -> List[Dict[str
             logger.info("Using column mappings from column_mapping.json")
     except:
         pass
+    
+    # Create attachments directory if processing attachments
+    attachments_dir = "attachments" if include_attachments else None
+    if attachments_dir:
+        os.makedirs(attachments_dir, exist_ok=True)
     
     comments = []
     with open(csv_file, 'r', encoding='utf-8') as f:
@@ -82,11 +90,29 @@ def load_comments_sample(csv_file: str, sample_size: int = 500) -> List[Dict[str
     for comment in sampled_comments:
         # Get text field using column mapping or fallback
         text_col = column_mapping.get('text', 'Comment')
-        text = comment.get(text_col, '') or comment.get('Comment', '')
+        comment_text = comment.get(text_col, '') or comment.get('Comment', '')
         
-        if text.strip():
+        # Get attachment column
+        attachment_col = column_mapping.get('attachment_files', 'Attachment Files')
+        
+        # Process attachments if requested and available
+        attachment_text = ""
+        if include_attachments and attachment_col in comment and comment[attachment_col]:
+            logger.info(f"Processing attachments for comment {comment.get(column_mapping.get('id', 'Document ID'), '')}")
+            # Use download_missing=False for discovery to only use cached attachments
+            attachment_text, _ = process_attachments(comment, attachments_dir, attachment_col, download_missing=False, use_gemini=use_gemini)
+        
+        # Combine comment text and attachment text
+        full_text = comment_text
+        if attachment_text:
+            if full_text:
+                full_text += f"\n\n--- ATTACHMENT CONTENT ---\n{attachment_text}"
+            else:
+                full_text = attachment_text
+        
+        if full_text.strip():
             comments.append({
-                'text': text,
+                'text': full_text,
                 'id': comment.get(column_mapping.get('id', 'Document ID'), ''),
                 'submitter': comment.get(column_mapping.get('submitter', 'Title'), ''),
                 'organization': comment.get(column_mapping.get('organization', 'Organization Name'), '')
@@ -492,6 +518,7 @@ def main():
     parser.add_argument('--sample', type=int, default=250, help='Number of comments to analyze (default: 250)')
     parser.add_argument('--model', type=str, default='gpt-4o', help='LLM model to use (default: gpt-4o)')
     parser.add_argument('--csv', type=str, default='comments.csv', help='CSV file to analyze (default: comments.csv)')
+    parser.add_argument('--use-gemini', action='store_true', help='Use Gemini API for attachment text extraction (requires GEMINI_API_KEY)')
     
     args = parser.parse_args()
     
@@ -500,7 +527,7 @@ def main():
         
         # Load comments sample
         logger.info("Loading comment sample...")
-        comments = load_comments_sample(csv_file, args.sample)
+        comments = load_comments_sample(csv_file, args.sample, use_gemini=args.use_gemini)
         
         if not comments:
             logger.error("No comments with text content found")
