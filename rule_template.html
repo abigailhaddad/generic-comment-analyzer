@@ -215,7 +215,7 @@
 
         <div class="site-footer">
             Generated {{ generated_time }} · Model {{ model_used }} · {{ amended_count }} amended sections, {{ other_count }} other sections referenced.<br>
-            Comment citations are extracted from comment text by pattern-matching §200.NNN references; automated extraction may miss or over-match some references.
+            Comment citations are extracted from comment text by pattern-matching §200.NNN references; automated extraction may miss or over-match some references.{% if source_url %}<br>Built with generic-comment-analyzer &middot; <a href="{{ source_url }}" target="_blank" rel="noopener" style="color: var(--color-accent);">source on GitHub</a>{% endif %}
         </div>
     </div>
 

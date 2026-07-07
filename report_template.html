@@ -542,7 +542,7 @@
                 </div>
             </div>
             <p style="margin: 1rem 0 0; font-size: 0.8rem; color: var(--color-text-muted); line-height: 1.5;">
-                Comments were classified with an LLM ({{ model_used }}) plus a second-pass verification, and near-identical form letters are grouped into campaigns. Automated classification may contain errors.
+                Comments were classified with an LLM ({{ model_used }}) plus a second-pass verification, and near-identical form letters are grouped into campaigns. Automated classification may contain errors.{% if source_url %}<br>Built with generic-comment-analyzer &middot; <a href="{{ source_url }}" target="_blank" rel="noopener" style="color: var(--color-accent);">source on GitHub</a>{% endif %}
             </p>
         </div>
     </div>

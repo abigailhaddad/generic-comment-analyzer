@@ -238,6 +238,7 @@ instructions:
 # omitted keys inherit the house defaults. One-line recolor of the whole report.
 # -------------------------------------------------------------------
 report:
+  source_url: "https://github.com/abigailhaddad/generic-comment-analyzer"
   colors:
     accent: "#1B3A5C"    # navy — neutral accent (counts, links, buttons, chips)
     support: "#2D6A4F"   # green — Support

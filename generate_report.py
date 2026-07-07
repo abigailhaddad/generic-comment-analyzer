@@ -853,6 +853,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
     report_config = load_report_config()
     colors = load_colors(report_config)
     accent_rgb = _hex_to_rgb(colors['accent'])
+    source_url = report_config.get('source_url') or None
     fields = load_fields()
     field_meta = compute_field_meta(fields, report_config)
     show_stance_cards = 'cards' in field_meta.get('stances', {}).get('show', [])
@@ -891,6 +892,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         show_stance_cards=show_stance_cards,
         show_entity_cards=show_entity_cards,
         rule_page_url=rule_page_url,
+        source_url=source_url,
         generated_time=generated_time,
         model_used=model_name,
     )
@@ -912,6 +914,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
             section_field_key='sections_referenced',
             amended_count=len(sections),
             other_count=len(other_sections),
+            source_url=source_url,
             generated_time=generated_time,
             model_used=model_name,
         )
