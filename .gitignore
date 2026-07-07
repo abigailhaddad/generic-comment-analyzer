@@ -1,0 +1,51 @@
+# Environment and credentials
+.env
+myenv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# --- Per-regulation data (large / regenerable — NEVER commit) ---
+# Each regulation lives in regulations/<slug>/. We commit only its two small
+# config files (analyzer_config.yaml + regulation_metadata.json); everything
+# else in the dir is data or output and stays local.
+attachments/
+*.csv
+*.parquet
+index.html
+read-the-rule.html
+*.log
+
+# JSON is ignored by default; re-include the small shared/config JSON.
+*.json
+!column_mapping.json
+!regulation_metadata.json
+
+# Test/report artifacts
+test_*.html
+test_report.html
+posting_lag.html
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Node modules (for frontend tests)
+node_modules/
+
+# Local Claude Code notes
+READ THIS CLAUDE CODE
+
+# Local Netlify folder
+.netlify

@@ -1,0 +1,371 @@
+# Analyzer Configuration — OMB Regulation for Federal Financial Assistance
+# Defines what the LLM looks for when analyzing each comment.
+# Stance taxonomy grounded in a sample of the actual comments on this docket.
+
+regulation_name: "Regulation for Federal Financial Assistance"
+regulation_description: >
+  Proposed OMB rule revising the Uniform Guidance for federal financial assistance
+  (2 CFR, including sections 200.205 and 200.340 and several cost-principle sections).
+  Commenters overwhelmingly describe it as shifting grant review and funding decisions
+  away from independent expert peer review toward political appointees, attaching
+  ideological conditions to awards, and restricting allowable costs.
+
+# -------------------------------------------------------------------
+# Positions & Concerns — the model tags each comment with ALL that apply.
+# -------------------------------------------------------------------
+stances:
+  - name: "Position: Oppose the proposed rule"
+    indicator: "Explicitly opposes, objects to, disagrees with, or urges withdrawal of the proposed rule"
+
+  - name: "Position: Support the proposed rule"
+    indicator: "Explicitly supports, favors, endorses, or agrees with the proposed rule or its stated goals"
+
+  - name: "Concern: Politicization of grant decisions"
+    indicator: "Political appointees or officials would control funding decisions; injecting politics/ideology into grants; political favoritism; centralized political control replacing career staff"
+
+  - name: "Concern: Undermines peer review / merit-based funding"
+    indicator: "Weakens or bypasses independent expert peer review; funding should be based on scientific merit judged by experts, not administrators; removes merit review from §200.205"
+
+  - name: "Concern: Scientific integrity and independence"
+    indicator: "Threatens the integrity, objectivity, or independence of federally funded research; censorship or suppression of findings that conflict with the administration's ideology"
+
+  - name: "Concern: Harm to U.S. scientific leadership / competitiveness"
+    indicator: "Damages America's global lead in science and innovation; drives researchers abroad; loss of talent, discoveries, or economic/technological advantage to other nations"
+
+  - name: "Concern: Ideological / viewpoint conditions (DEI, 'woke')"
+    indicator: "Objects to (or endorses) ideological conditions on awards, viewpoint-based restrictions, or the rule's framing of prior grants as advancing a 'woke'/DEI agenda"
+
+  - name: "Concern: Restrictions on allowable costs"
+    indicator: "Objections to limits on indirect costs, conference/travel costs, publication or open-access costs, or other cost principles (e.g. §200.432, 200.454, 200.461, 200.206, 200.450)"
+
+  - name: "Concern: Harm to public health and medical research"
+    indicator: "Threatens medical, health, or clinical research; cures and treatments delayed; harm to patients or public health (NIH, cancer, disease research, etc.)"
+
+  - name: "Concern: Chilling effect on researchers / careers"
+    indicator: "Discourages scientists, students, or early-career researchers; uncertainty harms training pipeline; people leaving research or the country"
+
+  - name: "Concern: Separation of powers / rule of law"
+    indicator: "Rule usurps congressional authority, bypasses statute, violates the Constitution or separation of powers, or represents executive overreach (may name Russ Vought / OMB / the administration)"
+
+  - name: "Concern: Administrative burden or unworkable requirements"
+    indicator: "New requirements are vague, burdensome, delay funding, or are administratively unworkable for agencies or recipients"
+
+  - name: "Concern: Waste, fraud, abuse, and accountability"
+    indicator: "Supports stronger oversight to protect taxpayers and prevent waste, fraud, or abuse of federal funds (typically raised by supporters of the rule)"
+
+# -------------------------------------------------------------------
+# Entity Types — the model classifies each commenter into one category.
+# -------------------------------------------------------------------
+entity_types:
+  - "Individual/Other"
+  - "Researcher/Academic"
+  - "University or Research Institution"
+  - "Scientific/Professional Society"
+  - "Patient/Family/Public Health"
+  - "Nonprofit/Advocacy Organization"
+  - "Industry/Business"
+  - "Elected Official"
+
+entity_classification_rules: >
+  Default to Individual/Other UNLESS the commenter explicitly self-identifies IN THE COMMENT
+  TEXT. The submitter name or organization field alone is NOT sufficient evidence.
+
+  Researcher/Academic: the commenter explicitly identifies as someone who does research or
+  works/studies in academia — scientist, researcher, principal investigator, professor,
+  faculty member, lecturer, postdoc, graduate/PhD student, or research trainee ("I am a
+  professor", "I run a research lab", "as a researcher", "I am a PhD student", "as a
+  scientist"). This is one combined bucket — do not try to split professor vs. student vs.
+  scientist.
+
+  University or Research Institution: the comment is submitted BY the institution as an
+  entity (e.g. an official comment from a university, national lab, or research center),
+  not by an individual who happens to work there.
+
+  Scientific/Professional Society: submitted BY a society, association, or professional
+  membership organization as an entity.
+
+  Patient/Family/Public Health: the commenter identifies as a patient, a family
+  member/caregiver of a patient, or a healthcare professional (physician, nurse, clinician)
+  speaking to health/medical impact.
+
+  Nonprofit/Advocacy Organization: submitted BY a non-academic nonprofit or advocacy group.
+
+  Industry/Business: submitted BY or on behalf of a company or trade group.
+
+  Elected Official: the commenter explicitly identifies as a current or former elected official.
+
+  Talking ABOUT science or researchers does NOT make the commenter a researcher — require
+  explicit self-identification. Individuals affiliated with an organization are classified by
+  their personal role (usually Researcher/Academic or Individual/Other); reserve the
+  organizational categories for comments submitted AS the organization.
+
+  RECOGNIZING ORGANIZATIONAL SUBMISSIONS (don't miss these — they are high-value): treat a
+  comment as submitted AS the organization when an Organization Name names a real institution,
+  society, association, company, or nonprofit AND the text speaks on its behalf — first-person
+  plural ("we", "our members", "our society/association"), "on behalf of", "the undersigned
+  organizations", or the organization is presented as the author. Use the matching category
+  (University or Research Institution, Scientific/Professional Society, Nonprofit/Advocacy
+  Organization, or Industry/Business) even when a named individual signs it. A short comment
+  like "See attached" or a request to extend the comment period, paired with an organizational
+  Organization Name, is an organizational submission. Do NOT be fooled the other way: an
+  individual who merely lists an employer in the Organization Name but writes in the first
+  person singular ("I am concerned…") is NOT the organization — classify by their personal role.
+
+# -------------------------------------------------------------------
+# Additional Fields Extracted
+# -------------------------------------------------------------------
+additional_fields:
+  entity_name: >
+    Extract a VERBATIM quote from the text that justifies the entity type classification.
+    Must be an exact substring from anywhere in the text including submitter name or
+    organization. Leave empty if no identifying information.
+
+  state: >
+    If the submitter's US state can be identified from any clue in the text (city/state,
+    institution location, etc.), provide the two-letter abbreviation (e.g. CA, TX). Also
+    extract a verbatim quote justifying this. Leave both empty if no state can be determined.
+
+  political_affiliation: >
+    ONLY if the submitter explicitly self-identifies their political party (e.g. "as a
+    Republican", "registered Democrat", "as a hardcore conservative"). Do NOT infer from
+    policy positions. Leave empty if no explicit self-identification.
+
+  key_quote: >
+    The most important verbatim quote (max 100 words) capturing the essence of the comment.
+
+  rationale: >
+    Brief explanation (1-2 sentences) of the classification selections.
+
+# -------------------------------------------------------------------
+# Fields — the single source of truth for the analysis schema, the LLM
+# prompt, and the report columns/filters/cards. `name` matches the analysis
+# dict key. `show` targets: cards | column | filter | modal (empty = extracted
+# but not surfaced). `options_from` references the shared stances/entity_types
+# lists above. For OMB, state & political are extracted but shown nowhere.
+# -------------------------------------------------------------------
+fields:
+  - name: stances
+    type: multi_enum
+    options_from: stances
+    label: "Position & Concerns"
+    prompt: "Select ALL positions and concerns that apply from the list below (0 or more; exact matches only)."
+    show: [cards, column, filter]
+
+  - name: entity_type
+    type: single_enum
+    options_from: entity_types
+    label: "Entity Type"
+    prompt: "What type of entity is submitting this comment? Choose exactly one from the list below."
+    show: [cards, column, filter]
+
+  - name: entity_name
+    type: quote
+    justifies: entity_type
+    label: "Identified As"
+    prompt: >
+      Extract a VERBATIM quote from the text that justifies the entity type classification.
+      Must be an exact substring from anywhere in the text including submitter name or
+      organization. Leave empty if no identifying information.
+    show: [modal]
+
+  - name: state_identified
+    type: text
+    label: "State"
+    prompt: >
+      If the submitter's US state can be identified from any clue in the text (city/state,
+      institution location, etc.), provide the two-letter abbreviation (e.g. CA, TX). Leave
+      empty if no state can be determined.
+    show: []
+
+  - name: state_quote
+    type: quote
+    justifies: state_identified
+    label: "State Quote"
+    prompt: "Verbatim quote from the text justifying the state identification. Leave empty if no state identified."
+    show: []
+
+  - name: political_affiliation
+    type: enum_or_empty
+    options: ["Republican", "Democrat", "Independent", "Libertarian"]
+    label: "Political"
+    prompt: >
+      ONLY if the submitter explicitly self-identifies their political party (e.g. "as a
+      Republican", "registered Democrat"). Do NOT infer from policy positions. Leave empty
+      if no explicit self-identification.
+    show: []
+
+  - name: political_affiliation_quote
+    type: quote
+    justifies: political_affiliation
+    label: "Political Quote"
+    prompt: "Verbatim quote where the submitter self-identifies their political affiliation. Leave empty if none."
+    show: []
+
+  - name: key_quote
+    type: text
+    label: "Key Quote"
+    prompt: "The most important verbatim quote (max 100 words) capturing the essence of the comment."
+    show: [modal]
+
+  - name: rationale
+    type: text
+    label: "Rationale"
+    prompt: "Brief explanation (1-2 sentences) of the classification selections."
+    show: [modal]
+
+  # Report-time (no LLM): extract CFR section citations from the comment text.
+  # `\b200\.\d{3}\b` also matches the bare number inside "§200.205" / "2 CFR 200.205",
+  # so matches are already normalized to 200.NNN. Complements the cites_section flag.
+  - name: sections_referenced
+    source: regex
+    type: multi_value
+    pattern: '\b200\.\d{3}\b'
+    label: "CFR Section"
+    show: [section, filter]
+
+# -------------------------------------------------------------------
+# General Instructions to the Model
+# -------------------------------------------------------------------
+instructions:
+  - "A comment may express multiple concerns or no clear position"
+  - "Only select items clearly expressed in the comment"
+  - "Be objective and avoid inserting personal opinions"
+  - "For entity type, prioritize explicit self-identification in the comment text over the submitter name"
+  - "Supporting the goals of oversight or fiscal responsibility while opposing the rule is still Oppose"
+
+# -------------------------------------------------------------------
+# Report display — full color palette. Any --color-* token can be set here;
+# omitted keys inherit the house defaults. One-line recolor of the whole report.
+# -------------------------------------------------------------------
+report:
+  colors:
+    accent: "#1B3A5C"    # navy — neutral accent (counts, links, buttons, chips)
+    support: "#2D6A4F"   # green — Support
+    oppose: "#C0392B"    # red — Oppose
+    # unclear/mixed/highlight/bg/surface/border/… inherit the house defaults
+
+# -------------------------------------------------------------------
+# Regex Flags — pattern-based boolean columns applied before LLM analysis.
+# -------------------------------------------------------------------
+regex_flags:
+  mentions_peer_review:
+    label: "Peer Review"
+    description: "Comment references peer review or merit review"
+    patterns:
+      - 'peer[\s-]?review'
+      - 'merit[\s-]?review'
+      - 'merit[\s-]?based'
+
+  mentions_dei:
+    label: "DEI"
+    description: "Comment references DEI / 'woke' / diversity framing"
+    patterns:
+      - '\bDEI\b'
+      - '\bwoke\b'
+      - 'diversity[, ]+equity'
+
+  mentions_vought:
+    label: "Vought / Administration"
+    description: "Comment names Russ Vought or the administration"
+    patterns:
+      - '\bvought\b'
+      - '\btrump\b'
+  # NB: the old cites_section boolean flag was removed — the "CFR Sections
+  # Referenced" breakdown (fields: sections_referenced) supersedes it.
+
+# -------------------------------------------------------------------
+# Second-Pass Verification — comments matching these criteria get re-analyzed.
+# -------------------------------------------------------------------
+second_pass:
+  model: "gpt-5.4-mini"
+  max_workers: 8
+
+  stance:
+    trigger_stances:
+      - "Support"
+      - "Unclear"
+    # Short opposes are already handled well on the first pass here; don't re-verify them.
+    also_verify_short_oppose: false
+    short_threshold_chars: 200
+
+  entity_type:
+    trigger_types:
+      - "University or Research Institution"
+      - "Scientific/Professional Society"
+      - "Nonprofit/Advocacy Organization"
+      - "Industry/Business"
+      - "Elected Official"
+    verify_attorney_on_quote_mismatch: true
+
+  # State and political affiliation are not analytically useful for this rule — skip verification.
+  state:
+    verify_all: false
+
+  political_affiliation:
+    verify_all: false
+
+  # Regulation-specific verification prompts (required for stance + entity).
+  prompts:
+    stance: >
+      You are reviewing a public comment about a proposed OMB rule revising the Uniform
+      Guidance for federal financial assistance (2 CFR, including sections 200.205 and
+      200.340). The rule would shift grant review and funding decisions away from
+      independent expert peer review toward political appointees and attach new conditions
+      to federal awards.
+
+      IMPORTANT CONTEXT: The vast majority of comments OPPOSE this rule. Classify the
+      comment's overall position as exactly one of: "Oppose", "Support", or "Unclear".
+
+      - "Oppose" — opposes the rule. This includes comments that: object to political
+        control of grant decisions; defend peer review, scientific merit, or scientific
+        independence; warn of harm to research, public health, or U.S. competitiveness;
+        criticize OMB, Russ Vought, or the administration over this rule; or express general
+        outrage at the proposal even without naming a specific section. Supporting the general
+        idea of oversight or fiscal responsibility while objecting to THIS rule is still Oppose.
+      - "Support" — genuinely supports the rule or its approach. Look for endorsement of
+        stronger oversight against waste/fraud/abuse, support for accountability of grant
+        spending, or agreement that political leadership should set funding priorities. Take
+        an explicit "I support this rule" at face value.
+      - "Unclear" — ONLY when the comment is truly off-topic (not about federal grants or the
+        rule), is a single ambiguous word, is incoherent, or is just docket metadata with no
+        substantive content. If there is ANY indication of opposition sentiment, classify as Oppose.
+
+      SARCASM CHECK: before calling something "Support", make sure the praise is sincere. A
+      comment that says the rule is "amazing"/"wonderful" or "I support this" but then describes
+      it causing harm — driving scientists or funding abroad, helping rival nations, ending U.S.
+      scientific leadership, destroying research — is sarcastic and is OPPOSE. Genuine support
+      argues the rule is good policy (oversight, less waste/fraud/abuse, taxpayer accountability).
+
+      LEAN TOWARD OPPOSE when the sentiment is negative toward the proposal.
+    entity: >
+      You are reviewing the entity type classification of a public comment submitter on a
+      proposed OMB rule about federal grant funding.
+
+      The initial classification was: {entity_type}
+      The evidence cited was: "{entity_name}"
+
+      Because the rule is ABOUT science and research funding, nearly every comment discusses
+      research, scientists, and universities — that does NOT by itself make the submitter a
+      scientist or researcher.
+
+      Require EXPLICIT SELF-IDENTIFICATION in the comment text. Allowed values:
+      - Researcher/Academic: the commenter states their own role as a researcher, scientist,
+        principal investigator, professor, faculty member, postdoc, or graduate/PhD student
+        ("I am a professor", "as a researcher in my lab", "I am a PhD student", "as a
+        scientist"). This is one combined bucket — do not split professor vs. student vs. scientist.
+      - Patient/Family/Public Health: identifies as a patient, a family member/caregiver of
+        one, or a healthcare professional (physician, nurse, clinician).
+      - University or Research Institution, Scientific/Professional Society,
+        Nonprofit/Advocacy Organization, Industry/Business: ONLY when the comment is submitted
+        BY that organization as an entity, not by an individual affiliated with it.
+      - Elected Official: explicitly identifies as a current or former elected official.
+      - If you cannot point to a specific phrase where they identify their role, classify as
+        Individual/Other.
+
+      Writing knowledgeably about science, citing statutes or CFR sections, or having an
+      institutional-sounding submitter name is NOT sufficient — you need explicit self-identification.
+
+# Proposed-rule text source for the "Read the Rule" page (fetch_rule_text.py)
+rule_text:
+  federal_register_document: "2026-10817"
+  part: "200"

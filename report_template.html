@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ metadata.regulation_name }} - Comment Analysis Report</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <style>
+        :root {
+            /* Full palette — every token is driven by report.colors in
+               analyzer_config.yaml (house defaults fill any omitted key). */
+            --color-bg: {{ colors.bg }};
+            --color-surface: {{ colors.surface }};
+            --color-text: {{ colors.text }};
+            --color-text-muted: {{ colors.text_muted }};
+            --color-accent: {{ colors.accent }};
+            --color-accent-hover: {{ colors.accent_hover }};
+            --color-highlight: {{ colors.highlight }};
+            --color-border: {{ colors.border }};
+            --color-code-bg: {{ colors.code_bg }};
+            --color-error: {{ colors.error }};
+
+            /* Stance colors — used consistently everywhere a stance is colored
+               (stat cards, concern/section/campaign bars, badges, Position tags). */
+            --color-oppose: {{ colors.oppose }};
+            --color-support: {{ colors.support }};
+            --color-unclear: {{ colors.unclear }};
+            --color-mixed: {{ colors.mixed }};
+
+            --font-heading: 'DM Sans', sans-serif;
+            --font-body: 'Source Sans 3', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+
+            --shadow-sm: 0 1px 3px rgba(61,43,31,0.08);
+            --shadow-md: 0 4px 8px rgba(61,43,31,0.1);
+            --card-radius: 0.5rem;
+
+            /* Bootstrap overrides derived from --color-accent so stock
+               components (links, primary buttons, pagination) follow the accent. */
+            --bs-primary: {{ colors.accent }};
+            --bs-primary-rgb: {{ accent_rgb }};
+            --bs-link-color: {{ colors.accent }};
+            --bs-link-color-rgb: {{ accent_rgb }};
+            --bs-link-hover-color: {{ colors.accent_hover }};
+            --bs-focus-ring-color: rgba({{ accent_rgb }}, 0.25);
+            --bs-body-bg: {{ colors.bg }};
+            --bs-body-color: {{ colors.text }};
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.7;
+            font-size: 1.0625rem;
+            margin: 0;
+        }
+        h1, h2, h3, h4 { font-family: var(--font-heading); color: var(--color-text); letter-spacing: -0.01em; }
+        a { color: var(--color-accent); text-decoration: underline; text-decoration-color: rgba(45,106,79,0.25); text-underline-offset: 2px; }
+        a:hover { text-decoration-color: var(--color-accent); }
+
+        .site-container { max-width: 1600px; margin: 0 auto; padding: 0 1.5rem 3rem; }
+
+        /* Header */
+        .report-header { padding: 2rem 0 1.25rem; border-bottom: 1px solid var(--color-border); margin-bottom: 1.75rem; }
+        .report-header h1 { font-size: 2.1rem; font-weight: 700; margin: 0 0 0.35rem; }
+        .report-header .subtitle { color: var(--color-text-muted); font-size: 1.05rem; margin: 0 0 0.4rem; }
+        .report-header a { color: var(--color-accent); }
+        /* "Read the Rule" callout — a clear clickable affordance, not bare text */
+        .rule-callout {
+            display: flex; align-items: center; gap: 0.85rem; margin-top: 0.85rem;
+            max-width: 720px; padding: 0.7rem 1rem;
+            border: 1px solid var(--color-accent); border-left-width: 4px; border-radius: 0.6rem;
+            background: color-mix(in srgb, var(--color-accent) 6%, var(--color-bg));
+            text-decoration: none; transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
+        }
+        .rule-callout:hover { background: color-mix(in srgb, var(--color-accent) 12%, var(--color-bg)); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+        .rule-callout-icon { font-size: 1.5rem; line-height: 1; flex: none; }
+        .rule-callout-body { display: flex; flex-direction: column; gap: 0.1rem; }
+        .rule-callout-title { font-family: var(--font-heading); font-weight: 700; color: var(--color-accent); font-size: 0.98rem; }
+        .rule-callout-text { color: var(--color-text-muted); font-size: 0.85rem; line-height: 1.4; }
+
+        /* Stat cards (KPI tiles) */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+            gap: 1rem;
+            margin: 0 0 1.75rem;
+        }
+        .stat-card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--card-radius);
+            padding: 1.15rem 1.25rem;
+            transition: border-color 0.2s;
+        }
+        .stat-card:hover { border-color: var(--color-highlight); }
+        .stat-card.clickable { cursor: pointer; }
+        .stat-number {
+            font-family: var(--font-heading);
+            font-size: 2rem;
+            font-weight: 700;
+            line-height: 1.15;
+            color: var(--color-accent);
+        }
+        .stat-number.oppose { color: var(--color-oppose); }
+        .stat-number.support { color: var(--color-support); }
+        .stat-number.unclear { color: var(--color-unclear); }
+        .stat-number.small { font-size: 1.15rem; }
+        .stat-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            color: var(--color-text-muted);
+            margin-top: 0.3rem;
+        }
+        .stat-group-label {
+            font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+            color: var(--color-text-muted); margin: 0.5rem 0 0.5rem;
+        }
+        .stats-row { margin-bottom: 1.25rem; }
+
+        /* Sections */
+        .section {
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--card-radius);
+            padding: 1.5rem;
+            margin: 0 0 1.5rem;
+            box-shadow: var(--shadow-sm);
+            transition: border-color 0.2s;
+        }
+        .section:hover { border-color: var(--color-highlight); }
+        .section h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0 0 1.25rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--color-border);
+        }
+        .section h2 i { color: var(--color-accent); margin-right: 0.35rem; }
+
+        /* Entity cards */
+        .entity-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.75rem; }
+        .entity-card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--card-radius);
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, transform 0.2s;
+        }
+        .entity-card:hover { border-color: var(--color-highlight); transform: translateY(-2px); }
+        .entity-count { font-family: var(--font-heading); font-size: 1.5rem; font-weight: 700; color: var(--color-accent); }
+        .entity-name { font-size: 0.82rem; color: var(--color-text-muted); margin-top: 0.25rem; }
+
+        /* Single-hue bar charts (concerns + campaigns) */
+        .concern-row { display: flex; align-items: center; margin: 8px 0; gap: 12px; border-radius: 6px; padding: 2px 4px; transition: background 0.15s; }
+        .concern-row[data-concern]:hover, .concern-row[onclick]:hover, .value-row:hover { background: var(--color-surface); }
+        .concern-label { width: 380px; flex-shrink: 0; font-size: 0.85rem; color: var(--color-text); font-weight: 600; text-align: right; line-height: 1.3; }
+        .concern-bar-bg { flex: 1; background: var(--color-surface); border-radius: 999px; height: 28px; position: relative; overflow: hidden; }
+        .concern-bar {
+            background: var(--color-accent); border-radius: 999px; height: 100%; min-width: 4px;
+            display: flex; align-items: center; padding-left: 10px;
+        }
+        .concern-bar-count { font-family: var(--font-mono); font-size: 0.72rem; font-weight: 500; color: #fff; white-space: nowrap; overflow: visible; }
+        .concern-count-outside { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-family: var(--font-mono); font-size: 0.72rem; font-weight: 600; color: var(--color-text); white-space: nowrap; }
+
+        /* Stacked concern bar: Oppose vs Support split (stance tokens) */
+        .concern-bar-stacked { display: flex; height: 100%; min-width: 4px; border-radius: 999px; overflow: hidden; }
+        .concern-bar-stacked .seg-oppose { background: var(--color-oppose); height: 100%; }
+        .concern-bar-stacked .seg-support { background: var(--color-support); height: 100%; }
+        .legend { display: flex; gap: 1.25rem; margin-bottom: 0.85rem; font-size: 0.8rem; color: var(--color-text-muted); }
+        .legend-item { display: inline-flex; align-items: center; gap: 0.4rem; }
+        .legend-swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+        /* Pills / stance tags */
+        .stance-tag {
+            padding: 2px 9px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 500;
+            display: inline-block;
+            margin: 1px 2px;
+            background: var(--color-surface);
+            color: var(--color-text);
+            border: 1px solid var(--color-border);
+        }
+        .tag-entity, .tag-position, .tag-concern { background: var(--color-surface); color: var(--color-text); }
+        /* Position tags colored by stance (consistent with everything else) */
+        .tag-position.pos-oppose { color: var(--color-oppose); }
+        .tag-position.pos-support { color: var(--color-support); }
+        .tag-position.pos-unclear { color: var(--color-unclear); }
+        .flag-yes { font-weight: 600; color: var(--color-accent); }
+        .clickable-row { cursor: pointer; }
+
+        /* Stance badge (Support / Oppose / Mixed) — same tokens everywhere */
+        .stance-badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 0.68rem; font-weight: 600; vertical-align: middle; }
+        .stance-support { background: color-mix(in srgb, var(--color-support) 16%, transparent); color: var(--color-support); }
+        .stance-oppose { background: color-mix(in srgb, var(--color-oppose) 14%, transparent); color: var(--color-oppose); }
+        .stance-mixed { background: color-mix(in srgb, var(--color-mixed) 16%, transparent); color: var(--color-mixed); }
+
+        /* Filter toolbar */
+        .filters-bar {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+            min-height: 46px; margin: 0 0 0.85rem; padding: 0.6rem 0.85rem;
+            background: var(--color-surface); border: 1px solid var(--color-border);
+            border-radius: var(--card-radius);
+        }
+        .add-filter-btn {
+            background: var(--color-accent); color: #fff; border: none;
+            padding: 6px 14px; border-radius: 999px; font-family: var(--font-heading);
+            font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.15s;
+        }
+        .add-filter-btn:hover { background: var(--color-accent-hover); transform: translateY(-1px); }
+        .toolbar-btn {
+            background: var(--color-bg); color: var(--color-text);
+            border: 1px solid var(--color-border); padding: 5px 13px; border-radius: 999px;
+            font-family: var(--font-heading); font-size: 0.82rem; font-weight: 600; cursor: pointer;
+        }
+        .toolbar-btn:hover, .toolbar-btn.copied { border-color: var(--color-highlight); }
+        .filters-spacer { margin-left: auto; }
+
+        /* Filter chips */
+        .active-filters { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 1rem; }
+        .active-filters:empty { display: none; }
+        .filter-chip {
+            display: inline-flex; align-items: center; gap: 7px; background: var(--color-bg);
+            border: 1px solid var(--color-accent); border-radius: 999px;
+            padding: 4px 6px 4px 12px; font-size: 0.8rem; color: var(--color-text);
+        }
+        .filter-chip-label { font-weight: 700; }
+        .filter-chip-value { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .filter-chip-remove {
+            cursor: pointer; font-weight: 700; width: 18px; height: 18px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; color: var(--color-text-muted); border: none; background: none; line-height: 1;
+        }
+        .filter-chip-remove:hover { background: var(--color-accent); color: #fff; }
+
+        /* Add-filter popover */
+        .filter-modal {
+            position: fixed; inset: 0; background: rgba(61,43,31,0.4);
+            display: flex; align-items: center; justify-content: center; z-index: 10000;
+        }
+        .filter-popover {
+            background: var(--color-bg); border: 1px solid var(--color-border);
+            border-radius: 14px; box-shadow: var(--shadow-md); padding: 18px;
+            min-width: 300px; max-width: 460px; width: 92vw; max-height: 80vh; overflow-y: auto;
+        }
+        .filter-title {
+            font-family: var(--font-heading); font-size: 0.98rem; font-weight: 700; color: var(--color-text);
+            margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid var(--color-border);
+        }
+        .filter-search {
+            width: 100%; padding: 9px 11px; border: 1px solid var(--color-border);
+            border-radius: 9px; font-size: 0.88rem; margin-bottom: 10px; font-family: var(--font-body);
+            background: var(--color-bg); color: var(--color-text);
+        }
+        .filter-search:focus { outline: none; border-color: var(--color-accent); }
+        .filter-options { display: flex; flex-direction: column; gap: 2px; max-height: 320px; overflow-y: auto; }
+        .filter-option { display: flex; align-items: center; gap: 9px; padding: 7px 6px; border-radius: 7px; cursor: pointer; font-size: 0.9rem; color: var(--color-text); }
+        .filter-option:hover { background: var(--color-surface); }
+        .filter-option input { width: 16px; height: 16px; accent-color: var(--color-accent); cursor: pointer; flex: none; }
+        .filter-option .opt-count { color: var(--color-text-muted); font-size: 0.78rem; margin-left: auto; font-family: var(--font-mono); }
+        .filter-selectall { border-bottom: 1px solid var(--color-border); margin-bottom: 4px; border-radius: 0; }
+        .filter-buttons { display: flex; gap: 9px; justify-content: flex-end; margin-top: 14px; }
+        .filter-buttons button { font-family: var(--font-heading); font-size: 0.82rem; font-weight: 600; padding: 6px 14px; border-radius: 0.375rem; cursor: pointer; }
+        .btn-clear { background: var(--color-bg); color: var(--color-text); border: 1px solid var(--color-border); }
+        .btn-clear:hover { border-color: var(--color-highlight); }
+        .btn-apply { background: var(--color-accent); color: #fff; border: 1px solid var(--color-accent); }
+        .btn-apply:hover { background: var(--color-accent-hover); }
+
+        /* Hide DataTables' built-in global search */
+        .dataTables_filter { display: none; }
+
+        /* DataTable overrides */
+        table.dataTable { font-family: var(--font-body); font-size: 0.85rem; }
+        table.dataTable thead th {
+            background: var(--color-surface) !important;
+            color: var(--color-text) !important;
+            font-family: var(--font-heading);
+            font-weight: 600;
+            font-size: 0.8rem;
+            border-bottom: 2px solid var(--color-border) !important;
+        }
+        table.dataTable tbody td { vertical-align: middle; }
+        table.dataTable tbody tr:nth-child(even) { background: rgba(245,237,224,0.35); }
+        table.dataTable tbody tr:hover { background: var(--color-border) !important; }
+        .dataTables_info, .dataTables_length, .dataTables_paginate { font-size: 0.82rem; color: var(--color-text-muted); }
+        .dataTables_length select { border: 1px solid var(--color-border); border-radius: 0.25rem; background: var(--color-bg); color: var(--color-text); }
+        .dataTables_paginate .page-item.active .page-link { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
+        .dataTables_paginate .page-link { color: var(--color-accent); }
+
+        /* Bootstrap modal overrides */
+        .modal-content { background: var(--color-bg); color: var(--color-text); border: 1px solid var(--color-border); }
+        .modal-header { background: var(--color-surface); color: var(--color-text); border-bottom: 1px solid var(--color-border); }
+        .modal-title { font-family: var(--font-heading); font-size: 1.05rem; font-weight: 600; }
+        .detail-label { font-family: var(--font-heading); font-weight: 600; color: var(--color-accent); font-size: 0.85rem; margin-bottom: 0.25rem; }
+        .detail-value { margin-bottom: 1rem; font-size: 0.95rem; line-height: 1.6; }
+        .detail-value blockquote { border-left: 3px solid var(--color-accent); padding-left: 12px; color: var(--color-text-muted); font-style: italic; margin: 0; }
+        .modal-body code { font-family: var(--font-mono); font-size: 0.85rem; background: var(--color-surface); padding: 3px 8px; border-radius: 4px; }
+        .modal-body table.table { --bs-table-bg: transparent; color: var(--color-text); }
+
+        /* Meta footer */
+        .meta-info {
+            background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text);
+            padding: 1.5rem; border-radius: var(--card-radius); margin: 2rem 0;
+        }
+        .meta-info .meta-label { font-size: 0.78rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+        .meta-info .meta-value { font-family: var(--font-heading); font-weight: 600; }
+
+        /* Dark-chip toast */
+        .app-toast {
+            position: fixed; bottom: 1.5rem; right: 1.5rem; padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem; font-family: var(--font-body); font-size: 0.9rem; z-index: 11000;
+            opacity: 0; transform: translateY(0.5rem); transition: opacity 0.3s, transform 0.3s;
+            box-shadow: var(--shadow-md); background: var(--color-code-bg); color: var(--color-surface);
+        }
+        .app-toast.show { opacity: 1; transform: translateY(0); }
+
+        @media (max-width: 768px) {
+            .report-header h1 { font-size: 1.6rem; }
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            .concern-label { width: 150px; font-size: 0.78rem; }
+            .filters-spacer { margin-left: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="site-container">
+        <div class="report-header">
+            <h1>{{ metadata.regulation_name }}</h1>
+            <div class="subtitle">{{ metadata.brief_description }}</div>
+            {% if metadata.docket_id %}
+            <div><a href="https://www.regulations.gov/docket/{{ metadata.docket_id }}" target="_blank">{{ metadata.agency }} Docket: {{ metadata.docket_id }}</a></div>
+            {% endif %}
+            {% if rule_page_url %}
+            <a href="{{ rule_page_url }}" class="rule-callout">
+                <span class="rule-callout-icon">📖</span>
+                <span class="rule-callout-body">
+                    <span class="rule-callout-title">Read the Rule &rarr;</span>
+                    <span class="rule-callout-text">Browse the proposed rule text section by section and see which comments cite each §200.xx — colored by whether they support or oppose.</span>
+                </span>
+            </a>
+            {% endif %}
+        </div>
+
+        <!-- Summary stat cards, grouped -->
+        <div class="stat-group-label">Overview</div>
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-number">{{ "{:,}".format(briefing.total_comments) }}</div>
+                <div class="stat-label">Total Comments</div>
+            </div>
+            <div class="stat-card clickable" onclick="document.getElementById('campaignsSection').scrollIntoView({behavior:'smooth'})">
+                <div class="stat-number">{{ "{:,}".format(briefing.campaign_comments_count) }}</div>
+                <div class="stat-label">In {{ briefing.campaign_count }} Campaigns</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ "{:,}".format(briefing.with_attachments) }}</div>
+                <div class="stat-label">With Attachments</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number small">{{ briefing.date_range }}</div>
+                <div class="stat-label">Date Range</div>
+            </div>
+        </div>
+
+        {% if show_stance_cards %}
+        <div class="stat-group-label">Position</div>
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-number oppose">{% if briefing.oppose_pct >= 99.5 and briefing.oppose_pct < 100 %}{{ briefing.oppose_pct | round(1) }}%{% else %}{{ briefing.oppose_pct | round | int }}%{% endif %}</div>
+                <div class="stat-label">Oppose ({{ "{:,}".format(briefing.oppose_count) }})</div>
+            </div>
+            <div class="stat-card clickable" onclick="showStanceModal('support')">
+                <div class="stat-number support">{{ briefing.support_pct | round(1) }}%</div>
+                <div class="stat-label">Support ({{ "{:,}".format(briefing.support_count) }})</div>
+            </div>
+            <div class="stat-card clickable" onclick="showStanceModal('unclear')" title="No clear position or off-topic.">
+                <div class="stat-number unclear">{{ briefing.unclear_pct | round(1) }}%</div>
+                <div class="stat-label">Unclear ({{ "{:,}".format(briefing.unclear_count) }})</div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if briefing.flag_sections %}
+        <div class="stat-group-label">Topics</div>
+        <div class="stats-row">
+            {% for fs in briefing.flag_sections %}
+            <div class="stat-card clickable flag-card" data-flag="{{ fs.key }}" onclick="showFlagModal('{{ fs.key }}')">
+                <div class="stat-number">{{ "{:,}".format(fs.count) }}</div>
+                <div class="stat-label">{{ fs.label }} <i class="fas fa-info-circle" style="font-size:0.7rem; opacity:0.5;" title="Click to see matching comments"></i></div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Who Submitted -->
+        {% if show_entity_cards %}
+        <div class="section">
+            <h2><i class="fas fa-users"></i> Who Submitted</h2>
+            <div class="entity-grid">
+                {% for entity in briefing.entity_counts %}
+                <div class="entity-card" onclick="showEntityModal('{{ entity.name }}')">
+                    <div class="entity-count">{{ "{:,}".format(entity.count) }}</div>
+                    <div class="entity-name">{{ entity.name }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Top Concerns -->
+        {% if show_stance_cards %}
+        <div class="section" id="concernsSection">
+            <h2><i class="fas fa-exclamation-circle"></i> Top Concerns</h2>
+            <div class="legend">
+                <span class="legend-item"><span class="legend-swatch" style="background: var(--color-oppose);"></span> Oppose</span>
+                <span class="legend-item"><span class="legend-swatch" style="background: var(--color-support);"></span> Support</span>
+                <span class="legend-item" style="color: var(--color-text-muted);">Click a concern to filter the table</span>
+            </div>
+            {% for concern in briefing.concern_counts %}
+            <div class="concern-row" style="cursor:pointer;" data-concern="{{ concern.name | e }}" title="Filter comments to this concern">
+                <div class="concern-label">{{ concern.name }}</div>
+                <div class="concern-bar-bg">
+                    <div class="concern-bar-stacked" style="width: {{ concern.pct }}%;">
+                        <div class="seg-oppose" style="width: {{ concern.oppose_pct }}%;"></div>
+                        <div class="seg-support" style="width: {{ concern.support_pct }}%;"></div>
+                    </div>
+                    <span class="concern-count-outside" style="left: {{ (concern.pct + 1) }}%;">{{ "{:,}".format(concern.count) }} &middot; {{ concern.oppose_pct }}% oppose / {{ concern.support_pct }}% support</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Form Letter Campaigns -->
+        <div class="section" id="campaignsSection">
+            <h2><i class="fas fa-copy"></i> Form Letter Campaigns</h2>
+            <p style="color: var(--color-text-muted); font-size:0.85rem; margin-bottom:1rem;">
+                {{ "{:,}".format(briefing.campaign_comments_count) }} comments ({{ (briefing.campaign_comments_count / briefing.total_comments * 100) | round | int }}%) detected across {{ briefing.campaign_count }} form letter campaigns using text similarity analysis. Bar color shows each campaign's aggregated member stance. Click a bar to see the canonical version.
+            </p>
+            <div class="legend">
+                <span class="legend-item"><span class="legend-swatch" style="background: var(--color-oppose);"></span> Oppose</span>
+                <span class="legend-item"><span class="legend-swatch" style="background: var(--color-support);"></span> Support</span>
+            </div>
+            {% for campaign in briefing.campaigns_list[:15] %}
+            <div class="concern-row" style="cursor:pointer;" onclick="showCampaignModal({{ campaign.id }})" title="Campaign #{{ campaign.rank }} — {{ "{:,}".format(campaign.size) }} comments">
+                <div class="concern-label" style="width:240px; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500;">{% if campaign.snippet %}<span class="text-muted">#{{ campaign.rank }}</span> {{ campaign.snippet }}{% else %}Campaign {{ campaign.rank }}{% endif %}</div>
+                <div class="concern-bar-bg">
+                    {% set pct = (campaign.size / briefing.total_comments * 100) %}
+                    <div class="concern-bar-stacked" style="width: {{ pct }}%;">
+                        <div class="seg-oppose" style="width: {{ campaign.oppose_pct }}%;"></div>
+                        <div class="seg-support" style="width: {{ campaign.support_pct }}%;"></div>
+                    </div>
+                    <span class="concern-count-outside" style="left: {{ (pct + 1) }}%;">{{ "{:,}".format(campaign.size) }} similar ({{ "{:,}".format(campaign.exact_dupes) }} exact)</span>
+                </div>
+            </div>
+            {% endfor %}
+            {% if briefing.campaigns_list | length > 15 %}
+            <p style="color: var(--color-text-muted); font-size:0.82rem; margin-top:8px;">+ {{ briefing.campaigns_list | length - 15 }} smaller campaigns</p>
+            {% endif %}
+        </div>
+
+        <!-- Regex multi-value breakdowns (e.g. CFR Sections Referenced) -->
+        {% for vs in value_sections %}
+        {% if 'section' in vs.show and vs.entries %}
+        <div class="section value-section" id="valueSection-{{ vs.key }}">
+            <h2><i class="fas fa-hashtag"></i> {{ vs.label }}s Referenced</h2>
+            <p style="color: var(--color-text-muted); font-size:0.85rem; margin-bottom:1rem;">Top {{ vs.entries | length }} of {{ "{:,}".format(vs.distinct) }} {{ vs.label | lower }}s cited across comments. Bar color shows the oppose/support split of citing comments. Click a bar to filter the table.</p>
+            <div class="legend">
+                <span class="legend-item"><span class="legend-swatch" style="background: var(--color-oppose);"></span> Oppose</span>
+                <span class="legend-item"><span class="legend-swatch" style="background: var(--color-support);"></span> Support</span>
+            </div>
+            {% set maxc = vs.entries[0].count %}
+            {% for it in vs.entries %}
+            <div class="concern-row value-row" style="cursor:pointer;" data-section-key="{{ vs.key | e }}" data-section-name="{{ it.name | e }}" title="Filter comments to {{ vs.label }} {{ it.name }}">
+                <div class="concern-label" style="width:120px;">{{ it.name }}</div>
+                <div class="concern-bar-bg">
+                    {% set pct = (it.count / maxc * 100) %}
+                    <div class="concern-bar-stacked" style="width: {{ pct }}%;">
+                        <div class="seg-oppose" style="width: {{ it.oppose_pct }}%;"></div>
+                        <div class="seg-support" style="width: {{ it.support_pct }}%;"></div>
+                    </div>
+                    <span class="concern-count-outside" style="left: {{ (pct + 1) }}%;">{{ "{:,}".format(it.count) }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endfor %}
+
+        <!-- Comments Table -->
+        <div class="section">
+            <h2><i class="fas fa-comments"></i> Comments</h2>
+
+            <!-- Filter toolbar -->
+            <div class="filters-bar" id="filtersBar">
+                <button class="add-filter-btn" id="addFilterBtn" type="button">+ Add Filter</button>
+                <span class="filters-spacer"></span>
+                <button class="toolbar-btn" id="downloadCsvBtn" type="button"><i class="fas fa-download"></i> Download CSV</button>
+                <button class="toolbar-btn" id="copyLinkBtn" type="button"><i class="fas fa-link"></i> Copy Link</button>
+            </div>
+            <div class="active-filters" id="activeChips"></div>
+
+            <p style="color: var(--color-text-muted); font-size: 0.82rem; margin-bottom: 0.75rem;">Click any row to see full details. Showing {{ "{:,}".format(rows | length) }} unique comments.</p>
+            <!-- Column headers are built from the config-driven column spec in JS. -->
+            <table id="commentsTable" class="table table-hover" style="width:100%">
+                <thead><tr></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- Meta Information -->
+        <div class="meta-info">
+            <div class="row">
+                <div class="col-auto">
+                    <div class="meta-label">Generated</div>
+                    <div class="meta-value">{{ generated_time }}</div>
+                </div>
+                <div class="col-auto">
+                    <div class="meta-label">Model</div>
+                    <div class="meta-value">{{ model_used }}</div>
+                </div>
+                <div class="col-auto">
+                    <div class="meta-label">Total Comments</div>
+                    <div class="meta-value">{{ "{:,}".format(briefing.total_comments) }}</div>
+                </div>
+                <div class="col-auto">
+                    <div class="meta-label">Date Range</div>
+                    <div class="meta-value">{{ briefing.date_range }}</div>
+                </div>
+            </div>
+            <p style="margin: 1rem 0 0; font-size: 0.8rem; color: var(--color-text-muted); line-height: 1.5;">
+                Comments were classified with an LLM ({{ model_used }}) plus a second-pass verification, and near-identical form letters are grouped into campaigns. Automated classification may contain errors.
+            </p>
+        </div>
+    </div>
+
+    <!-- Entity Modal -->
+    <div class="modal fade" id="entityModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="entityModalTitle"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="entityModalBody"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comment Detail Modal -->
+    <div class="modal fade" id="commentModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="commentModalTitle"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="commentModalBody"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Embedded data -->
+    <script>
+        const entityData = {
+            {% for entity in briefing.entity_counts %}
+            "{{ entity.name }}": [
+                {% for s in entity.submitters %}
+                {"name": {{ s.name | tojson }}, "org": {{ s.org | tojson }}, "id": {{ s.id | tojson }}, "entity_name": {{ s.entity_name | tojson }}},
+                {% endfor %}
+            ],
+            {% endfor %}
+        };
+
+        const commentData = [
+            {% for row in rows %}
+            {
+                "id": {{ row.id | tojson }},
+                "date": {{ row.date | tojson }},
+                "submitter": {{ row.submitter | tojson }},
+                "organization": {{ row.organization | tojson }},
+                "entity_type": {{ row.entity_type | tojson }},
+                "entity_name": {{ row.entity_name | tojson }},
+                "comment": {{ row.comment_text | tojson }},
+                "key_quote": {{ row.key_quote | tojson }},
+                "rationale": {{ row.rationale | tojson }},
+                "stances": {{ row.stances_list | tojson }},
+                "flags": {{ row.flags | tojson }},
+                "state": {{ row.state_identified | tojson }},
+                "state_quote": {{ row.state_quote | tojson }},
+                "political": {{ row.political_affiliation | tojson }},
+                "political_quote": {{ row.political_affiliation_quote | tojson }},
+                "has_attachment": {{ "true" if row.attachment_text else "false" }},
+                "campaign_id": {{ row.campaign_id if row.campaign_id is not none else "null" }},
+                "campaign_rank": {{ row.campaign_rank if row.campaign_rank is not none else "null" }},
+                "campaign_size": {{ row.campaign_size if row.campaign_size is not none else "0" }},
+                "campaign_stance": {{ row.campaign_stance | tojson }},
+                "multi_values": {{ row.multi_values | tojson }}
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ];
+
+        const stateSummary = [
+            {% for state, count in briefing.state_counts %}
+            {"state": "{{ state }}", "count": {{ count }}},
+            {% endfor %}
+        ];
+        const stateData = {{ briefing.state_data | tojson }};
+
+        const supportComments = {{ briefing.support_comments | tojson }};
+        const unclearComments = {{ briefing.unclear_comments | tojson }};
+        const regexPatterns = {{ regex_patterns | tojson }};
+        const campaignsList = {{ briefing.campaigns_list | tojson }};
+        const flagSections = {{ briefing.flag_sections | tojson }};
+        const flagMeta = {{ flag_meta | tojson }};
+        const fieldMeta = {{ field_meta | tojson }};
+        const valueSections = {{ value_sections | tojson }};
+    </script>
+
+    <!-- Modal helpers -->
+    <script>
+        function escapeHtml(s) {
+            const d = document.createElement('div');
+            d.textContent = s == null ? '' : s;
+            return d.innerHTML;
+        }
+
+        function showAppToast(message) {
+            const t = document.createElement('div');
+            t.className = 'app-toast';
+            t.textContent = message;
+            document.body.appendChild(t);
+            requestAnimationFrame(function () { t.classList.add('show'); });
+            setTimeout(function () { t.classList.remove('show'); setTimeout(function () { t.remove(); }, 300); }, 2000);
+        }
+
+        function showStanceModal(type) {
+            var comments = type === 'support' ? supportComments : unclearComments;
+            var title = type === 'support' ? 'Support' : 'Unclear';
+            document.getElementById('entityModalTitle').textContent = title + ' Comments (' + comments.length + ')';
+            var html = '';
+            if (comments.length === 0) {
+                html += '<p class="text-muted">None</p>';
+            } else {
+                html += '<table class="table table-sm table-hover"><thead><tr><th>Submitter</th><th>Comment Preview</th><th>Link</th></tr></thead><tbody>';
+                comments.forEach(function(e) {
+                    html += '<tr><td>' + e.name + '</td>';
+                    html += '<td style="font-size:0.82rem; max-width:400px;">' + (e.sentence || '-') + '</td>';
+                    html += '<td><a href="https://www.regulations.gov/comment/' + e.id + '" target="_blank">' + e.id.split('-').pop() + '</a></td></tr>';
+                });
+                html += '</tbody></table>';
+            }
+            document.getElementById('entityModalBody').innerHTML = html;
+            new bootstrap.Modal(document.getElementById('entityModal')).show();
+        }
+
+        function showRegexPatterns(flagName) {
+            var pats = regexPatterns[flagName] || [];
+            var fs = flagSections.find(function (s) { return s.key === flagName; });
+            var displayName = fs ? fs.label : flagName;
+            document.getElementById('entityModalTitle').textContent = displayName + ' — Search Patterns';
+            var html = '<p style="font-size:0.85rem; color:var(--color-text-muted);">Comments are flagged when they match any of these regex patterns (case-insensitive):</p>';
+            html += '<table class="table table-sm"><tbody>';
+            pats.forEach(function(p) {
+                html += '<tr><td><code>' + p.replace(/</g, '&lt;') + '</code></td></tr>';
+            });
+            html += '</tbody></table>';
+            document.getElementById('entityModalBody').innerHTML = html;
+            new bootstrap.Modal(document.getElementById('entityModal')).show();
+        }
+
+        // Generic per-flag modal, driven entirely by the config's regex_flags.
+        function showFlagModal(key) {
+            var fs = flagSections.find(function (s) { return s.key === key; });
+            if (!fs) return;
+            document.getElementById('entityModalTitle').textContent = fs.label + ' (' + fs.count.toLocaleString() + ')';
+            var html = '';
+            if (fs.description) {
+                html += '<p style="color:var(--color-text-muted); font-size:0.85rem; margin-bottom:0.5rem;">' + escapeHtml(fs.description) + '</p>';
+            }
+            html += '<p style="margin-bottom:1rem;"><a href="#" onclick="event.preventDefault(); showRegexPatterns(\'' + fs.key + '\');" style="font-size:0.85rem;"><i class="fas fa-info-circle"></i> View search patterns used</a></p>';
+            if (!fs.comments.length) {
+                html += '<p class="text-muted">None</p>';
+            } else {
+                html += '<table class="table table-sm table-hover"><thead><tr><th>Submitter</th><th>Match</th><th>Comment</th></tr></thead><tbody>';
+                fs.comments.forEach(function(e) {
+                    html += '<tr><td>' + escapeHtml(e.name) + '</td>';
+                    html += '<td style="font-size:0.82rem; max-width:400px;"><em>' + escapeHtml(e.sentence || '-') + '</em></td>';
+                    html += '<td><a href="https://www.regulations.gov/comment/' + e.id + '" target="_blank">' + e.id.split('-').pop() + '</a></td></tr>';
+                });
+                html += '</tbody></table>';
+            }
+            document.getElementById('entityModalBody').innerHTML = html;
+            new bootstrap.Modal(document.getElementById('entityModal')).show();
+        }
+
+        function showCampaignModal(campaignId) {
+            const campaign = campaignsList.find(function(c) { return c.id === campaignId; });
+            if (!campaign) return;
+            var campLabel = campaign.snippet ? ('#' + campaign.rank + ' · ' + campaign.snippet) : ('Campaign ' + campaign.rank);
+            document.getElementById('entityModalTitle').textContent = campLabel + ' — ' + campaign.size.toLocaleString() + ' similar (' + campaign.exact_dupes.toLocaleString() + ' exact copies)';
+            let html = '';
+            html += '<p style="margin-bottom:0.75rem;"><span class="stance-badge stance-' + (campaign.stance || '').toLowerCase() + '">' + campaign.stance + ' campaign</span> '
+                + '<span style="color:var(--color-text-muted); font-size:0.82rem;">'
+                + campaign.support.toLocaleString() + ' Support / ' + campaign.oppose.toLocaleString() + ' Oppose'
+                + (campaign.unclear ? ' / ' + campaign.unclear.toLocaleString() + ' Unclear' : '') + '</span></p>';
+            html += '<div class="detail-label">Most Common Version</div>';
+            html += '<div style="background:var(--color-surface); padding:16px; border-radius:6px; margin-bottom:16px; border-left:4px solid var(--color-accent); font-size:0.9rem; line-height:1.6; white-space:pre-wrap;">' + escapeHtml(campaign.canonical) + '</div>';
+            html += '<div class="detail-label">Sample Comments in This Campaign</div>';
+            html += '<div style="font-size:0.8rem; color:var(--color-text-muted);">';
+            campaign.sample_ids.forEach(function(id, j) {
+                if (j > 0) html += ', ';
+                html += '<a href="https://www.regulations.gov/comment/' + id + '" target="_blank">' + id.split('-').pop() + '</a>';
+            });
+            if (campaign.size > campaign.sample_ids.length) {
+                html += ' <span class="text-muted">+ ' + (campaign.size - campaign.sample_ids.length).toLocaleString() + ' more</span>';
+            }
+            html += '</div>';
+            html += '<div class="filter-buttons" style="justify-content:flex-start; margin-top:1rem;"><button class="btn-apply" onclick="Report.filterToCampaign(' + campaign.rank + ')">Show in table</button></div>';
+            document.getElementById('entityModalBody').innerHTML = html;
+            new bootstrap.Modal(document.getElementById('entityModal')).show();
+        }
+
+        function showStatesModal() {
+            document.getElementById('entityModalTitle').textContent = 'States Identified (' + stateSummary.length + ')';
+            let html = '<table class="table table-sm table-hover"><thead><tr><th>State</th><th style="text-align:right;">Count</th><th></th></tr></thead><tbody>';
+            stateSummary.forEach(function(s) {
+                html += '<tr><td>' + s.state + '</td><td style="text-align:right;">' + s.count + '</td>';
+                html += '<td><a href="#" onclick="event.preventDefault(); showStateDetail(\'' + s.state + '\')" style="font-size:12px;">View</a></td></tr>';
+            });
+            html += '</tbody></table>';
+            document.getElementById('entityModalBody').innerHTML = html;
+            new bootstrap.Modal(document.getElementById('entityModal')).show();
+        }
+
+        function showStateDetail(state) {
+            const subs = stateData[state] || [];
+            document.getElementById('entityModalTitle').textContent = state + ' (' + subs.length + ' comments)';
+            let html = '<p style="margin-bottom:12px;"><a href="#" onclick="event.preventDefault(); showStatesModal();" style="font-size:13px;">&larr; Back to all states</a></p>';
+            html += '<table class="table table-sm table-hover"><thead><tr><th>Quote</th><th>Submitter</th><th>Entity Type</th><th>Comment</th></tr></thead><tbody>';
+            subs.forEach(function(s) {
+                html += '<tr><td><em>' + (s.quote || '-') + '</em></td>';
+                html += '<td>' + s.name + '</td>';
+                html += '<td>' + (s.entity_type || '') + '</td>';
+                html += '<td><a href="https://www.regulations.gov/comment/' + s.id + '" target="_blank">' + s.id.split('-').pop() + '</a></td></tr>';
+            });
+            html += '</tbody></table>';
+            document.getElementById('entityModalBody').innerHTML = html;
+        }
+
+        function showEntityModal(entityName) {
+            const subs = entityData[entityName] || [];
+            document.getElementById('entityModalTitle').textContent = entityName + ' (' + subs.length + ')';
+            let html = '<table class="table table-sm table-hover"><thead><tr><th>Identified As</th><th>Submitter</th><th>Comment</th></tr></thead><tbody>';
+            subs.forEach(function(s) {
+                html += '<tr><td>' + (s.entity_name || '<span class="text-muted">-</span>') + '</td>';
+                html += '<td>' + s.name + '</td>';
+                html += '<td><a href="https://www.regulations.gov/comment/' + s.id + '" target="_blank">' + s.id.split('-').pop() + '</a></td></tr>';
+            });
+            html += '</tbody></table>';
+            document.getElementById('entityModalBody').innerHTML = html;
+            new bootstrap.Modal(document.getElementById('entityModal')).show();
+        }
+
+        function showCommentModal(idx) {
+            const c = commentData[idx];
+            document.getElementById('commentModalTitle').textContent = c.id;
+            let html = '';
+
+            html += '<div class="row mb-3">';
+            html += '<div class="col-sm-4"><div class="detail-label">Submitter</div><div class="detail-value">' + (c.submitter || 'Anonymous') + (c.organization ? ' (' + c.organization + ')' : '') + '</div></div>';
+            html += '<div class="col-sm-4"><div class="detail-label">Entity Type</div><div class="detail-value">' + c.entity_type + '</div></div>';
+            html += '<div class="col-sm-4"><div class="detail-label">Date</div><div class="detail-value">' + c.date + '</div></div>';
+            html += '</div>';
+
+            if (c.entity_name) {
+                html += '<div class="detail-label">Identified As</div><div class="detail-value"><blockquote>' + c.entity_name + '</blockquote></div>';
+            }
+
+            if (c.state || c.political) {
+                html += '<div class="row mb-3">';
+                if (c.state) {
+                    html += '<div class="col-sm-4"><div class="detail-label">State</div><div class="detail-value">' + c.state;
+                    if (c.state_quote) html += ' <span class="text-muted" style="font-size:0.8rem;">(' + c.state_quote + ')</span>';
+                    html += '</div></div>';
+                }
+                if (c.political) {
+                    html += '<div class="col-sm-4"><div class="detail-label">Political Affiliation</div><div class="detail-value">' + c.political;
+                    if (c.political_quote) html += ' <span class="text-muted" style="font-size:0.8rem;">(&ldquo;' + c.political_quote + '&rdquo;)</span>';
+                    html += '</div></div>';
+                }
+                html += '</div>';
+            }
+
+            if (c.stances && c.stances.length) {
+                html += '<div class="detail-label">Position &amp; Concerns</div><div class="detail-value">';
+                c.stances.forEach(function(s) { html += '<span class="stance-tag">' + s + '</span> '; });
+                html += '</div>';
+            }
+
+            if (c.key_quote) {
+                html += '<div class="detail-label">Key Quote</div><div class="detail-value"><blockquote>' + c.key_quote + '</blockquote></div>';
+            }
+
+            if (c.rationale) {
+                html += '<div class="detail-label">Rationale</div><div class="detail-value">' + c.rationale + '</div>';
+            }
+
+            html += '<div class="detail-label">Comment Preview</div><div class="detail-value" style="max-height:300px; overflow-y:auto; background:var(--color-surface); padding:12px; border-radius:6px; font-size:0.85rem;">' + c.comment + '</div>';
+
+            if (c.has_attachment) {
+                html += '<div class="mt-2"><span class="text-muted" style="font-size:0.82rem;"><i class="fas fa-paperclip"></i> Has attachment — view full text on regulations.gov</span></div>';
+            }
+
+            html += '<div class="mt-3"><a href="https://www.regulations.gov/comment/' + c.id + '" target="_blank" class="btn btn-sm btn-primary">View on Regulations.gov</a></div>';
+
+            document.getElementById('commentModalBody').innerHTML = html;
+            new bootstrap.Modal(document.getElementById('commentModal')).show();
+        }
+    </script>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+        // ── Client-side filter manager (Report namespace) ─────────────────
+        const Report = {
+            table: null,
+            activeFilters: {},   // key -> array of selected string values (text: single-element)
+        };
+
+        // Per-row value accessors used by both filtering and option counts.
+        // Positions are shown as the short label (Oppose / Support / Unclear);
+        // the full stance text remains in the detail modal.
+        function shortPosition(s) {
+            if (s.indexOf('Oppose') >= 0) return 'Oppose';
+            if (s.indexOf('Support') >= 0) return 'Support';
+            return 'Unclear';
+        }
+        function cPositions(c) {
+            var raw = (c.stances || []).filter(function (s) { return s.indexOf('Position:') === 0; });
+            if (!raw.length) return ['Unclear'];
+            var out = [];
+            raw.forEach(function (s) {
+                var sh = shortPosition(s);
+                if (out.indexOf(sh) < 0) out.push(sh);
+            });
+            return out.length ? out : ['Unclear'];
+        }
+        function cConcerns(c) {
+            return (c.stances || []).filter(function (s) { return s.indexOf('Concern:') === 0; })
+                                    .map(function (s) { return s.replace('Concern: ', ''); });
+        }
+        function cCampaign(c) { return c.campaign_rank != null ? ['Campaign ' + c.campaign_rank] : []; }
+
+        // Field metadata (from the config `fields:` block) drives which
+        // field-backed columns/filters are shown and their labels.
+        function showsField(name, target) {
+            var m = fieldMeta[name];
+            return !!(m && m.show && m.show.indexOf(target) >= 0);
+        }
+        function fieldLabel(name, fallback) {
+            var m = fieldMeta[name];
+            return (m && m.label) || fallback;
+        }
+
+        // ── Config-driven column spec ─────────────────────────────────────
+        // Order defines the DataTable columns. Field-backed columns are gated by
+        // their field's `show` (`column`) from the config; structural columns
+        // (id/date/submitter/campaign/attachment) are always present. `filter`
+        // attaches a +Add-filter dimension (gated by the field's `filter` show).
+        const COLUMN_SPECS = [
+            { key: 'id', title: 'ID',
+              cell: function (c) { return '<a href="https://www.regulations.gov/comment/' + c.id + '" target="_blank" onclick="event.stopPropagation();">' + c.id.split('-').pop() + '</a>'; } },
+            { key: 'date', title: 'Date', isDate: true, cell: function (c) { return c.date; } },
+            { key: 'submitter', title: 'Submitter',
+              cell: function (c) { return escapeHtml(c.submitter) + (c.organization ? ' <span class="text-muted" style="font-size:11px;">(' + escapeHtml(c.organization) + ')</span>' : ''); } },
+            { key: 'entity_type', title: fieldLabel('entity_type', 'Entity Type'), enabled: showsField('entity_type', 'column'),
+              cell: function (c) { return '<span class="stance-tag tag-entity">' + escapeHtml(c.entity_type) + '</span>'; },
+              filter: showsField('entity_type', 'filter') ? { name: fieldLabel('entity_type', 'Entity Type'), vals: function (c) { return c.entity_type ? [c.entity_type] : []; } } : null },
+            { key: 'state', title: fieldLabel('state_identified', 'State'), enabled: showsField('state_identified', 'column'),
+              cell: function (c) { return escapeHtml(c.state || ''); },
+              filter: showsField('state_identified', 'filter') ? { name: fieldLabel('state_identified', 'State'), vals: function (c) { return c.state ? [c.state] : []; } } : null },
+            { key: 'position', title: 'Position', orderable: false, enabled: showsField('stances', 'column'),
+              cell: function (c) { return cPositions(c).map(function (p) {
+                  var cls = p.indexOf('Oppose') >= 0 ? 'pos-oppose' : (p.indexOf('Support') >= 0 ? 'pos-support' : 'pos-unclear');
+                  return '<span class="stance-tag tag-position ' + cls + '">' + escapeHtml(p) + '</span>';
+              }).join(' '); },
+              filter: showsField('stances', 'filter') ? { name: 'Position', vals: cPositions } : null },
+            { key: 'concern', title: 'Concerns', orderable: false, enabled: showsField('stances', 'column'),
+              cell: function (c) { return cConcerns(c).map(function (p) { return '<span class="stance-tag tag-concern">' + escapeHtml(p) + '</span>'; }).join(' '); },
+              filter: showsField('stances', 'filter') ? { name: 'Concern', vals: cConcerns } : null },
+            { key: 'campaign', title: 'Campaign',
+              cell: function (c) {
+                  if (c.campaign_rank == null) return '';
+                  var camp = campaignsList.find(function (x) { return x.id === c.campaign_id; });
+                  var label = (camp && camp.snippet) ? camp.snippet : ('Campaign ' + c.campaign_rank);
+                  return '<span class="stance-tag tag-entity" style="cursor:pointer; display:inline-block; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle;" title="#' + c.campaign_rank + ' · ' + (c.campaign_size || 0).toLocaleString() + ' comments" onclick="event.stopPropagation(); showCampaignModal(' + c.campaign_id + ')">' + escapeHtml(label) + ' <span class="text-muted">(' + (c.campaign_size || 0).toLocaleString() + ')</span></span>';
+              },
+              filter: { name: 'Campaign', vals: cCampaign } },
+            { key: 'attachment', title: 'Attach',
+              cell: function (c) { return c.has_attachment ? 'Yes' : ''; },
+              filter: { name: 'Attachment', vals: function (c) { return [c.has_attachment ? 'Yes' : 'No']; } } },
+            { key: 'political', title: fieldLabel('political_affiliation', 'Political'), enabled: showsField('political_affiliation', 'column'),
+              cell: function (c) { return escapeHtml(c.political || ''); },
+              filter: showsField('political_affiliation', 'filter') ? { name: fieldLabel('political_affiliation', 'Political'), vals: function (c) { return c.political ? [c.political] : []; } } : null },
+        ];
+        const COLUMNS = COLUMN_SPECS.filter(function (col) { return col.enabled !== false; });
+
+        // Filter definitions = enabled column filters + campaign-stance + comment-text + config flags.
+        const FILTER_DEFS = [];
+        COLUMNS.forEach(function (col) {
+            if (col.filter) FILTER_DEFS.push({ key: col.key, name: col.filter.name, vals: col.filter.vals });
+        });
+        // Campaign stance (Support/Oppose/Mixed) — only meaningful for comments in a campaign.
+        FILTER_DEFS.push({ key: 'campaign_stance', name: 'Campaign stance', vals: function (c) { return c.campaign_stance ? [c.campaign_stance] : []; } });
+        FILTER_DEFS.push({ key: 'q', name: 'Comment text', type: 'text' });
+        flagMeta.forEach(function (f) {
+            FILTER_DEFS.push({
+                key: f.key,
+                name: f.label,
+                vals: function (c) { return [(c.flags && c.flags[f.key]) ? 'Yes' : 'No']; }
+            });
+        });
+        // Regex multi-value fields (e.g. CFR Section) that opt into `filter`.
+        valueSections.forEach(function (vs) {
+            if (vs.show.indexOf('filter') >= 0) {
+                FILTER_DEFS.push({
+                    key: vs.key,
+                    name: vs.label,
+                    vals: function (c) { return (c.multi_values && c.multi_values[vs.key]) || []; }
+                });
+            }
+        });
+        const DEF_BY_KEY = {};
+        FILTER_DEFS.forEach(function (d) { DEF_BY_KEY[d.key] = d; });
+
+        // option -> count over the full dataset (for a given filter dimension)
+        Report.optionCounts = function (key) {
+            const def = DEF_BY_KEY[key];
+            const counts = {};
+            commentData.forEach(function (c) {
+                def.vals(c).forEach(function (v) { counts[v] = (counts[v] || 0) + 1; });
+            });
+            return counts;
+        };
+
+        // Does a row pass all active filters?
+        Report.matchRow = function (c) {
+            for (const key in Report.activeFilters) {
+                const sel = Report.activeFilters[key];
+                if (!sel || !sel.length) continue;
+                const def = DEF_BY_KEY[key];
+                if (def.type === 'text') {
+                    const term = sel[0];
+                    if (term && (c.comment || '').toLowerCase().indexOf(term) < 0) return false;
+                } else {
+                    const rowVals = def.vals(c);
+                    if (!rowVals.some(function (v) { return sel.indexOf(v) >= 0; })) return false;
+                }
+            }
+            return true;
+        };
+
+        Report.refresh = function () {
+            Report.renderChips();
+            Report.encodeURL();
+            if (Report.table) Report.table.draw();
+        };
+
+        // ── Chips ─────────────────────────────────────────────────────────
+        Report.renderChips = function () {
+            const host = document.getElementById('activeChips');
+            host.innerHTML = '';
+            for (const key in Report.activeFilters) {
+                const def = DEF_BY_KEY[key];
+                Report.activeFilters[key].forEach(function (v) {
+                    const chip = document.createElement('span');
+                    chip.className = 'filter-chip';
+                    const label = document.createElement('span');
+                    label.className = 'filter-chip-label';
+                    label.textContent = def.name + ':';
+                    const value = document.createElement('span');
+                    value.className = 'filter-chip-value';
+                    value.textContent = v;
+                    const remove = document.createElement('button');
+                    remove.className = 'filter-chip-remove';
+                    remove.type = 'button';
+                    remove.textContent = '×';
+                    remove.setAttribute('aria-label', 'Remove filter');
+                    remove.addEventListener('click', function () { Report.removeValue(key, v); });
+                    chip.appendChild(label);
+                    chip.appendChild(value);
+                    chip.appendChild(remove);
+                    host.appendChild(chip);
+                });
+            }
+        };
+
+        Report.removeValue = function (key, v) {
+            if (!Report.activeFilters[key]) return;
+            Report.activeFilters[key] = Report.activeFilters[key].filter(function (x) { return x !== v; });
+            if (Report.activeFilters[key].length === 0) delete Report.activeFilters[key];
+            Report.refresh();
+        };
+
+        // ── URL sync (human-readable: key=a,b,c for multiselect; q=text) ──
+        Report.encodeURL = function () {
+            const p = new URLSearchParams();
+            for (const key in Report.activeFilters) {
+                const def = DEF_BY_KEY[key];
+                if (def.type === 'text') {
+                    p.set(key, Report.activeFilters[key][0]);
+                } else {
+                    p.set(key, Report.activeFilters[key].join(','));
+                }
+            }
+            const qs = p.toString();
+            history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''));
+        };
+
+        Report.decodeURL = function () {
+            const p = new URLSearchParams(window.location.search);
+            p.forEach(function (value, key) {
+                const def = DEF_BY_KEY[key];
+                if (!def) return;
+                if (def.type === 'text') {
+                    if (value) Report.activeFilters[key] = [value.toLowerCase()];
+                } else {
+                    const vals = value.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+                    if (vals.length) Report.activeFilters[key] = vals;
+                }
+            });
+        };
+
+        // ── Modal plumbing ────────────────────────────────────────────────
+        function createFilterModal(html) {
+            const back = document.createElement('div');
+            back.className = 'filter-modal';
+            back.innerHTML = html;
+            back.addEventListener('click', function (e) { if (e.target === back) closeFilterModal(back); });
+            function esc(e) { if (e.key === 'Escape') { closeFilterModal(back); document.removeEventListener('keydown', esc); } }
+            document.addEventListener('keydown', esc);
+            document.body.appendChild(back);
+            return back;
+        }
+        function closeFilterModal(m) { if (m && m.parentNode) m.parentNode.removeChild(m); }
+
+        // Step 1: column picker
+        Report.openFilterSelection = function () {
+            const opts = FILTER_DEFS.map(function (d) {
+                return '<label class="filter-option" data-key="' + d.key + '">'
+                    + '<span>' + escapeHtml(d.name) + '</span></label>';
+            }).join('');
+            const m = createFilterModal('<div class="filter-popover"><div class="filter-title">Add filter</div>'
+                + '<input type="text" class="filter-search" placeholder="Search columns...">'
+                + '<div class="filter-options">' + opts + '</div></div>');
+            const search = m.querySelector('.filter-search');
+            search.focus();
+            search.addEventListener('input', function () {
+                const q = this.value.toLowerCase();
+                m.querySelectorAll('.filter-option').forEach(function (o) {
+                    o.style.display = o.textContent.toLowerCase().includes(q) ? '' : 'none';
+                });
+            });
+            m.querySelectorAll('.filter-option').forEach(function (o) {
+                o.addEventListener('click', function () {
+                    closeFilterModal(m);
+                    const def = DEF_BY_KEY[o.getAttribute('data-key')];
+                    if (def.type === 'text') { Report.openText(def); } else { Report.openMulti(def); }
+                });
+            });
+        };
+
+        // Step 2: per-column multiselect dialog (search + counts + select-all)
+        Report.openMulti = function (def) {
+            const counts = Report.optionCounts(def.key);
+            const vals = Object.keys(counts).sort(function (a, b) {
+                return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+            });
+            const selected = Report.activeFilters[def.key] || [];
+            const opts = vals.map(function (v) {
+                return '<label class="filter-option"><input type="checkbox" value="' + escapeHtml(v) + '"'
+                    + (selected.indexOf(v) >= 0 ? ' checked' : '') + '>'
+                    + '<span>' + escapeHtml(v) + '</span>'
+                    + '<span class="opt-count">' + counts[v].toLocaleString() + '</span></label>';
+            }).join('');
+            const m = createFilterModal('<div class="filter-popover"><div class="filter-title">Filter: ' + escapeHtml(def.name) + '</div>'
+                + '<input type="text" class="filter-search" placeholder="Search options...">'
+                + '<label class="filter-option filter-selectall"><input type="checkbox" class="selectall-cb"><strong>Select all</strong></label>'
+                + '<div class="filter-options">' + opts + '</div>'
+                + '<div class="filter-buttons"><button class="btn-clear">Clear</button><button class="btn-apply">Apply</button></div></div>');
+
+            const search = m.querySelector('.filter-search');
+            const optsBox = m.querySelector('.filter-options');
+            const selectAll = m.querySelector('.selectall-cb');
+            if (vals.length > 12) { search.style.display = ''; search.focus(); } else { search.style.display = 'none'; }
+
+            function visibleBoxes() {
+                return Array.prototype.slice.call(optsBox.querySelectorAll('.filter-option'))
+                    .filter(function (o) { return o.style.display !== 'none'; })
+                    .map(function (o) { return o.querySelector('input'); });
+            }
+            function syncSelectAll() {
+                const vis = visibleBoxes();
+                const n = vis.filter(function (cb) { return cb.checked; }).length;
+                selectAll.checked = vis.length > 0 && n === vis.length;
+                selectAll.indeterminate = n > 0 && n < vis.length;
+            }
+            search.addEventListener('input', function () {
+                const q = this.value.toLowerCase();
+                optsBox.querySelectorAll('.filter-option').forEach(function (o) {
+                    o.style.display = o.textContent.toLowerCase().includes(q) ? '' : 'none';
+                });
+                syncSelectAll();
+            });
+            optsBox.addEventListener('change', syncSelectAll);
+            selectAll.addEventListener('change', function () {
+                const checked = this.checked;
+                visibleBoxes().forEach(function (cb) { cb.checked = checked; });
+            });
+            syncSelectAll();
+
+            m.querySelector('.btn-clear').addEventListener('click', function () {
+                delete Report.activeFilters[def.key];
+                closeFilterModal(m);
+                Report.refresh();
+            });
+            m.querySelector('.btn-apply').addEventListener('click', function () {
+                const checked = Array.prototype.slice.call(optsBox.querySelectorAll('input:checked'))
+                    .map(function (i) { return i.value; });
+                if (checked.length) { Report.activeFilters[def.key] = checked; }
+                else { delete Report.activeFilters[def.key]; }
+                closeFilterModal(m);
+                Report.refresh();
+            });
+        };
+
+        // Per-column text dialog (comment-body substring search)
+        Report.openText = function (def) {
+            const current = (Report.activeFilters[def.key] || [''])[0] || '';
+            const m = createFilterModal('<div class="filter-popover"><div class="filter-title">Filter: ' + escapeHtml(def.name) + '</div>'
+                + '<input type="text" class="filter-search filter-text-input" placeholder="Type text to search comments..." value="' + escapeHtml(current) + '">'
+                + '<div class="filter-buttons"><button class="btn-clear">Clear</button><button class="btn-apply">Apply</button></div></div>');
+            const inp = m.querySelector('.filter-text-input');
+            inp.focus();
+            inp.addEventListener('keypress', function (e) { if (e.key === 'Enter') m.querySelector('.btn-apply').click(); });
+            m.querySelector('.btn-clear').addEventListener('click', function () {
+                delete Report.activeFilters[def.key];
+                closeFilterModal(m);
+                Report.refresh();
+            });
+            m.querySelector('.btn-apply').addEventListener('click', function () {
+                const v = inp.value.trim().toLowerCase();
+                if (v) { Report.activeFilters[def.key] = [v]; } else { delete Report.activeFilters[def.key]; }
+                closeFilterModal(m);
+                Report.refresh();
+            });
+        };
+
+        // From a campaign modal: filter the table to that campaign
+        Report.filterToCampaign = function (rank) {
+            const inst = bootstrap.Modal.getInstance(document.getElementById('entityModal'));
+            if (inst) inst.hide();
+            Report.activeFilters['campaign'] = ['Campaign ' + rank];
+            Report.refresh();
+            document.getElementById('commentsTable').scrollIntoView({ behavior: 'smooth' });
+        };
+
+        // Set a single-value filter for `key` and jump to the table (used by the
+        // clickable concern bars and the Sections-Referenced bars).
+        Report.filterToValue = function (key, name) {
+            if (!DEF_BY_KEY[key]) return;
+            Report.activeFilters[key] = [name];
+            Report.refresh();
+            document.getElementById('commentsTable').scrollIntoView({ behavior: 'smooth' });
+        };
+        Report.filterToConcern = function (name) { Report.filterToValue('concern', name); };
+
+        Report.copyLink = function () {
+            navigator.clipboard.writeText(window.location.href).then(function () {
+                showAppToast('Link copied to clipboard');
+                const btn = document.getElementById('copyLinkBtn');
+                btn.classList.add('copied');
+                setTimeout(function () { btn.classList.remove('copied'); }, 1600);
+            }).catch(function () { showAppToast('Failed to copy link'); });
+        };
+
+        // Download the currently filtered + sorted rows as CSV
+        Report.downloadCSV = function () {
+            const headers = COLUMNS.map(function (col) { return col.title; });
+            const lines = [headers.join(',')];
+            Report.table.rows({ search: 'applied', order: 'applied' }).every(function () {
+                const d = this.data();
+                const row = [];
+                for (let i = 0; i < headers.length; i++) {
+                    let val = (d[i] || '').toString().replace(/<[^>]*>/g, '').trim();
+                    if (val.indexOf(',') !== -1 || val.indexOf('"') !== -1 || val.indexOf('\n') !== -1) {
+                        val = '"' + val.replace(/"/g, '""') + '"';
+                    }
+                    row.push(val);
+                }
+                lines.push(row.join(','));
+            });
+            const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'filtered_comments.csv';
+            link.click();
+            URL.revokeObjectURL(link.href);
+        };
+
+        // ── Init ──────────────────────────────────────────────────────────
+        $(document).ready(function () {
+            // Parse URL filters before the table's first draw.
+            Report.decodeURL();
+
+            // Build header + rows from the (config-filtered) column spec.
+            $('#commentsTable thead tr').html(COLUMNS.map(function (col) {
+                return '<th>' + escapeHtml(col.title) + '</th>';
+            }).join(''));
+
+            const tableData = commentData.map(function (c) {
+                return COLUMNS.map(function (col) { return col.cell(c); });
+            });
+
+            const dateIdx = COLUMNS.findIndex(function (col) { return col.isDate; });
+            const columnDefs = [];
+            COLUMNS.forEach(function (col, i) {
+                if (col.orderable === false) columnDefs.push({ targets: i, orderable: false });
+            });
+
+            // Custom search predicate over the underlying comment objects.
+            $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+                return Report.matchRow(commentData[dataIndex]);
+            });
+
+            Report.table = $('#commentsTable').DataTable({
+                data: tableData,
+                pageLength: 25,
+                order: dateIdx >= 0 ? [[dateIdx, 'desc']] : [],
+                deferRender: true,
+                columnDefs: columnDefs,
+                createdRow: function (row, data, idx) {
+                    $(row).addClass('clickable-row').on('click', function () { showCommentModal(idx); });
+                }
+            });
+
+            // Wire toolbar
+            document.getElementById('addFilterBtn').addEventListener('click', Report.openFilterSelection);
+            document.getElementById('copyLinkBtn').addEventListener('click', Report.copyLink);
+            document.getElementById('downloadCsvBtn').addEventListener('click', Report.downloadCSV);
+
+            // Clickable concern bars -> filter the table to that concern.
+            document.querySelectorAll('#concernsSection .concern-row[data-concern]').forEach(function (row) {
+                row.addEventListener('click', function () { Report.filterToConcern(this.getAttribute('data-concern')); });
+            });
+            // Clickable Sections-Referenced bars -> filter the table to that value.
+            document.querySelectorAll('.value-row[data-section-key]').forEach(function (row) {
+                row.addEventListener('click', function () {
+                    Report.filterToValue(this.getAttribute('data-section-key'), this.getAttribute('data-section-name'));
+                });
+            });
+
+            // Restore chips/state parsed from the URL
+            Report.renderChips();
+            Report.table.draw();
+        });
+    </script>
+</body>
+</html>
