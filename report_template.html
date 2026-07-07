@@ -579,7 +579,7 @@
             {% for entity in briefing.entity_counts %}
             "{{ entity.name }}": [
                 {% for s in entity.submitters %}
-                {"name": {{ s.name | tojson }}, "org": {{ s.org | tojson }}, "id": {{ s.id | tojson }}, "entity_name": {{ s.entity_name | tojson }}},
+                {"name": {{ s.name | tojson }}, "org": {{ s.org | tojson }}, "id": {{ s.id | tojson }}, "entity_name": {{ s.entity_name | tojson }}, "cosigner_names": {{ s.cosigner_names | tojson }}, "cosigner_count": {{ s.cosigner_count | tojson }}},
                 {% endfor %}
             ],
             {% endfor %}
@@ -614,6 +614,9 @@
             }{% if not loop.last %},{% endif %}
             {% endfor %}
         ];
+
+        const commentIndexById = {};
+        commentData.forEach(function (c, i) { commentIndexById[c.id] = i; });
 
         const stateSummary = [
             {% for state, count in briefing.state_counts %}
@@ -768,13 +771,26 @@
             document.getElementById('entityModalTitle').textContent = entityName + ' (' + subs.length + ')';
             let html = '<table class="table table-sm table-hover"><thead><tr><th>Identified As</th><th>Submitter</th><th>Comment</th></tr></thead><tbody>';
             subs.forEach(function(s) {
-                html += '<tr><td>' + (s.entity_name || '<span class="text-muted">-</span>') + '</td>';
+                const idx = commentIndexById[s.id];
+                const clickable = idx !== undefined;
+                let identified = s.entity_name || '<span class="text-muted">-</span>';
+                if (s.cosigner_count > 1) {
+                    identified += ' <span class="text-muted" style="font-size:0.8rem;">+ ' + (s.cosigner_count - 1).toLocaleString() + ' more</span>';
+                }
+                html += '<tr' + (clickable ? ' class="clickable-row" style="cursor:pointer;" onclick="openCommentFromEntity(' + idx + ')" title="Click to see full comment details"' : '') + '>';
+                html += '<td>' + identified + '</td>';
                 html += '<td>' + s.name + '</td>';
-                html += '<td><a href="https://www.regulations.gov/comment/' + s.id + '" target="_blank">' + s.id.split('-').pop() + '</a></td></tr>';
+                html += '<td><a href="https://www.regulations.gov/comment/' + s.id + '" target="_blank" onclick="event.stopPropagation();">' + s.id.split('-').pop() + '</a></td></tr>';
             });
             html += '</tbody></table>';
             document.getElementById('entityModalBody').innerHTML = html;
             new bootstrap.Modal(document.getElementById('entityModal')).show();
+        }
+
+        function openCommentFromEntity(idx) {
+            const entityModal = bootstrap.Modal.getInstance(document.getElementById('entityModal'));
+            if (entityModal) entityModal.hide();
+            showCommentModal(idx);
         }
 
         function showCommentModal(idx) {
@@ -934,6 +950,9 @@
             { key: 'attachment', title: 'Attach',
               cell: function (c) { return c.has_attachment ? 'Yes' : ''; },
               filter: { name: 'Attachment', vals: function (c) { return [c.has_attachment ? 'Yes' : 'No']; } } },
+            { key: 'cosigners', title: 'Cosigners', enabled: {{ show_cosigners | tojson }}, sortType: 'num',
+              cell: function (c) { return c.cosigner_count > 1 ? String(c.cosigner_count) : ''; },
+              filter: { name: 'Cosigners', vals: function (c) { return [c.cosigner_count > 1 ? 'Joint letter (2+)' : 'Single submitter']; } } },
             { key: 'political', title: fieldLabel('political_affiliation', 'Political'), enabled: showsField('political_affiliation', 'column'),
               cell: function (c) { return escapeHtml(c.political || ''); },
               filter: showsField('political_affiliation', 'filter') ? { name: fieldLabel('political_affiliation', 'Political'), vals: function (c) { return c.political ? [c.political] : []; } } : null },
@@ -1261,6 +1280,7 @@
             const columnDefs = [];
             COLUMNS.forEach(function (col, i) {
                 if (col.orderable === false) columnDefs.push({ targets: i, orderable: false });
+                if (col.sortType) columnDefs.push({ targets: i, type: col.sortType });
             });
 
             // Custom search predicate over the underlying comment objects.

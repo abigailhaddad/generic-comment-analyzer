@@ -186,12 +186,21 @@ def compute_briefing(comments: List[Dict[str, Any]]) -> Dict[str, Any]:
         entity_counts[entity] = entity_counts.get(entity, 0) + 1
         if entity not in entity_submitters:
             entity_submitters[entity] = []
+
+        cosigner_names = analysis.get('cosigner_names', [])
+        if hasattr(cosigner_names, 'tolist'):
+            cosigner_names = cosigner_names.tolist()
+        if not isinstance(cosigner_names, list):
+            cosigner_names = []
+
         entity_submitters[entity].append({
             'name': 'Anonymous' if (c.get('submitter', '') or '').strip() in ('Anonymous Anonymous', '') else c.get('submitter', '').strip(),
             'org': c.get('organization', '').strip(),
             'id': c.get('id', ''),
             'entity_name': analysis.get('entity_name', ''),
             'entity_name_score': analysis.get('entity_name_match_score', ''),
+            'cosigner_names': cosigner_names,
+            'cosigner_count': _safe_int(analysis.get('cosigner_count')) or 1,
         })
 
         state = (analysis.get('state_identified') or '').strip()
@@ -880,6 +889,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         regex_value_patterns=regex_value_patterns,
     )
     regex_patterns = load_regex_flag_patterns()
+    show_cosigners = any(r.get('cosigner_count', 1) > 1 for r in rows)
 
     # Read-the-Rule page — only when the regulation has proposed-rule text prepared.
     rule_sections = load_rule_sections()
@@ -900,6 +910,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         accent_rgb=accent_rgb,
         show_stance_cards=show_stance_cards,
         show_entity_cards=show_entity_cards,
+        show_cosigners=show_cosigners,
         rule_page_url=rule_page_url,
         source_url=source_url,
         generated_time=generated_time,
