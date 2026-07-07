@@ -437,6 +437,13 @@ def prepare_rows(comments: List[Dict[str, Any]], campaign_id_to_rank: dict = Non
 
         stances_html = ' '.join(f'<span class="stance-tag">{s}</span>' for s in stance_data) if stance_data else ''
 
+        # Cosigner names (joint/coalition letters)
+        cosigner_names = analysis.get('cosigner_names', [])
+        if hasattr(cosigner_names, 'tolist'):
+            cosigner_names = cosigner_names.tolist()
+        if not isinstance(cosigner_names, list):
+            cosigner_names = []
+
         positions = [s for s in stance_data if s.startswith('Position:')]
         concerns = [s for s in stance_data if s.startswith('Concern:')]
         position_html = ' '.join(f'<span class="stance-tag tag-position">{s.replace("Position: ", "")}</span>' for s in positions)
@@ -463,6 +470,8 @@ def prepare_rows(comments: List[Dict[str, Any]], campaign_id_to_rank: dict = Non
             'organization': comment.get('organization', '') or '',
             'entity_type': analysis.get('entity_type', 'Individual/Other'),
             'entity_name': analysis.get('entity_name', ''),
+            'cosigner_names': cosigner_names,
+            'cosigner_count': _safe_int(analysis.get('cosigner_count')) or 1,
             'stances_html': stances_html,
             'position_html': position_html,
             'concerns_html': concerns_html,

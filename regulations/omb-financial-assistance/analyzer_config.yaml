@@ -305,6 +305,17 @@ second_pass:
   political_affiliation:
     verify_all: false
 
+  # Detect joint/coalition sign-on letters (e.g. multiple Senators, or dozens of
+  # organizations, co-signing one comment) so they surface as more than "1 entity".
+  cosigner_span:
+    trigger_patterns:
+      - "undersigned"
+      - "co-?signed"
+      - "joint letter"
+      - "on behalf of the following"
+      - "the following organizations"
+      - "\\d+\\s+(organizations|signator(y|ies)|individuals|co-?signers)"
+
   # Regulation-specific verification prompts (required for stance + entity).
   prompts:
     stance: >

@@ -23,7 +23,6 @@ from typing import List, Dict, Any, Optional
 from attachment_utils import download_attachment, extract_text_from_file, process_attachments
 import random
 from dotenv import load_dotenv
-from PyPDF2 import PdfReader
 import docx
 import psycopg2
 from psycopg2.extras import RealDictCursor

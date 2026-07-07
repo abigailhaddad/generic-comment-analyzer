@@ -18,6 +18,7 @@ import logging
 import os
 import re
 import sys
+from collections import Counter
 from typing import List, Dict, Any
 
 import yaml
@@ -31,6 +32,8 @@ from enum import Enum
 from pydantic import BaseModel, Field, create_model
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+from attachment_utils import reextract_attachment_text
 
 load_dotenv()
 
@@ -110,10 +113,23 @@ Rules:
 - If no explicit self-identification, return empty string for both fields"""
 
 
+_DEFAULT_COSIGNER_SPAN_PROMPT = """You are checking whether a public comment is a joint/coalition letter signed by multiple distinct individuals or organizations (as opposed to a single submitter).
+
+Rules:
+- has_cosigners is true ONLY if the letter's OWN closing/signature section names 2+ DISTINCT PEOPLE or 2+ DISTINCT ORGANIZATIONS as signers or endorsers of THIS COMMENT — not people or organizations merely discussed, cited, or assessed somewhere in the body text.
+- A single person's own contact block (their name, followed by their title, followed by their organization/affiliation) is ONE signer, even though it spans several lines — do NOT count title or organization lines as separate signers.
+- Do NOT count: a sentence in the body citing what other organizations said/assessed/authored (e.g. "X, Y, and Z jointly assessed that..." or "a brief authored by X, Y, and Z") — that is a citation, not this letter's signature block. Do NOT count the author byline, references, or contributor notes of an attached research paper/article — a comment that attaches a multi-author paper for support is still a single submitter's comment.
+- Formal boilerplate like "the undersigned submits this comment" used by a SINGLE person does NOT count — that person writing in formal/plural style alone is not a coalition letter.
+- When in doubt, prefer has_cosigners=false. This should only be true when you can point to actual distinct names, each clearly signing on their own behalf, in the letter's own signature section.
+- If has_cosigners is true, extract two VERBATIM quotes that bound the ENTIRE section listing the letter's own distinct signers: block_start (the first signer's name) and block_end (the LAST signer's own name or their final title/org line — re-check the text after your first guess for block_end to make sure no further distinct signer appears after it; if one does, extend block_end to cover them too). Both must be exact substrings of the provided text. Do not let the span extend into body prose, an attached paper, or citations.
+- If has_cosigners is false, leave block_start and block_end empty."""
+
+
 # State and political prompts default to the generic module constants; they may
 # be overridden by _load_prompts() from config.
 STATE_VERIFICATION_PROMPT = _DEFAULT_STATE_VERIFICATION_PROMPT
 POLITICAL_VERIFICATION_PROMPT = _DEFAULT_POLITICAL_VERIFICATION_PROMPT
+COSIGNER_SPAN_PROMPT = _DEFAULT_COSIGNER_SPAN_PROMPT
 
 
 def _load_prompts():
@@ -123,7 +139,7 @@ def _load_prompts():
     political prompts fall back to the generic module defaults if not provided.
     """
     global STANCE_VERIFICATION_PROMPT, ENTITY_VERIFICATION_PROMPT
-    global STATE_VERIFICATION_PROMPT, POLITICAL_VERIFICATION_PROMPT
+    global STATE_VERIFICATION_PROMPT, POLITICAL_VERIFICATION_PROMPT, COSIGNER_SPAN_PROMPT
 
     config = load_second_pass_config()
     prompts = config.get('prompts', {}) or {}
@@ -139,6 +155,7 @@ def _load_prompts():
     ENTITY_VERIFICATION_PROMPT = entity
     STATE_VERIFICATION_PROMPT = prompts.get('state') or _DEFAULT_STATE_VERIFICATION_PROMPT
     POLITICAL_VERIFICATION_PROMPT = prompts.get('political') or _DEFAULT_POLITICAL_VERIFICATION_PROMPT
+    COSIGNER_SPAN_PROMPT = prompts.get('cosigner') or _DEFAULT_COSIGNER_SPAN_PROMPT
 
     # Build constrained response models so the verifier can only emit valid values.
     global STANCE_VERIFICATION_MODEL, ENTITY_VERIFICATION_MODEL
@@ -187,10 +204,28 @@ class EntityVerification(BaseModel):
     )
 
 
+class CosignerSpanVerification(BaseModel):
+    has_cosigners: bool = Field(
+        description="True only if this comment is jointly signed by 2+ distinct individuals or organizations."
+    )
+    block_start: str = Field(
+        default="",
+        description="Verbatim quote marking the start of the signer-list section. Empty if has_cosigners is false."
+    )
+    block_end: str = Field(
+        default="",
+        description="Verbatim quote marking the end of the signer-list section. Empty if has_cosigners is false."
+    )
+    reasoning: str = Field(
+        description="One sentence explaining the determination."
+    )
+
+
 # Constrained response models — populated by _load_prompts() from the config so the
 # verifier can only return valid values (mirrors the enum constraint on the main pass).
 STANCE_VERIFICATION_MODEL = StanceVerification
 ENTITY_VERIFICATION_MODEL = EntityVerification
+COSIGNER_SPAN_MODEL = CosignerSpanVerification
 
 
 def _load_full_config():
@@ -307,6 +342,234 @@ def find_entity_verify_comments(comments: List[Dict[str, Any]], config: dict) ->
                 candidates.append((i, comment))
 
     return candidates
+
+
+# Used inside _parse_cosigner_block(): letters that state their own signer count
+# (e.g. "323 multi-sector organizations") repeat it reliably even when the named
+# list itself is long or noisily extracted, so it's preferred over len(names).
+_STATED_COUNT_RE = re.compile(
+    r'(\d[\d,]*)\+?\s+(?:multi-sector\s+|other\s+|additional\s+)?'
+    r'(?:organizations?|signator(?:y|ies)|individuals?|co-?signers?|cosigners?|senators?|members?|entities)',
+    re.IGNORECASE,
+)
+
+_JUNK_LINE_RE = re.compile(r'^(page\s*)?\d+(\s*of\s*\d+)?$', re.IGNORECASE)
+# Page-bottom footnote/citation lines (e.g. "4 Id. at p. 10.") that PDF extraction
+# can interleave with list items when a footnote falls on the same page.
+_FOOTNOTE_LINE_RE = re.compile(r'^\d{1,3}\s+\S')
+# Letter-closing valedictions immediately preceding a signature block.
+_VALEDICTION_RE = re.compile(
+    r'^(sincerely|very truly yours|yours truly|respectfully( submitted)?|regards|best regards|cordially)[,.]?$',
+    re.IGNORECASE,
+)
+# Case-law citation lines (e.g. "Council v. Department of Agriculture (2025)")
+# that can be interleaved in a signature block via a footnote.
+_CASE_CITATION_RE = re.compile(r'\sv\.\s.+\(\d{4}\)$')
+
+
+def _has_repeated_short_line(text: str, min_len: int = 4, max_len: int = 60, min_repeats: int = 2) -> bool:
+    """Structural signal for a signature block: some short line (a shared title
+    like "United States Senator", or a repeated running header) appears 2+ times
+    verbatim. Unlike phrase matching, this doesn't depend on the letter using any
+    particular wording ("undersigned", "joint letter", etc.) — it caught the
+    motivating Hickenlooper letter, which uses neither phrase.
+    """
+    lines = [re.sub(r'[ \t]+', ' ', l).strip() for l in text.splitlines()]
+    lines = [l for l in lines if min_len <= len(l) <= max_len and not l.isdigit()]
+    counts = Counter(l.lower() for l in lines)
+    return any(c >= min_repeats for c in counts.values())
+
+
+def find_cosigner_span_comments(comments: List[Dict[str, Any]], config: dict) -> List[tuple]:
+    """Find comments that look like joint/coalition letters and need cosigner-span detection.
+
+    Combines a config-driven phrase list (catches explicit wording like "the
+    undersigned" or a stated total) with a generic structural check (catches
+    signature blocks that use neither, like a plain list of names sharing a
+    title). Both are cheap; false positives just cost one extra model call that
+    resolves to has_cosigners=false.
+    """
+    cosigner_config = config.get('cosigner_span')
+    if cosigner_config is None:
+        return []
+    patterns = cosigner_config.get('trigger_patterns', [])
+    compiled = [re.compile(p, re.IGNORECASE) for p in patterns]
+
+    candidates = []
+    for i, comment in enumerate(comments):
+        analysis = comment.get('analysis')
+        if not analysis or not isinstance(analysis, dict):
+            continue
+        if analysis.get('cosigner_checked'):
+            continue
+        text = comment.get('text') or ''
+        if any(p.search(text) for p in compiled) or _has_repeated_short_line(text):
+            candidates.append((i, comment))
+    return candidates
+
+
+def _find_quote(full_text: str, quote: str, start_from: int = 0, prefer_last: bool = False) -> tuple:
+    """Locate `quote` in full_text, returning (start_index, match_length), or
+    (-1, 0) if not found. Falls back to a whitespace-flexible match — PDF
+    extraction sometimes inserts a line break where a quote has a plain space
+    (or vice versa), which breaks an exact substring search even though the
+    quote is otherwise verbatim.
+
+    prefer_last=True returns the LAST occurrence instead of the first — used
+    for the block_start quote, since a signature block sits near the end of a
+    letter and a short phrase from it can coincidentally also appear earlier
+    in the body (e.g. a sentence quoting a signer's own affiliation).
+    """
+    search_space = full_text[start_from:]
+    if prefer_last:
+        idx = search_space.rfind(quote)
+    else:
+        idx = search_space.find(quote)
+    if idx != -1:
+        return start_from + idx, len(quote)
+
+    words = quote.split()
+    if not words:
+        return -1, 0
+    pattern = r'\s+'.join(re.escape(w) for w in words)
+    matches = list(re.finditer(pattern, search_space))
+    if not matches:
+        return -1, 0
+    m = matches[-1] if prefer_last else matches[0]
+    return start_from + m.start(), len(m.group(0))
+
+
+def _extend_block_end(full_text: str, start_idx: int, end_idx: int,
+                       lookahead: int = 500, max_rounds: int = 5) -> int:
+    """Grow end_idx forward when a line just past it exactly repeats a line
+    already inside [start_idx:end_idx).
+
+    The model's block_end quote sometimes stops at the first signer's entry in
+    a small, densely-formatted (no blank-line-separated) list, even though a
+    later signer follows immediately — often sharing a repeated line, like a
+    common organization name, that only becomes a second occurrence once the
+    later entry is included. That repeat is the same signal _dense_parse()
+    already uses to drop boilerplate; used prospectively here, it's evidence
+    the signature block continues rather than evidence of a duplicate to drop.
+    Bounded by `lookahead` per round so it can't run away into unrelated text.
+    """
+    def _norm(line: str) -> str:
+        return re.sub(r'[ \t]+', ' ', line).strip().lower()
+
+    seen = {_norm(l) for l in full_text[start_idx:end_idx].splitlines() if _norm(l)}
+
+    for _ in range(max_rounds):
+        window = full_text[end_idx:end_idx + lookahead]
+        offset = 0
+        extended_by = None
+        for line in window.splitlines(keepends=True):
+            offset += len(line)
+            if _norm(line) in seen:
+                extended_by = offset
+                break
+        if extended_by is None:
+            break
+        end_idx += extended_by
+        seen.update(_norm(l) for l in full_text[start_idx:end_idx].splitlines() if _norm(l))
+
+    return end_idx
+
+
+def _slice_cosigner_block(full_text: str, start_quote: str, end_quote: str) -> str:
+    """Return the raw substring of full_text between two verbatim quotes (inclusive)."""
+    if not start_quote or not end_quote:
+        return ''
+    start_idx, _ = _find_quote(full_text, start_quote, prefer_last=True)
+    if start_idx == -1:
+        return ''
+    end_idx, end_len = _find_quote(full_text, end_quote, start_idx)
+    if end_idx == -1:
+        return ''
+    end_idx = _extend_block_end(full_text, start_idx, end_idx + end_len)
+    return full_text[start_idx:end_idx]
+
+
+def _clean_lines(text: str) -> List[str]:
+    """Normalize and drop junk/footnote/valediction/citation lines from a chunk of text."""
+    lines = [re.sub(r'[ \t]+', ' ', l).strip() for l in text.splitlines()]
+    return [
+        l for l in lines
+        if l
+        and not _JUNK_LINE_RE.match(l)
+        and not _FOOTNOTE_LINE_RE.match(l)
+        and not _VALEDICTION_RE.match(l)
+        and not _CASE_CITATION_RE.search(l)
+    ]
+
+
+def _dense_parse(block: str) -> List[str]:
+    """Treat every non-junk line as a candidate signer, dropping lines that
+    repeat verbatim within the block (a shared title like "United States
+    Senator", or a running header/footer on a multi-page attachment) — a real
+    signer's own name appears exactly once. Works well for large lists where
+    many signers share identical boilerplate.
+    """
+    raw_lines = _clean_lines(block)
+    line_counts = Counter(l.lower() for l in raw_lines)
+
+    names = []
+    seen = set()
+    for l in raw_lines:
+        key = l.lower()
+        if line_counts[key] > 1:
+            continue  # repeated boilerplate, not a unique signer
+        if key not in seen:
+            seen.add(key)
+            names.append(l)
+    return names
+
+
+def _chunked_parse(block: str) -> List[str]:
+    """Treat each blank-line-separated chunk as one signer's multi-line entry
+    (name, then title/org details) and take only its first line. More reliable
+    than _dense_parse for a handful of signers whose titles/orgs don't repeat,
+    but only applies when the letter actually uses blank lines between entries.
+    """
+    names = []
+    for chunk in re.split(r'\n\s*\n', block):
+        lines = _clean_lines(chunk)
+        if lines:
+            names.append(lines[0])
+    return names
+
+
+def _parse_cosigner_block(block: str) -> tuple:
+    """Parse a signer-list span into (names, count) using plain text heuristics.
+
+    Tries blank-line-separated chunking first (each chunk = one signer's
+    multi-line entry) since it's unambiguous when present; falls back to dense
+    line-based parsing otherwise. The count prefers an explicitly stated total
+    (e.g. "323 multi-sector organizations") over the parsed name count, since
+    large coalition letters state their own count and that is more reliable
+    than re-deriving it from noisy extracted text.
+    """
+    if not block:
+        return [], 0
+
+    stated = _STATED_COUNT_RE.search(block)
+
+    dense_names = _dense_parse(block)
+
+    # Chunking is only attempted for small blocks. Large multi-page lists (tens
+    # to hundreds of signers) sometimes contain incidental blank lines from page
+    # breaks; treating those as entry boundaries collapses many real signers
+    # into a handful of chunks, which is far worse than the dense fallback's
+    # minor over-counting. Small letters (a handful of signers, each spanning
+    # several lines) are exactly the case chunking helps, and have little room
+    # for a page-break false boundary to matter.
+    names = dense_names
+    if len(dense_names) <= 15:
+        chunk_names = _chunked_parse(block)
+        if len(chunk_names) >= 2 and len(chunk_names) <= len(dense_names):
+            names = chunk_names
+
+    count = int(stated.group(1).replace(',', '')) if stated else len(names)
+    return names, count
 
 
 def find_state_verify_comments(comments: List[Dict[str, Any]], config: dict) -> List[tuple]:
@@ -452,6 +715,45 @@ def verify_single_entity(model, comment_text, entity_type, entity_name,
             {"role": "user", "content": f"Verify the entity type classification for this comment:\n\n{combined}"},
         ],
         response_format=ENTITY_VERIFICATION_MODEL,
+        temperature=0.0,
+    )
+    return json.loads(resp.choices[0].message.content)
+
+
+# Head+tail cap for the cosigner-span prompt. Unlike the other verify_single_*
+# calls (truncated to 2000 chars from the front), this one needs the END of long
+# attachments too, since signature blocks usually appear there — but a handful of
+# outlier attachments in this corpus run to 750K+ chars (e.g. someone attaching an
+# entire Federal Register document), so it still needs an upper bound.
+_COSIGNER_HEAD_CHARS = 15000
+_COSIGNER_TAIL_CHARS = 45000
+
+
+def verify_single_cosigner_span(model, comment_text, submitter='', organization=''):
+    """Detect whether a comment is a joint/coalition letter and locate its signer-list span."""
+    cap = _COSIGNER_HEAD_CHARS + _COSIGNER_TAIL_CHARS
+    if len(comment_text) > cap:
+        comment_text = (
+            comment_text[:_COSIGNER_HEAD_CHARS]
+            + "\n\n[...TRUNCATED FOR LENGTH...]\n\n"
+            + comment_text[-_COSIGNER_TAIL_CHARS:]
+        )
+
+    parts = []
+    if submitter:
+        parts.append(f"Submitter: {submitter}")
+    if organization:
+        parts.append(f"Organization: {organization}")
+    parts.append(comment_text)
+    combined = "\n".join(parts)
+
+    resp = litellm.completion(
+        model=model,
+        messages=[
+            {"role": "system", "content": COSIGNER_SPAN_PROMPT},
+            {"role": "user", "content": f"Analyze this comment for joint/coalition signers:\n\n{combined}"},
+        ],
+        response_format=COSIGNER_SPAN_MODEL,
         temperature=0.0,
     )
     return json.loads(resp.choices[0].message.content)
@@ -674,6 +976,81 @@ def verify_stances(comments: List[Dict[str, Any]], model: str = None,
         logger.info(f"Political verification results: {dict(pol_count)}")
     else:
         logger.info("No political affiliations to verify")
+
+    # --- Cosigner span detection (joint/coalition letters) ---
+    cosigner_candidates = find_cosigner_span_comments(comments, config)
+    if cosigner_candidates:
+        logger.info(f"Checking {len(cosigner_candidates)} comments for cosigners with {model}")
+        cosigner_stats = {'found': 0, 'none': 0, 'error': 0}
+
+        def process_cosigner(idx_comment):
+            idx, comment = idx_comment
+            comment_id = comment.get('id', '')
+
+            # Pick up extractor fixes (e.g. the PyPDF2 -> PyMuPDF swap) for this
+            # comment's attachment before detecting the signer block, so the
+            # verbatim quotes the model returns match the text we'll slice below.
+            refreshed = reextract_attachment_text(comment_id)
+            if refreshed is not None:
+                comment_text = comment.get('comment_text', '') or ''
+                if refreshed and comment_text:
+                    full_text = f"{comment_text}\n\n--- ATTACHMENT CONTENT ---\n{refreshed}"
+                else:
+                    full_text = refreshed or comment_text
+                comment['text'] = full_text
+                comment['attachment_text'] = refreshed
+
+            text = comment.get('text') or ''
+            submitter = comment.get('submitter', '')
+            org = comment.get('organization', '')
+            try:
+                result = _retry_on_rate_limit(verify_single_cosigner_span, model, text, submitter, org)
+                return idx, result, text
+            except Exception as e:
+                logger.warning(f"Cosigner detection failed for {comment_id}: {e}")
+                return idx, None, text
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(process_cosigner, item): item for item in cosigner_candidates}
+            for future in tqdm(as_completed(futures), total=len(cosigner_candidates),
+                               desc="Checking cosigners", unit="comment"):
+                idx, result, full_text = future.result()
+                analysis = comments[idx].get('analysis')
+                if not analysis or not isinstance(analysis, dict):
+                    continue
+
+                analysis['cosigner_checked'] = True
+                analysis['cosigner_has_flag'] = False
+                analysis['cosigner_names'] = []
+                analysis['cosigner_count'] = 1
+
+                if result is None:
+                    cosigner_stats['error'] += 1
+                    continue
+
+                analysis['cosigner_reasoning'] = result.get('reasoning', '')
+
+                if not result.get('has_cosigners'):
+                    cosigner_stats['none'] += 1
+                    continue
+
+                analysis['cosigner_has_flag'] = True
+
+                block = _slice_cosigner_block(full_text, result.get('block_start', ''), result.get('block_end', ''))
+                if not block:
+                    logger.warning(f"  {comments[idx].get('id')}: has_cosigners=True but block quotes did not match text")
+                    cosigner_stats['error'] += 1
+                    continue
+
+                names, count = _parse_cosigner_block(block)
+                analysis['cosigner_names'] = names
+                analysis['cosigner_count'] = max(count, 1)
+                cosigner_stats['found'] += 1
+                logger.info(f"  {comments[idx].get('id')}: {count} cosigners found")
+
+        logger.info(f"Cosigner detection results: {dict(cosigner_stats)}")
+    else:
+        logger.info("No comments matched cosigner trigger patterns")
 
     # --- Save verification log ---
     log_entries = []

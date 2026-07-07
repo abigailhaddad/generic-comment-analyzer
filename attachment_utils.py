@@ -83,7 +83,7 @@ def extract_text_with_gemini(file_path: str) -> str:
     NOTE: The function name is legacy (formerly used Google Gemini multimodal).
     The implementation now uses OpenAI's gpt-5.4-mini vision through LiteLLM.
     Only image files are OCR'd here; PDFs and other types are skipped
-    (text-based PDFs are handled by the PyPDF2 path in extract_text_from_file).
+    (text-based PDFs are handled by the PyMuPDF path in extract_text_from_file).
     """
     openai_api_key = os.getenv("OPENAI_API_KEY")
     if not openai_api_key:
@@ -155,25 +155,23 @@ def download_attachment(attachment_url: str, output_path: str) -> bool:
 
 def extract_text_from_file(file_path: str, use_gemini: bool = False) -> str:
     """Extract text from various file types."""
-    import PyPDF2
+    import fitz  # PyMuPDF
     import docx
-    
+
     # Try Gemini first if enabled and available
     if use_gemini:
         gemini_text = extract_text_with_gemini(file_path)
         if gemini_text:
             return gemini_text
-    
+
     text = ""
     if file_path.lower().endswith('.pdf'):
+        # PyMuPDF preserves visual reading order (position-aware blocks), unlike
+        # PyPDF2 which follows raw content-stream order and garbles multi-column
+        # layouts (e.g. two-column signature blocks come out one word per line).
         try:
-            parts = []
-            with open(file_path, 'rb') as file:
-                pdf_reader = PyPDF2.PdfReader(file)
-                for page_num in range(len(pdf_reader.pages)):
-                    page = pdf_reader.pages[page_num]
-                    parts.append(page.extract_text())
-            text = '\n'.join(parts)
+            with fitz.open(file_path) as doc:
+                text = '\n'.join(page.get_text() for page in doc)
         except Exception as e:
             logger.error(f"Failed to extract text from PDF {file_path}: {e}")
             return ""
@@ -216,7 +214,41 @@ def extract_text_from_file(file_path: str, use_gemini: bool = False) -> str:
         return ""
     return text
 
-def process_attachments(comment_data: Dict[str, Any], attachments_dir: str, 
+
+def reextract_attachment_text(comment_id: str, attachments_dir: str = 'attachments') -> Optional[str]:
+    """Re-run extraction on a comment's already-downloaded PDF attachment(s),
+    refresh the on-disk `.extracted.txt` cache, and return the combined text.
+
+    Used to pick up extractor improvements (e.g. the PyPDF2 -> PyMuPDF swap) for
+    specific comments without re-downloading or re-processing the whole corpus.
+    Returns None if no cached PDF attachment is found for this comment.
+    """
+    comment_dir = os.path.join(attachments_dir, comment_id)
+    if not os.path.isdir(comment_dir):
+        return None
+
+    pdf_paths = sorted(
+        os.path.join(comment_dir, f) for f in os.listdir(comment_dir) if f.lower().endswith('.pdf')
+    )
+    if not pdf_paths:
+        return None
+
+    parts = []
+    for pdf_path in pdf_paths:
+        text = extract_text_from_file(pdf_path)
+        text_cache_path = f"{pdf_path}.extracted.txt"
+        try:
+            with open(text_cache_path, 'w', encoding='utf-8') as f:
+                f.write(text or "")
+        except Exception as e:
+            logger.warning(f"Failed to refresh text cache {text_cache_path}: {e}")
+        if text and text.strip():
+            parts.append(text.strip())
+
+    return '\n\n'.join(parts)
+
+
+def process_attachments(comment_data: Dict[str, Any], attachments_dir: str,
                        attachment_col: str = 'Attachment Files',
                        download_missing: bool = True,
                        use_gemini: bool = False) -> Tuple[str, Dict[str, Any]]:
