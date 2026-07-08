@@ -891,6 +891,28 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
     regex_patterns = load_regex_flag_patterns()
     show_cosigners = any(r.get('cosigner_count', 1) > 1 for r in rows)
 
+    # Detail-only fields (full comment text, key quote, rationale, etc.) are
+    # only ever shown in the per-comment modal — never in the table or its
+    # filters — so they're written to a sidecar JSON instead of the main HTML.
+    # That keeps the page itself small enough to load and stay interactive on
+    # a phone; the browser fetches this file once, in the background, after
+    # the table is already up.
+    detail_path = os.path.join(os.path.dirname(output_file) or '.', 'comment_detail.json')
+    comment_detail = {
+        r['id']: {
+            'comment': r['comment_text'],
+            'key_quote': r['key_quote'],
+            'rationale': r['rationale'],
+            'entity_name': r['entity_name'],
+            'cosigner_names': r['cosigner_names'],
+            'state_quote': r['state_quote'],
+            'political_quote': r['political_affiliation_quote'],
+        }
+        for r in rows
+    }
+    with open(detail_path, 'w', encoding='utf-8') as f:
+        json.dump(comment_detail, f, ensure_ascii=False, separators=(',', ':'))
+
     # Read-the-Rule page — only when the regulation has proposed-rule text prepared.
     rule_sections = load_rule_sections()
     rule_page_url = 'read-the-rule.html' if rule_sections else None

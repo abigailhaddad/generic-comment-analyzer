@@ -585,38 +585,47 @@
             {% endfor %}
         };
 
-        const commentData = [
+        // One array per row instead of one object per row — with ~42k rows,
+        // repeating 16 JSON key names in every row adds up to several MB of
+        // pure overhead. COMMENT_FIELDS below defines what each position means;
+        // the two lists MUST stay in the same order.
+        const commentDataRaw = [
             {% for row in rows %}
-            {
-                "id": {{ row.id | tojson }},
-                "date": {{ row.date | tojson }},
-                "submitter": {{ row.submitter | tojson }},
-                "organization": {{ row.organization | tojson }},
-                "entity_type": {{ row.entity_type | tojson }},
-                "entity_name": {{ row.entity_name | tojson }},
-                "cosigner_names": {{ row.cosigner_names | tojson }},
-                "cosigner_count": {{ row.cosigner_count | tojson }},
-                "comment": {{ row.comment_text | tojson }},
-                "key_quote": {{ row.key_quote | tojson }},
-                "rationale": {{ row.rationale | tojson }},
-                "stances": {{ row.stances_list | tojson }},
-                "flags": {{ row.flags | tojson }},
-                "state": {{ row.state_identified | tojson }},
-                "state_quote": {{ row.state_quote | tojson }},
-                "political": {{ row.political_affiliation | tojson }},
-                "political_quote": {{ row.political_affiliation_quote | tojson }},
-                "has_attachment": {{ "true" if row.attachment_text else "false" }},
-                "campaign_id": {{ row.campaign_id if row.campaign_id is not none else "null" }},
-                "campaign_rank": {{ row.campaign_rank if row.campaign_rank is not none else "null" }},
-                "campaign_size": {{ row.campaign_size if row.campaign_size is not none else "0" }},
-                "campaign_stance": {{ row.campaign_stance | tojson }},
-                "multi_values": {{ row.multi_values | tojson }}
-            }{% if not loop.last %},{% endif %}
+            [{{ row.id | tojson }}, {{ row.date | tojson }}, {{ row.submitter | tojson }}, {{ row.organization | tojson }}, {{ row.entity_type | tojson }}, {{ row.cosigner_count | tojson }}, {{ row.stances_list | tojson }}, {{ row.flags | tojson }}, {{ row.state_identified | tojson }}, {{ row.political_affiliation | tojson }}, {{ "true" if row.attachment_text else "false" }}, {{ row.campaign_id if row.campaign_id is not none else "null" }}, {{ row.campaign_rank if row.campaign_rank is not none else "null" }}, {{ row.campaign_size if row.campaign_size is not none else "0" }}, {{ row.campaign_stance | tojson }}, {{ row.multi_values | tojson }}]{% if not loop.last %},{% endif %}
             {% endfor %}
         ];
+        const COMMENT_FIELDS = ['id', 'date', 'submitter', 'organization', 'entity_type', 'cosigner_count',
+            'stances', 'flags', 'state', 'political', 'has_attachment', 'campaign_id', 'campaign_rank',
+            'campaign_size', 'campaign_stance', 'multi_values'];
+        const commentData = commentDataRaw.map(function (r) {
+            const obj = {};
+            COMMENT_FIELDS.forEach(function (name, i) { obj[name] = r[i]; });
+            return obj;
+        });
 
         const commentIndexById = {};
         commentData.forEach(function (c, i) { commentIndexById[c.id] = i; });
+
+        // Full comment text, key quote, rationale, and other per-comment detail
+        // fields live in a sidecar JSON, not the page itself — they're only
+        // used in the detail modal and the full-text search filter, and together
+        // they're the overwhelming majority of this dataset's size. Fetched once,
+        // in the background, right after the table is already interactive.
+        let commentDetail = {};
+        let commentDetailLoaded = false;
+        const commentDetailWaiters = [];
+        function onCommentDetailReady(fn) {
+            if (commentDetailLoaded) { fn(); } else { commentDetailWaiters.push(fn); }
+        }
+        fetch('comment_detail.json')
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                commentDetail = data;
+                commentDetailLoaded = true;
+                commentDetailWaiters.forEach(function (fn) { fn(); });
+                commentDetailWaiters.length = 0;
+            })
+            .catch(function (e) { console.error('Failed to load comment detail:', e); });
 
         const stateSummary = [
             {% for state, count in briefing.state_counts %}
@@ -794,7 +803,25 @@
         }
 
         function showCommentModal(idx) {
+            renderCommentModalBody(idx);
+            new bootstrap.Modal(document.getElementById('commentModal')).show();
+            // Detail fields (full text, key quote, rationale, cosigner names,
+            // quotes) load in the background; re-render once they land, but
+            // only if this same comment is still the one being shown.
+            if (!commentDetailLoaded) {
+                onCommentDetailReady(function () {
+                    const body = document.getElementById('commentModalBody');
+                    if (body.getAttribute('data-comment-idx') === String(idx)) {
+                        renderCommentModalBody(idx);
+                    }
+                });
+            }
+        }
+
+        function renderCommentModalBody(idx) {
             const c = commentData[idx];
+            const d = commentDetail[c.id] || {};
+            const detailReady = commentDetailLoaded;
             document.getElementById('commentModalTitle').textContent = c.id;
             let html = '';
 
@@ -804,23 +831,27 @@
             html += '<div class="col-sm-4"><div class="detail-label">Date</div><div class="detail-value">' + c.date + '</div></div>';
             html += '</div>';
 
-            if (c.entity_name) {
-                html += '<div class="detail-label">Identified As</div><div class="detail-value"><blockquote>' + c.entity_name + '</blockquote></div>';
+            if (detailReady && d.entity_name) {
+                html += '<div class="detail-label">Identified As</div><div class="detail-value"><blockquote>' + d.entity_name + '</blockquote></div>';
             }
 
             if (c.cosigner_count > 1) {
-                const namedCount = (c.cosigner_names || []).length;
-                let cosignerLine = 'Cosigned by ' + c.cosigner_count.toLocaleString() + ' entities';
-                if (namedCount && namedCount !== c.cosigner_count) {
-                    cosignerLine += ' (' + namedCount.toLocaleString() + ' named below)';
-                }
                 html += '<div class="detail-label">Cosigners</div><div class="detail-value">';
-                html += '<p style="margin-bottom:4px;">' + cosignerLine + '</p>';
-                if (namedCount > 0) {
-                    html += '<details><summary style="cursor:pointer;">Show all ' + namedCount.toLocaleString() + ' named cosigners</summary>';
-                    html += '<ul style="max-height:240px; overflow-y:auto; margin-top:8px; padding-left:20px;">';
-                    c.cosigner_names.forEach(function(n) { html += '<li>' + escapeHtml(n) + '</li>'; });
-                    html += '</ul></details>';
+                if (!detailReady) {
+                    html += '<p style="margin-bottom:4px;">Cosigned by ' + c.cosigner_count.toLocaleString() + ' entities <span class="text-muted" style="font-size:0.8rem;">(loading full list&hellip;)</span></p>';
+                } else {
+                    const namedCount = (d.cosigner_names || []).length;
+                    let cosignerLine = 'Cosigned by ' + c.cosigner_count.toLocaleString() + ' entities';
+                    if (namedCount && namedCount !== c.cosigner_count) {
+                        cosignerLine += ' (' + namedCount.toLocaleString() + ' named below)';
+                    }
+                    html += '<p style="margin-bottom:4px;">' + cosignerLine + '</p>';
+                    if (namedCount > 0) {
+                        html += '<details><summary style="cursor:pointer;">Show all ' + namedCount.toLocaleString() + ' named cosigners</summary>';
+                        html += '<ul style="max-height:240px; overflow-y:auto; margin-top:8px; padding-left:20px;">';
+                        d.cosigner_names.forEach(function(n) { html += '<li>' + escapeHtml(n) + '</li>'; });
+                        html += '</ul></details>';
+                    }
                 }
                 html += '</div>';
             }
@@ -829,12 +860,12 @@
                 html += '<div class="row mb-3">';
                 if (c.state) {
                     html += '<div class="col-sm-4"><div class="detail-label">State</div><div class="detail-value">' + c.state;
-                    if (c.state_quote) html += ' <span class="text-muted" style="font-size:0.8rem;">(' + c.state_quote + ')</span>';
+                    if (detailReady && d.state_quote) html += ' <span class="text-muted" style="font-size:0.8rem;">(' + d.state_quote + ')</span>';
                     html += '</div></div>';
                 }
                 if (c.political) {
                     html += '<div class="col-sm-4"><div class="detail-label">Political Affiliation</div><div class="detail-value">' + c.political;
-                    if (c.political_quote) html += ' <span class="text-muted" style="font-size:0.8rem;">(&ldquo;' + c.political_quote + '&rdquo;)</span>';
+                    if (detailReady && d.political_quote) html += ' <span class="text-muted" style="font-size:0.8rem;">(&ldquo;' + d.political_quote + '&rdquo;)</span>';
                     html += '</div></div>';
                 }
                 html += '</div>';
@@ -846,15 +877,17 @@
                 html += '</div>';
             }
 
-            if (c.key_quote) {
-                html += '<div class="detail-label">Key Quote</div><div class="detail-value"><blockquote>' + c.key_quote + '</blockquote></div>';
+            if (detailReady && d.key_quote) {
+                html += '<div class="detail-label">Key Quote</div><div class="detail-value"><blockquote>' + d.key_quote + '</blockquote></div>';
             }
 
-            if (c.rationale) {
-                html += '<div class="detail-label">Rationale</div><div class="detail-value">' + c.rationale + '</div>';
+            if (detailReady && d.rationale) {
+                html += '<div class="detail-label">Rationale</div><div class="detail-value">' + d.rationale + '</div>';
             }
 
-            html += '<div class="detail-label">Comment Preview</div><div class="detail-value" style="max-height:300px; overflow-y:auto; background:var(--color-surface); padding:12px; border-radius:6px; font-size:0.85rem;">' + c.comment + '</div>';
+            html += '<div class="detail-label">Comment Preview</div><div class="detail-value" style="max-height:300px; overflow-y:auto; background:var(--color-surface); padding:12px; border-radius:6px; font-size:0.85rem;">'
+                + (detailReady ? (d.comment || '<span class="text-muted">(no text)</span>') : '<span class="text-muted">Loading full text&hellip;</span>')
+                + '</div>';
 
             if (c.has_attachment) {
                 html += '<div class="mt-2"><span class="text-muted" style="font-size:0.82rem;"><i class="fas fa-paperclip"></i> Has attachment — view full text on regulations.gov</span></div>';
@@ -862,8 +895,9 @@
 
             html += '<div class="mt-3"><a href="https://www.regulations.gov/comment/' + c.id + '" target="_blank" class="btn btn-sm btn-primary">View on Regulations.gov</a></div>';
 
-            document.getElementById('commentModalBody').innerHTML = html;
-            new bootstrap.Modal(document.getElementById('commentModal')).show();
+            const body = document.getElementById('commentModalBody');
+            body.setAttribute('data-comment-idx', String(idx));
+            body.innerHTML = html;
         }
     </script>
 
@@ -1005,7 +1039,8 @@
                 const def = DEF_BY_KEY[key];
                 if (def.type === 'text') {
                     const term = sel[0];
-                    if (term && (c.comment || '').toLowerCase().indexOf(term) < 0) return false;
+                    const text = (commentDetail[c.id] || {}).comment || '';
+                    if (term && text.toLowerCase().indexOf(term) < 0) return false;
                 } else {
                     const rowVals = def.vals(c);
                     if (!rowVals.some(function (v) { return sel.indexOf(v) >= 0; })) return false;
@@ -1188,26 +1223,42 @@
             });
         };
 
-        // Per-column text dialog (comment-body substring search)
+        // Per-column text dialog (comment-body substring search). Disabled
+        // until the comment_detail.json background fetch completes, since
+        // matching against it before then would silently return zero results.
         Report.openText = function (def) {
             const current = (Report.activeFilters[def.key] || [''])[0] || '';
+            const loading = !commentDetailLoaded;
             const m = createFilterModal('<div class="filter-popover"><div class="filter-title">Filter: ' + escapeHtml(def.name) + '</div>'
-                + '<input type="text" class="filter-search filter-text-input" placeholder="Type text to search comments..." value="' + escapeHtml(current) + '">'
-                + '<div class="filter-buttons"><button class="btn-clear">Clear</button><button class="btn-apply">Apply</button></div></div>');
+                + (loading ? '<p class="text-muted" style="font-size:0.85rem;">Loading full comment text&hellip; this box will enable automatically.</p>' : '')
+                + '<input type="text" class="filter-search filter-text-input" placeholder="Type text to search comments..." value="' + escapeHtml(current) + '"' + (loading ? ' disabled' : '') + '>'
+                + '<div class="filter-buttons"><button class="btn-clear">Clear</button><button class="btn-apply"' + (loading ? ' disabled' : '') + '>Apply</button></div></div>');
             const inp = m.querySelector('.filter-text-input');
-            inp.focus();
-            inp.addEventListener('keypress', function (e) { if (e.key === 'Enter') m.querySelector('.btn-apply').click(); });
+            const applyBtn = m.querySelector('.btn-apply');
+            if (!loading) inp.focus();
+            inp.addEventListener('keypress', function (e) { if (e.key === 'Enter' && !applyBtn.disabled) applyBtn.click(); });
             m.querySelector('.btn-clear').addEventListener('click', function () {
                 delete Report.activeFilters[def.key];
                 closeFilterModal(m);
                 Report.refresh();
             });
-            m.querySelector('.btn-apply').addEventListener('click', function () {
+            applyBtn.addEventListener('click', function () {
+                if (applyBtn.disabled) return;
                 const v = inp.value.trim().toLowerCase();
                 if (v) { Report.activeFilters[def.key] = [v]; } else { delete Report.activeFilters[def.key]; }
                 closeFilterModal(m);
                 Report.refresh();
             });
+            if (loading) {
+                onCommentDetailReady(function () {
+                    if (!m.isConnected) return;
+                    const note = m.querySelector('.filter-popover p.text-muted');
+                    if (note) note.remove();
+                    inp.disabled = false;
+                    applyBtn.disabled = false;
+                    inp.focus();
+                });
+            }
         };
 
         // From a campaign modal: filter the table to that campaign
