@@ -246,6 +246,26 @@ report:
     # unclear/mixed/highlight/bg/surface/border/… inherit the house defaults
 
 # -------------------------------------------------------------------
+# Form-letter campaign detection (MinHash clustering).
+# -------------------------------------------------------------------
+campaigns:
+  # Minimum characters of normalized text (comment body + attachments) for a
+  # comment to be eligible to join a campaign. Short generic one-liners
+  # ("I am writing to strongly oppose this OMB regulation.") are written
+  # independently by many people and are not a coordinated campaign.
+  min_chars: 100
+
+# -------------------------------------------------------------------
+# Changelog — manual/methodology notes shown in a collapsible section in the
+# report footer. Data-update entries ("Updated to N comments") are appended
+# automatically by the pipeline to data_changelog.json and merged in at render
+# time; keep those out of here. Newest first. Omit the key to hide the section.
+# -------------------------------------------------------------------
+changelog:
+  - date: "2026-07-15"
+    note: "Improved form-letter grouping: very short, generic one-line comments are no longer counted as coordinated campaigns, and campaigns whose text lives in an attachment are now labeled by the attached letter instead of “See attached file(s).”"
+
+# -------------------------------------------------------------------
 # Regex Flags — pattern-based boolean columns applied before LLM analysis.
 # -------------------------------------------------------------------
 regex_flags:

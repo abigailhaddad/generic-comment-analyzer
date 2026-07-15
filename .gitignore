@@ -25,6 +25,8 @@ read-the-rule.html
 *.json
 !column_mapping.json
 !regulation_metadata.json
+# The pipeline-maintained changelog history — small, not regenerable, keep it.
+!data_changelog.json
 
 # Test/report artifacts
 test_*.html

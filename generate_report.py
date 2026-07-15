@@ -706,6 +706,33 @@ def load_report_config() -> Dict[str, Any]:
     return {}
 
 
+def load_changelog() -> List[Dict[str, Any]]:
+    """Build the report's changelog: manual/methodology notes from
+    analyzer_config.yaml (`changelog:`) merged with the auto-generated
+    data-update entries in data_changelog.json (written by the pipeline when the
+    comment count grows). Each entry is `{date, note}`; newest first.
+    """
+    entries: List[Dict[str, Any]] = []
+
+    config_path = Path('analyzer_config.yaml')
+    if config_path.exists():
+        with open(config_path) as f:
+            config = yaml.safe_load(f) or {}
+        entries += [e for e in (config.get('changelog') or []) if isinstance(e, dict)]
+
+    auto_path = Path('data_changelog.json')
+    if auto_path.exists():
+        try:
+            with open(auto_path) as f:
+                state = json.load(f)
+            entries += [e for e in (state.get('entries') or []) if isinstance(e, dict)]
+        except Exception:
+            pass
+
+    entries.sort(key=lambda e: str(e.get('date', '')), reverse=True)
+    return entries
+
+
 def determine_model(comments: List[Dict[str, Any]], override: str = None) -> str:
     """Determine the model to show in the report footer from the data itself.
 
@@ -937,6 +964,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         source_url=source_url,
         generated_time=generated_time,
         model_used=model_name,
+        changelog=load_changelog(),
     )
 
     with open(output_file, 'w', encoding='utf-8') as f:

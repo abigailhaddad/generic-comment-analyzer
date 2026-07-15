@@ -583,11 +583,32 @@ def analyze_comments(comments: List[Dict[str, Any]], model: str = "gemini-2.0-fl
         
         return analyzed_comments
 
-def detect_campaigns(comments: List[Dict[str, Any]], threshold: float = 0.45, min_campaign_size: int = 5) -> List[Dict[str, Any]]:
+# Regulations.gov submitters often put a short stub in the comment body
+# ("See attached file(s)", "[DRAFT] ...") and the real letter in an attachment.
+_CAMPAIGN_STUB_RE = re.compile(r'^\s*(\[draft\]\s*)?(please\s+)?see\s+(the\s+)?attach', re.I)
+
+
+def _campaign_label_text(comment: Dict[str, Any]) -> str:
+    """Text that best represents a campaign member for its display label.
+
+    Prefer the comment body, but fall back to the attachment when the body is an
+    explicit "see attached" stub or too short to be meaningful — that attachment
+    is the text that actually got clustered, so labeling by the body alone would
+    show the campaign as "See attached file(s)".
+    """
+    body = (comment.get('comment_text', '') or '').strip()
+    att = (comment.get('attachment_text', '') or '').strip()
+    if att and (_CAMPAIGN_STUB_RE.match(body) or len(body.split()) < 12):
+        return att
+    return body or att
+
+
+def detect_campaigns(comments: List[Dict[str, Any]], threshold: float = 0.45, min_campaign_size: int = 5, min_chars: int = 100) -> List[Dict[str, Any]]:
     """Detect form letter campaigns using MinHash LSH on 5-gram Jaccard similarity.
 
     Assigns campaign_id and campaign_size to each comment. Comments not in any
-    campaign get campaign_id=None.
+    campaign get campaign_id=None. `min_chars` is the minimum normalized-text
+    length for a comment to be eligible for a campaign (config: campaigns.min_chars).
     """
     from datasketch import MinHash, MinHashLSH
 
@@ -602,11 +623,17 @@ def detect_campaigns(comments: List[Dict[str, Any]], threshold: float = 0.45, mi
         text = re.sub(r'[^a-z0-9 ]', '', text.lower())
         return re.sub(r'\s+', ' ', text).strip()
 
+    # A form letter has to have real substance. Short generic one-liners
+    # ("I am writing to strongly oppose this OMB regulation.", "Keep politics out
+    # of science.") get written independently by many people and are not a
+    # coordinated campaign, so a comment needs at least `min_chars` characters of
+    # normalized text (body + attachment) to be eligible to join a campaign.
+
     # Build MinHash signatures from 5-grams
     for i, comment in enumerate(comments):
         text = normalize(comment.get('text', '') or '')
         words = text.split()
-        if len(words) < 5:
+        if len(words) < 5 or len(text) < min_chars:
             continue
 
         shingles = set(tuple(words[j:j+5]) for j in range(len(words) - 4))
@@ -643,12 +670,13 @@ def detect_campaigns(comments: List[Dict[str, Any]], threshold: float = 0.45, mi
     # Build lookup: comment index -> campaign info
     idx_to_campaign = {}
     for campaign_id, cluster in enumerate(campaigns):
-        # Find the most common text in this cluster (the "canonical" version)
+        # Label the campaign by the most common substantive member text — the
+        # attachment when the body is just a "see attached" stub (see
+        # _campaign_label_text), so it isn't shown as "See attached file(s)".
         from collections import Counter
         text_counts = Counter()
         for idx in cluster:
-            ct = (comments[idx].get('comment_text', '') or '').strip()
-            text_counts[ct] += 1
+            text_counts[_campaign_label_text(comments[idx])] += 1
         canonical_text = text_counts.most_common(1)[0][0] if text_counts else ''
 
         for idx in cluster:
@@ -781,6 +809,44 @@ def save_results(analyzed_comments: List[Dict[str, Any]], output_file: str):
     df = pd.DataFrame(analyzed_comments)
     df.to_parquet(output_file, index=False)
     logger.info(f"✅ Saved results to {output_file}")
+
+
+def record_data_changelog(total_comments: int, path: str = 'data_changelog.json') -> None:
+    """Append a dated 'data updated' entry to data_changelog.json when the comment
+    count grows, so the report's Changelog reflects new comments automatically.
+
+    Manual/methodology notes live in analyzer_config.yaml (`changelog:`); this file
+    holds only the auto-generated data-update entries (newest first). The report
+    merges both. Re-running with no new comments is a no-op.
+    """
+    from datetime import date
+    state = {'last_total': None, 'entries': []}
+    if os.path.exists(path):
+        try:
+            with open(path) as f:
+                state = json.load(f)
+        except Exception as e:
+            logger.warning(f"Could not read {path} ({e}); starting a fresh changelog")
+            state = {'last_total': None, 'entries': []}
+
+    last = state.get('last_total')
+    entries = state.get('entries') or []
+    today = date.today().isoformat()
+
+    if last is None:
+        entries.insert(0, {'date': today,
+                           'note': f'Published analysis of {total_comments:,} public comments.'})
+    elif total_comments > last:
+        delta = total_comments - last
+        entries.insert(0, {'date': today,
+                           'note': f'Updated to {total_comments:,} comments (+{delta:,} new).'})
+    else:
+        return  # no new comments — don't record anything
+
+    with open(path, 'w') as f:
+        json.dump({'last_total': total_comments, 'entries': entries}, f, indent=2)
+    logger.info(f"Recorded data-changelog entry ({total_comments:,} comments)")
+
 
 def get_db_connection():
     """Get PostgreSQL database connection."""
@@ -1056,7 +1122,9 @@ def main():
 
         # Step 6: Detect form letter campaigns
         logger.info("=== STEP 6: Campaign Detection ===")
-        analyzed_comments = detect_campaigns(analyzed_comments)
+        campaign_cfg = (load_yaml_config() or {}).get('campaigns') or {}
+        analyzed_comments = detect_campaigns(
+            analyzed_comments, min_chars=campaign_cfg.get('min_chars', 100))
 
         # Step 6b: Cluster campaigns into letter families
         analyzed_comments = cluster_families(analyzed_comments)
@@ -1064,7 +1132,9 @@ def main():
         # Step 7: Save final results
         logger.info("=== STEP 7: Saving Final Results ===")
         save_results(analyzed_comments, args.output)
-        
+        # Auto-append a "data updated" changelog entry when the comment count grows.
+        record_data_changelog(len(analyzed_comments))
+
         # Step 7: Store in PostgreSQL
         if args.to_database:
             logger.info("=== STEP 7: Database Storage ===")

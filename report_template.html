@@ -318,6 +318,16 @@
         .meta-info .meta-label { font-size: 0.78rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
         .meta-info .meta-value { font-family: var(--font-heading); font-weight: 600; }
 
+        /* Changelog (collapsible, for the curious) */
+        .changelog { margin-top: 1rem; font-size: 0.8rem; color: var(--color-text-muted); }
+        .changelog > summary { cursor: pointer; font-weight: 600; color: var(--color-text); list-style: none; }
+        .changelog > summary::-webkit-details-marker { display: none; }
+        .changelog > summary::before { content: '▸ '; color: var(--color-text-muted); }
+        .changelog[open] > summary::before { content: '▾ '; }
+        .changelog ul { margin: 0.6rem 0 0; padding-left: 1.1rem; line-height: 1.55; }
+        .changelog li { margin-bottom: 0.4rem; }
+        .changelog .changelog-date { font-family: var(--font-heading); font-weight: 600; color: var(--color-text); margin-right: 0.4rem; }
+
         /* Dark-chip toast */
         .app-toast {
             position: fixed; bottom: 1.5rem; right: 1.5rem; padding: 0.75rem 1.25rem;
@@ -544,6 +554,16 @@
             <p style="margin: 1rem 0 0; font-size: 0.8rem; color: var(--color-text-muted); line-height: 1.5;">
                 Comments were classified with an LLM ({{ model_used }}) plus a second-pass verification, and near-identical form letters are grouped into campaigns. Automated classification may contain errors.{% if source_url %}<br>Built with generic-comment-analyzer &middot; <a href="{{ source_url }}" target="_blank" rel="noopener" style="color: var(--color-accent);">source on GitHub</a>{% endif %}
             </p>
+            {% if changelog %}
+            <details class="changelog">
+                <summary>Changelog</summary>
+                <ul>
+                    {% for entry in changelog %}
+                    <li><span class="changelog-date">{{ entry.date }}</span>{{ entry.note }}</li>
+                    {% endfor %}
+                </ul>
+            </details>
+            {% endif %}
         </div>
     </div>
 
@@ -1297,7 +1317,7 @@
                 const d = this.data();
                 const row = [];
                 for (let i = 0; i < headers.length; i++) {
-                    let val = (d[i] || '').toString().replace(/<[^>]*>/g, '').trim();
+                    let val = COLUMNS[i].cell(d).toString().replace(/<[^>]*>/g, '').trim();
                     if (val.indexOf(',') !== -1 || val.indexOf('"') !== -1 || val.indexOf('\n') !== -1) {
                         val = '"' + val.replace(/"/g, '""') + '"';
                     }
@@ -1323,15 +1343,20 @@
                 return '<th>' + escapeHtml(col.title) + '</th>';
             }).join(''));
 
-            const tableData = commentData.map(function (c) {
-                return COLUMNS.map(function (col) { return col.cell(c); });
-            });
-
             const dateIdx = COLUMNS.findIndex(function (col) { return col.isDate; });
-            const columnDefs = [];
-            COLUMNS.forEach(function (col, i) {
-                if (col.orderable === false) columnDefs.push({ targets: i, orderable: false });
-                if (col.sortType) columnDefs.push({ targets: i, type: col.sortType });
+
+            // Hand DataTables the raw comment objects and render each cell on demand.
+            // With deferRender, col.cell() runs only for the rows actually painted
+            // (a page at a time) instead of building every cell's HTML for all ~N
+            // rows up front. render() returns the exact string col.cell() always
+            // produced, so sort/search/CSV behaviour is unchanged.
+            const columns = COLUMNS.map(function (col) {
+                return {
+                    data: null,
+                    orderable: col.orderable !== false,
+                    type: col.sortType || undefined,
+                    render: function (data, type, row) { return col.cell(row); }
+                };
             });
 
             // Custom search predicate over the underlying comment objects.
@@ -1340,11 +1365,11 @@
             });
 
             Report.table = $('#commentsTable').DataTable({
-                data: tableData,
+                data: commentData,
+                columns: columns,
                 pageLength: 25,
                 order: dateIdx >= 0 ? [[dateIdx, 'desc']] : [],
                 deferRender: true,
-                columnDefs: columnDefs,
                 createdRow: function (row, data, idx) {
                     $(row).addClass('clickable-row').on('click', function () { showCommentModal(idx); });
                 }
