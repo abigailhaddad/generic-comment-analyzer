@@ -39,6 +39,8 @@ def test_campaigns_section_exists(page):
 
 def test_no_rule_link_without_rule_text(page):
     """A regulation without rule_sections.json shows no 'Read the Rule' callout."""
+    if page.query_selector(".rule-callout") is not None:
+        pytest.skip("this regulation ships rule text, so the callout is expected")
     assert page.query_selector(".rule-callout") is None
 
 

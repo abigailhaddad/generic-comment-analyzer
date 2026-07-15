@@ -1,14 +1,16 @@
 """Tests for the 'Read the Rule' page (read-the-rule.html).
 
-Only runs when a rule page has been built at the project root (OMB-style
-regulation with rule_sections.json). Skipped otherwise (a regulation without rule_sections.json).
+Only runs when the served regulation has a rule page (built from rule_sections.json).
+Skipped otherwise (a regulation without rule_sections.json). The served regulation
+is chosen the same way as in conftest (TEST_REGULATION, default omb-financial-assistance).
 """
 
 import os
 import pytest
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-RULE_FILE = os.path.join(ROOT_DIR, "read-the-rule.html")
+REGULATION = os.environ.get("TEST_REGULATION", "omb-financial-assistance")
+RULE_FILE = os.path.join(ROOT_DIR, "regulations", REGULATION, "read-the-rule.html")
 
 pytestmark = pytest.mark.skipif(
     not os.path.exists(RULE_FILE), reason="read-the-rule.html not built (regulation has no rule_sections.json)"

@@ -11,13 +11,26 @@ BASE_URL = f"http://localhost:{PORT}"
 REPORT_FILE = "index.html"
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Serve the regulation directory itself, not the repo root, so index.html sits
+# next to its siblings (comment_detail.json, read-the-rule.html) exactly as it is
+# deployed to Netlify. Serving from the root would break the report's relative
+# fetch('comment_detail.json') and the Read-the-Rule link. Override the fixture
+# regulation with TEST_REGULATION=<slug>.
+REGULATION = os.environ.get("TEST_REGULATION", "omb-financial-assistance")
+SERVE_DIR = os.path.join(ROOT_DIR, "regulations", REGULATION)
+
 
 @pytest.fixture(scope="session")
 def server():
     """Start a local HTTP server for the duration of the test session."""
+    if not os.path.exists(os.path.join(SERVE_DIR, REPORT_FILE)):
+        pytest.skip(
+            f"No {REPORT_FILE} in {SERVE_DIR}; generate the report first "
+            f"(python generate_report.py ... --output index.html)."
+        )
     proc = subprocess.Popen(
         ["python3", "-m", "http.server", str(PORT)],
-        cwd=ROOT_DIR,
+        cwd=SERVE_DIR,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
