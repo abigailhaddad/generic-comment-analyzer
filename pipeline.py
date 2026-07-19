@@ -117,6 +117,26 @@ def load_column_mapping() -> Dict[str, str]:
         logger.error(f"Failed to load column mapping: {e}")
         return {}
 
+def _stance_bucket(analysis: Any) -> str:
+    """Coarse stance bucket ('Oppose'/'Support'/'other'/'') from an analysis dict.
+    Used to detect reuse-cache text-keys that map to conflicting stances."""
+    if not isinstance(analysis, dict):
+        return ''
+    stances = analysis.get('stances')
+    if stances is None:
+        return ''
+    try:
+        items = list(stances)
+    except TypeError:
+        return ''
+    t = ' | '.join(str(x) for x in items)
+    if 'Position: Oppose' in t:
+        return 'Oppose'
+    if 'Position: Support' in t:
+        return 'Support'
+    return 'other'
+
+
 def read_comments_from_csv(csv_file: str, limit: Optional[int] = None, sample_size: Optional[int] = None, random_seed: int = 42, use_gemini: bool = False) -> List[Dict[str, Any]]:
     """Read comments from CSV file and return as list of dicts."""
     logger.info(f"Reading comments from {csv_file}")
@@ -152,23 +172,41 @@ def read_comments_from_csv(csv_file: str, limit: Optional[int] = None, sample_si
         logger.info(f"Sampling {sample_size} comments from {len(all_rows)} total")
         all_rows = random.sample(all_rows, sample_size)
     
+    # regulations.gov assigns a unique Tracking Number to every real public
+    # submission; the docket's rule document, notices, and empty/withdrawn rows
+    # have none. When the column is reliably populated (vast majority of rows) we
+    # use its absence to drop those non-comment rows. Guarded by the ratio so an
+    # export that simply lacks the column doesn't get everything filtered out.
+    tn_present = sum(1 for r in all_rows if (r.get('Tracking Number', '') or '').strip())
+    use_tracking_filter = bool(all_rows) and tn_present / len(all_rows) > 0.9
+    non_comment_skipped = 0
+
     # Second pass: process the selected comments with attachments
     logger.info("Processing comments and downloading attachments...")
     comments = []
+    seen_ids: Dict[str, int] = {}   # track Document IDs to disambiguate duplicates
+    dup_id_count = 0
     for i, row in enumerate(all_rows):
         # Extract comment ID and text using column mappings
-        comment_id = (row.get(column_mapping.get('id', '')) or 
-                     row.get('Document ID') or 
-                     row.get('id') or 
+        comment_id = (row.get(column_mapping.get('id', '')) or
+                     row.get('Document ID') or
+                     row.get('id') or
                      f"comment_{i}")
-        
-        comment_text = (row.get(column_mapping.get('text', '')) or 
+
+        tracking_number = (row.get('Tracking Number', '') or '').strip()
+        # Drop non-comment rows (rule document, notices, empty submissions) when
+        # Tracking Number is a reliable signal for this export.
+        if use_tracking_filter and not tracking_number:
+            non_comment_skipped += 1
+            continue
+
+        comment_text = (row.get(column_mapping.get('text', '')) or
                        row.get('Comment', '')).strip()
-        
+
         # Check for attachments using column mapping
         attachment_col = column_mapping.get('attachment_files', 'Attachment Files')
         has_attachments = row.get(attachment_col, '').strip()
-        
+
         # Skip empty comments without attachments
         if not comment_text and not has_attachments:
             continue
@@ -215,6 +253,23 @@ def read_comments_from_csv(csv_file: str, limit: Optional[int] = None, sample_si
                             row.get('submitter', '') or 
                             row.get('Author', ''))
         
+        # Disambiguate duplicate Document IDs. The regulations.gov bulk export
+        # sometimes assigns the SAME Document ID to two DIFFERENT comments (e.g.
+        # OMB-2026-0034 had ~10). They are genuinely distinct comments. Suffix the
+        # later occurrences with their Tracking Number (unique per submission, so
+        # the id is STABLE across re-runs and traceable), falling back to a
+        # positional -dupN only if the Tracking Number is missing. The first
+        # occurrence keeps the bare Document ID, so its regulations.gov link and
+        # displayed comment number are unaffected; the suffix only prevents silent
+        # downstream collisions (comment_detail keying, reuse, campaign detection).
+        if comment_id in seen_ids:
+            seen_ids[comment_id] += 1
+            dup_id_count += 1
+            suffix = tracking_number if tracking_number else f"dup{seen_ids[comment_id]}"
+            comment_id = f"{comment_id}#{suffix}"
+        else:
+            seen_ids[comment_id] = 1
+
         comment_data = {
             'id': comment_id,
             'text': full_text,
@@ -231,7 +286,14 @@ def read_comments_from_csv(csv_file: str, limit: Optional[int] = None, sample_si
             comment_data[flag_name] = any(p.search(full_text) for p in patterns)
         
         comments.append(comment_data)
-    
+
+    if non_comment_skipped:
+        logger.info(f"Skipped {non_comment_skipped} non-comment rows with no Tracking Number "
+                    f"(rule document / notices / empty submissions).")
+    if dup_id_count:
+        logger.warning(f"Found {dup_id_count} duplicate Document IDs in {csv_file} "
+                       f"(same ID, different comment text). Suffixed the later ones with "
+                       f"#<TrackingNumber> so they are treated as distinct comments.")
     logger.info(f"Loaded {len(comments)} comments")
     return comments
 
@@ -548,7 +610,7 @@ def analyze_comments_parallel(comments: List[Dict[str, Any]], model: str = "gemi
                 if output_file and batch_num % snapshot_every == 0:
                     snapshot_file = output_file.replace('.parquet', '.inprogress.parquet')
                     try:
-                        save_results(analyzed_comments, snapshot_file)
+                        save_results(analyzed_comments, snapshot_file, force=True)
                         logger.info(f"Snapshot written: {done} comments -> {snapshot_file}")
                     except Exception as e:
                         logger.warning(f"Snapshot write failed: {e}")
@@ -801,12 +863,31 @@ def cluster_families(comments: List[Dict[str, Any]], threshold: float = 0.3) -> 
     return comments
 
 
-def save_results(analyzed_comments: List[Dict[str, Any]], output_file: str):
-    """Save analyzed comments to Parquet file."""
+def save_results(analyzed_comments: List[Dict[str, Any]], output_file: str, force: bool = False):
+    """Save analyzed comments to Parquet file.
+
+    Guards against silently destroying a large canonical parquet: if the file
+    already exists with substantially more rows than we're about to write, back
+    it up to <file>.bak and refuse unless force=True. This is the safety net that
+    a stray `--sample`/`--reprocess` (or any bug) would otherwise blow past.
+    """
     logger.info(f"Saving {len(analyzed_comments)} analyzed comments to {output_file}")
-    
-    # Convert to DataFrame and save as Parquet
     df = pd.DataFrame(analyzed_comments)
+
+    if os.path.exists(output_file) and not force:
+        try:
+            existing = len(pd.read_parquet(output_file, columns=[]))
+        except Exception:
+            existing = 0
+        if existing > 100 and len(df) < existing * 0.5:
+            bak = output_file + '.bak'
+            import shutil
+            shutil.copy2(output_file, bak)
+            raise SystemExit(
+                f"REFUSING to overwrite {output_file} ({existing} rows) with only "
+                f"{len(df)} rows — this looks like an accidental shrink. Backed up "
+                f"the existing file to {bak}. Re-run with --force if you really mean it.")
+
     df.to_parquet(output_file, index=False)
     logger.info(f"✅ Saved results to {output_file}")
 
@@ -1019,6 +1100,7 @@ def main():
     parser.add_argument('--use-gemini', action='store_true', help='Use a vision LLM (OpenAI) for attachment image OCR (requires OPENAI_API_KEY)')
     parser.add_argument('--no-verify', action='store_true', help='Skip the second-pass stance/entity verification step')
     parser.add_argument('--reprocess', action='store_true', help='Reprocess all comments even if output file exists (default: incremental)')
+    parser.add_argument('--force', action='store_true', help='Bypass the safety guard that refuses to overwrite a large parquet with far fewer rows')
 
     args = parser.parse_args()
 
@@ -1032,6 +1114,12 @@ def main():
         logger.info(f"Working in regulation directory: {reg_dir}")
     if args.csv is None:
         args.csv = 'source.csv'
+    # Sample runs are throwaway smoke tests — never let them write over the
+    # canonical full-corpus outputs (full_run.parquet / index.html /
+    # comment_detail.json). Namespace their output and skip the report.
+    if args.sample and args.output is None:
+        args.output = f'sample_{args.sample}.parquet'
+        logger.info(f"--sample set: writing to {args.output} (canonical files untouched)")
     if args.output is None:
         args.output = 'full_run.parquet'
 
@@ -1062,9 +1150,28 @@ def main():
         if not args.reprocess and os.path.exists(args.output):
             try:
                 prev_df = pd.read_parquet(args.output)
+                # Build the text-keyed reuse cache, but guard against an
+                # INCONSISTENT cache: if the same text maps to two different
+                # stances (e.g. a misaligned rebuild, or duplicate-ID fallout),
+                # reusing it by text-key would propagate the wrong analysis to
+                # every copy of that text. Detect such text-keys and DROP them so
+                # they get freshly re-analyzed instead of silently poisoning.
+                cache_bucket = {}
+                ambiguous_keys = set()
                 for _, row in prev_df.iterrows():
                     text_key = (row.get('text', '') or '').strip().lower()
-                    previous_results[text_key] = row.to_dict()
+                    bucket = _stance_bucket(row.get('analysis'))
+                    if text_key in cache_bucket and cache_bucket[text_key] != bucket:
+                        ambiguous_keys.add(text_key)
+                    else:
+                        cache_bucket[text_key] = bucket
+                        previous_results[text_key] = row.to_dict()
+                for k in ambiguous_keys:
+                    previous_results.pop(k, None)
+                if ambiguous_keys:
+                    logger.warning(f"Reuse cache: {len(ambiguous_keys)} text-key(s) map to "
+                                   f"CONFLICTING stances — dropping them so they are re-analyzed "
+                                   f"rather than reused. This indicates a misaligned/corrupted cache.")
                 logger.info(f"Loaded {len(previous_results)} previously analyzed results from {args.output}")
             except Exception as e:
                 logger.warning(f"Could not load previous results: {e}")
@@ -1106,7 +1213,7 @@ def main():
 
         # Save after merge so LLM work is never lost
         logger.info("=== Saving intermediate results ===")
-        save_results(analyzed_comments, args.output)
+        save_results(analyzed_comments, args.output, force=args.force)
         # Clean up checkpoint now that results are saved
         if os.path.exists(CHECKPOINT_FILE):
             os.remove(CHECKPOINT_FILE)
@@ -1131,7 +1238,7 @@ def main():
 
         # Step 7: Save final results
         logger.info("=== STEP 7: Saving Final Results ===")
-        save_results(analyzed_comments, args.output)
+        save_results(analyzed_comments, args.output, force=args.force)
         # Auto-append a "data updated" changelog entry when the comment count grows.
         record_data_changelog(len(analyzed_comments))
 
@@ -1143,23 +1250,27 @@ def main():
             logger.info("=== STEP 7: Skipping Database Storage ===")
             logger.info("Use --to-database flag to store in PostgreSQL")
 
-        # Generate HTML report
+        # Generate HTML report (skipped for sample runs so the canonical
+        # index.html / comment_detail.json the live site uses stay untouched).
         logger.info("=== STEP 8: Generating HTML Report ===")
-        try:
-            from generate_report import load_results_parquet, generate_html
+        if args.sample:
+            logger.info("--sample set: skipping HTML report (canonical report untouched)")
+        else:
+            try:
+                from generate_report import load_results_parquet, generate_html
 
-            html_output = "index.html"
-            logger.info(f"Loading results from {args.output}...")
-            comments = load_results_parquet(args.output)
+                html_output = "index.html"
+                logger.info(f"Loading results from {args.output}...")
+                comments = load_results_parquet(args.output)
 
-            logger.info(f"Generating HTML report: {html_output}")
-            generate_html(comments, {}, {}, html_output)
-            
-            logger.info(f"✅ HTML report generated: {html_output}")
-            
-        except Exception as e:
-            logger.error(f"HTML report generation failed: {e}")
-            logger.info("Pipeline completed but without HTML report")
+                logger.info(f"Generating HTML report: {html_output}")
+                generate_html(comments, {}, {}, html_output)
+
+                logger.info(f"✅ HTML report generated: {html_output}")
+
+            except Exception as e:
+                logger.error(f"HTML report generation failed: {e}")
+                logger.info("Pipeline completed but without HTML report")
         
         # Summary
         logger.info("=== PIPELINE COMPLETE ===")
