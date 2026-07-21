@@ -295,6 +295,18 @@ regex_flags:
   # Referenced" breakdown (fields: sections_referenced) supersedes it.
 
 # -------------------------------------------------------------------
+# Derived flags — boolean stat cards + table filters computed from an
+# analysis field (not regex). Each renders like a regex_flag (clickable
+# card + "Yes/No" filter); a comment matches when <from> >= <min>.
+# -------------------------------------------------------------------
+derived_flags:
+  coalition_letter:
+    label: "Joint / Coalition Letter"
+    description: "Comments cosigned by more than one organization (multi-signatory / coalition letters)."
+    from: cosigner_count
+    min: 2
+
+# -------------------------------------------------------------------
 # Second-Pass Verification — comments matching these criteria get re-analyzed.
 # -------------------------------------------------------------------
 second_pass:
