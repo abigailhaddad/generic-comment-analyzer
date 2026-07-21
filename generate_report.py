@@ -767,6 +767,19 @@ def load_regex_flag_patterns():
     return {name: flag.get('patterns', []) for name, flag in load_regex_flags().items()}
 
 
+def load_derived_flags() -> Dict[str, Dict[str, Any]]:
+    """Load derived_flags config: boolean flags computed from an analysis field
+    (e.g. cosigner_count >= 2) rather than a regex. Same card/filter machinery as
+    regex_flags; a comment matches when analysis[<from>] >= <min>."""
+    config_path = Path('analyzer_config.yaml')
+    if config_path.exists():
+        with open(config_path) as f:
+            config = yaml.safe_load(f)
+        derived = config.get('derived_flags', {}) or {}
+        return {name: cfg for name, cfg in derived.items() if isinstance(cfg, dict)}
+    return {}
+
+
 def compute_flag_sections(comments: List[Dict[str, Any]], flags_cfg: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Build one generic section per configured regex flag.
 
@@ -779,19 +792,40 @@ def compute_flag_sections(comments: List[Dict[str, Any]], flags_cfg: Dict[str, D
     for key, cfg in flags_cfg.items():
         patterns = cfg.get('patterns', []) if isinstance(cfg, dict) else []
         description = cfg.get('description', '') if isinstance(cfg, dict) else ''
+        derived = cfg.get('_derived') if isinstance(cfg, dict) else None
         label = humanize_flag_label(key, cfg)
         matched = []
         count = 0
+        max_val = 0
         for c in comments:
             if c.get(key):
                 count += 1
+                if derived:
+                    a = c.get('analysis') or {}
+                    n = _safe_int(a.get(derived.get('from', 'cosigner_count'))) or 0
+                    max_val = max(max_val, n)
                 if len(matched) < 500:
-                    ct = c.get('comment_text', '') or ''
+                    if derived:
+                        a = c.get('analysis') or {}
+                        n = _safe_int(a.get(derived.get('from', 'cosigner_count'))) or 0
+                        ename = (a.get('entity_name') or '').strip() if isinstance(a, dict) else ''
+                        sentence = f"Cosigned by {n:,} organizations" + (f" — {_snippet(ename, 80)}" if ename else "")
+                        sort_n = n
+                    else:
+                        ct = c.get('comment_text', '') or ''
+                        sentence = extract_matching_sentence(ct, patterns)
+                        sort_n = 0
                     matched.append({
                         'name': 'Anonymous' if (c.get('submitter', '') or '').strip() in ('Anonymous Anonymous', '') else c.get('submitter', '').strip(),
                         'id': c.get('id', ''),
-                        'sentence': extract_matching_sentence(ct, patterns),
+                        'sentence': sentence,
+                        '_sort_n': sort_n,
                     })
+        if derived and max_val > 1:
+            description = (description + f" Largest: {max_val:,} cosigners.").strip()
+        # Show the biggest coalitions first in the flag modal.
+        if derived:
+            matched.sort(key=lambda m: -m.get('_sort_n', 0))
         sections.append({
             'key': key,
             'label': label,
@@ -894,6 +928,22 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
 
     metadata = load_regulation_metadata()
     flags_cfg = load_regex_flags()
+    # Derived flags: compute each comment's boolean from an analysis field
+    # (e.g. cosigner_count >= 2) and fold them into the same card/filter path.
+    derived_cfg = load_derived_flags()
+    for key, dcfg in derived_cfg.items():
+        src = dcfg.get('from', 'cosigner_count')
+        minimum = dcfg.get('min', 2)
+        for c in comments:
+            a = c.get('analysis') or {}
+            val = _safe_int(a.get(src)) if isinstance(a, dict) else None
+            c[key] = bool(val is not None and val >= minimum)
+        flags_cfg[key] = {
+            'label': dcfg.get('label', key),
+            'description': dcfg.get('description', ''),
+            'patterns': [],
+            '_derived': {'from': src, 'min': minimum},
+        }
     flag_keys = list(flags_cfg.keys())
     report_config = load_report_config()
     colors = load_colors(report_config)
