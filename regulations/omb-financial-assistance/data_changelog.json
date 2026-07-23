@@ -1,6 +1,10 @@
 {
-  "last_total": 54003,
+  "last_total": 54157,
   "entries": [
+    {
+      "date": "2026-07-23",
+      "note": "Updated to 54,157 comments (+154 new)."
+    },
     {
       "date": "2026-07-18",
       "note": "Corrected a data-processing error that had mislabeled the largest support form-letter campaign (~2,400 comments) as opposed. Root cause: the regulations.gov export assigns the same Document ID to a few different comments, which crossed some classifications during a data rebuild. Fixed by matching each comment's classification to its own text, and hardened so duplicate IDs are handled automatically going forward. Stance totals restored to 94% oppose / 5% support."
