@@ -33,10 +33,10 @@ test_*.html
 test_report.html
 posting_lag.html
 
-# One-off counter-vs-posted chart for OMB-2026-0034 — local analysis, not part
-# of the published report and not deployed.
-submitted-vs-posted.html
-build_submitted_vs_posted.py
+# Local backlog view for OMB-2026-0034 (which receipt dates have nothing posted
+# yet). Not part of the published report and not deployed.
+waiting-on.html
+build_waiting_on.py
 
 # OS files
 .DS_Store
