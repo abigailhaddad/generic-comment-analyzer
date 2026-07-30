@@ -1,6 +1,14 @@
 {
-  "last_total": 56989,
+  "last_total": 58075,
   "entries": [
+    {
+      "date": "2026-07-29",
+      "note": "Recovered the text of ~130 attachments that previously extracted to nothing — scanned PDFs with no text layer, text drawn as vector outlines, and files whose fonts carried no readable character map. Comment count unchanged; the text behind it is more complete. One comment was reclassified from oppose to support once its 21-page attachment could be read."
+    },
+    {
+      "date": "2026-07-29",
+      "note": "Updated to 58,075 comments (+1,086 new)."
+    },
     {
       "date": "2026-07-28",
       "note": "Updated to 56,989 comments (+879 new)."
