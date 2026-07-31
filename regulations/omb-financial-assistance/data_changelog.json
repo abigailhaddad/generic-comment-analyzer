@@ -1,13 +1,21 @@
 {
-  "last_total": 58075,
+  "last_total": 60418,
   "entries": [
+    {
+      "date": "2026-07-31",
+      "note": "Updated to 60,418 comments (+703 new)."
+    },
+    {
+      "date": "2026-07-30",
+      "note": "Updated to 59,715 comments (+1,640 new)."
+    },
     {
       "date": "2026-07-30",
       "note": "Stopped reading duplicate copies of the same attachment. regulations.gov stores a submitter's original file alongside a PDF rendition of it, and both were being read, so around 700 comments had their attachment text counted twice. Each upload is now read once, preferring the format least likely to need optical character recognition. One comment's stance was corrected as a result."
     },
     {
       "date": "2026-07-29",
-      "note": "Recovered the text of ~130 attachments that previously extracted to nothing — scanned PDFs with no text layer, text drawn as vector outlines, and files whose fonts carried no readable character map. Comment count unchanged; the text behind it is more complete. One comment was reclassified from oppose to support once its 21-page attachment could be read."
+      "note": "Recovered the text of ~130 attachments that previously extracted to nothing \u2014 scanned PDFs with no text layer, text drawn as vector outlines, and files whose fonts carried no readable character map. Comment count unchanged; the text behind it is more complete. One comment was reclassified from oppose to support once its 21-page attachment could be read."
     },
     {
       "date": "2026-07-29",
