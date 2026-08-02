@@ -2,6 +2,14 @@
   "last_total": 60418,
   "entries": [
     {
+      "date": "2026-08-01",
+      "note": "The comment table now lists every submission. It previously collapsed identical comment texts into one row, so the table showed 52,511 rows against 60,418 comments — its row count, its filters and its CSV download all quietly undercounted, and anyone who sent a form letter could not find their own comment. Near-identical letters are still grouped and summarized as campaigns."
+    },
+    {
+      "date": "2026-08-01",
+      "note": "Added a \"Download everything\" button. The existing Download CSV button gives the table as filtered on screen; the new one gives every comment with every field — the original regulations.gov columns (submitter, city, state, ZIP, dates, tracking number, attachment files) alongside everything this tool derives (position, concerns, entity type, campaign, quotes, rationale), one row per submission. Both buttons now explain themselves on hover."
+    },
+    {
       "date": "2026-07-31",
       "note": "Updated to 60,418 comments (+703 new)."
     },
@@ -15,7 +23,7 @@
     },
     {
       "date": "2026-07-29",
-      "note": "Recovered the text of ~130 attachments that previously extracted to nothing \u2014 scanned PDFs with no text layer, text drawn as vector outlines, and files whose fonts carried no readable character map. Comment count unchanged; the text behind it is more complete. One comment was reclassified from oppose to support once its 21-page attachment could be read."
+      "note": "Recovered the text of ~130 attachments that previously extracted to nothing — scanned PDFs with no text layer, text drawn as vector outlines, and files whose fonts carried no readable character map. Comment count unchanged; the text behind it is more complete. One comment was reclassified from oppose to support once its 21-page attachment could be read."
     },
     {
       "date": "2026-07-29",
