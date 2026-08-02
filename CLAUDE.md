@@ -56,7 +56,7 @@ is gitignored. A private/sensitive regulation's directory can be kept entirely l
 - **`stances:` / `entity_types:`** — the value lists referenced by `options_from`.
 - **`regex_flags:`** — `name → {label, description, patterns}`; boolean per-comment flags → clickable stat cards + filters.
 - **`second_pass:`** — `model`, `max_workers`, per-field triggers (`stance`, `entity_type`, `state`, `political_affiliation`), and required `prompts.stance` / `prompts.entity` (+ optional `prompts.state` / `.political` / `.cosigner`). Optional `cosigner_span.trigger_patterns` (regex list) opts a regulation into joint/coalition-letter detection (e.g. `omb-financial-assistance`); omitting the key disables it entirely.
-- **`report:`** — display options: `colors:` (full palette — `bg, surface, text, accent, oppose, support, unclear, mixed, highlight, border, …`; edit any color here, it flows everywhere), `show_state`, `show_political`.
+- **`report:`** — display options: `full_export:` (`url` for the report's "Download everything" link, `bucket`/`key` for the R2 upload in `deploy_report.sh`), `colors:` (full palette — `bg, surface, text, accent, oppose, support, unclear, mixed, highlight, border, …`; edit any color here, it flows everywhere), `show_state`, `show_political`.
 - **`rule_text:`** — `federal_register_document` + `part` for `fetch_rule_text.py` / the Read-the-Rule page.
 
 ## Running
@@ -85,6 +85,14 @@ python ../../generate_report.py --parquet full_run.parquet --export-csv comments
 The report is a single self-contained HTML (~120 MB at ~47k comments — over GitHub's
 100 MB limit), so host on **Netlify**, not GitHub Pages:
 `netlify deploy --dir=<dir with index.html + read-the-rule.html> --prod --site <id>`.
+
+`./deploy_report.sh <slug>` does the whole publish: when the config declares
+`report.full_export.{bucket,key}` it rebuilds `comments_export.csv` from the parquet,
+gzips it, uploads it to Cloudflare R2 (`aws s3 cp` against the R2 endpoint, credentials
+`CF_R2_*` sourced from `.env`), then deploys the site to Netlify. The export is far too
+big for Netlify, so the report links out to `report.full_export.url` — rebuilding it on
+every deploy is what keeps that link from going stale. No `full_export` in the config
+means the upload step is skipped.
 
 ## Environment
 

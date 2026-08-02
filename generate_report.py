@@ -419,21 +419,17 @@ def _safe_int(val):
 def prepare_rows(comments: List[Dict[str, Any]], campaign_id_to_rank: dict = None, flag_keys: List[str] = None, campaign_id_to_stance: dict = None, regex_value_patterns: dict = None) -> List[Dict[str, Any]]:
     """Prepare comment data for table rows and modal detail.
 
-    Deduplicates by comment text to keep the table manageable.
+    One row per submission. The table used to collapse identical texts, which made
+    its row count, filters and CSV download disagree with the stat cards (those
+    always counted every submission) and hid people who sent a form letter. Exact
+    duplicates are still summarized as campaigns; this only affects the table.
     """
     campaign_id_to_rank = campaign_id_to_rank or {}
     campaign_id_to_stance = campaign_id_to_stance or {}
     flag_keys = flag_keys or []
     regex_value_patterns = regex_value_patterns or {}
-    seen_texts = set()
     rows = []
     for comment in comments:
-        # Deduplicate: only include each unique text once in the table
-        text_key = ((comment.get('comment_text') or '') + (comment.get('attachment_text') or '')).strip().lower()
-        if text_key in seen_texts:
-            continue
-        seen_texts.add(text_key)
-
         analysis = comment.get('analysis') or {}
 
         # Stances
@@ -950,6 +946,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
     colors = load_colors(report_config)
     accent_rgb = _hex_to_rgb(colors['accent'])
     source_url = report_config.get('source_url') or None
+    full_export_url = (report_config.get('full_export') or {}).get('url') or None
     fields = load_fields()
     field_meta = compute_field_meta(fields, report_config)
     show_stance_cards = 'cards' in field_meta.get('stances', {}).get('show', [])
@@ -1013,6 +1010,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         show_cosigners=show_cosigners,
         rule_page_url=rule_page_url,
         source_url=source_url,
+        full_export_url=full_export_url,
         generated_time=generated_time,
         model_used=model_name,
         changelog=load_changelog(),

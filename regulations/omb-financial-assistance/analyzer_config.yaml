@@ -239,6 +239,13 @@ instructions:
 # -------------------------------------------------------------------
 report:
   source_url: "https://github.com/abigailhaddad/generic-comment-analyzer"
+  # Full-dataset export published to Cloudflare R2 by deploy_report.sh: one row per
+  # submission, every bulk-export column plus every field this tool derived.
+  # `url` drives the report's download link; `bucket`/`key` drive the upload.
+  full_export:
+    url: "https://pub-12d71e7096fd42248d69c317dbd4f5c4.r2.dev/omb-financial-assistance/comments_export.csv.gz"
+    bucket: "regulations-comments"
+    key: "omb-financial-assistance/comments_export.csv.gz"
   colors:
     accent: "#1B3A5C"    # navy — neutral accent (counts, links, buttons, chips)
     support: "#2D6A4F"   # green — Support
