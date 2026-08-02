@@ -45,7 +45,7 @@ is gitignored. A private/sensitive regulation's directory can be kept entirely l
 - `pipeline.py` — CSV → attachments → dedup → LLM analysis → second-pass verification → campaign detection → parquet → report. `--regulation <slug>` chdirs into `regulations/<slug>/`. **Resume is text-keyed** (checkpoint every 50 comments + parquet snapshot every 250) so restarts don't lose work. **Duplicate Document IDs:** the regulations.gov bulk export sometimes assigns the *same Document ID to different comments* (OMB-2026-0034 had ~10). `read_comments_from_csv` keeps the first occurrence on the bare Document ID and disambiguates later ones as `<id>#<TrackingNumber>` (Tracking Number is unique per submission — verified 0 dupes — so the id is stable across re-runs; falls back to `#dupN` only if the Tracking Number is blank, which only happens on non-comment rows like the rule doc / empty submissions that get skipped anyway). It warns on any duplicates. Separately, the incremental-reuse loop drops any text-key that maps to *conflicting* stances rather than trust it. See `_stance_bucket` and the reuse block.
 - `verify_stances.py` — second-pass verification (stance/entity/state/political/cosigner). Prompts + triggers come from `second_pass` in the config; enum outputs are config-constrained. The `cosigner_span` task detects joint/coalition letters (phrase triggers + a structural repeated-short-line check), locates the signer-block span via verbatim quotes, and parses it into names/count in plain Python — no extra LLM call.
 - `attachment_utils.py` — download/extract attachment text (PyMuPDF for PDFs — preserves visual reading order, unlike PyPDF2 which garbles multi-column layouts; docx via python-docx; caches to `.extracted.txt`). Image OCR uses OpenAI vision via LiteLLM (opt-in `--use-gemini`, a legacy flag name). `reextract_attachment_text()` re-runs extraction for one comment's cached PDF, refreshing the cache — used to pick up extractor fixes without a full re-run.
-- `generate_report.py` — renders `index.html` from the parquet + config, and `read-the-rule.html` if `rule_sections.json` is present. Everything (columns, cards, filters, flag/section/campaign bars, colors) is derived from the config.
+- `generate_report.py` — renders `index.html` from the parquet + config, and `read-the-rule.html` if `rule_sections.json` is present. Everything (columns, cards, filters, flag/section/campaign bars, colors) is derived from the config. `--export-csv <path>` instead writes a one-row-per-comment CSV: every original bulk-export column, then every derived covariate (analysis fields, one `<field>__<option>` TRUE/FALSE indicator per enum option, regex flags/values, dedup + campaign membership, attachment text). Columns come from the config and the data, never hardcoded. The join back to `source.csv` is by Document ID **narrowed by Tracking Number then exact comment text**, claiming each source row once — never a bare ID join (ids repeat; see below) — and raises rather than emitting an unmatched row.
 - `fetch_rule_text.py` — fetches the proposed rule's XML from the Federal Register (per the config `rule_text` block) and parses it into `rule_sections.json` (per-section text).
 - `check_new.py` — compares regulations.gov comment counts to the local CSV for a docket.
 
@@ -75,6 +75,9 @@ python generate_report.py --parquet regulations/omb-financial-assistance/full_ru
 
 # Fetch the rule text (for the Read-the-Rule page):
 python fetch_rule_text.py --regulation omb-financial-assistance
+
+# Export one row per comment for analysis in R/Stata/Excel (run from the reg dir):
+python ../../generate_report.py --parquet full_run.parquet --export-csv comments_export.csv
 ```
 
 ## Deploy

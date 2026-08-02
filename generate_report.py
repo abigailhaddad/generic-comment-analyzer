@@ -7,6 +7,7 @@ Uses Jinja2 template (report_template.html) for HTML generation.
 """
 
 import argparse
+import csv
 import json
 import os
 import re
@@ -1043,12 +1044,164 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
             f.write(rule_html)
 
 
+def _export_slug(s: str) -> str:
+    """Column-safe slug for a config option name."""
+    return re.sub(r'[^a-z0-9]+', '_', str(s).lower()).strip('_')
+
+
+def _export_value(v) -> str:
+    """Flatten one analysis value to a CSV cell. Lists/arrays become ' | '-joined."""
+    if v is None:
+        return ''
+    if hasattr(v, 'tolist'):
+        v = v.tolist()
+    if isinstance(v, (list, tuple)):
+        return ' | '.join(str(x) for x in v)
+    if isinstance(v, float) and v != v:  # NaN
+        return ''
+    if isinstance(v, dict):
+        return json.dumps(v, sort_keys=True, default=str)
+    return str(v)
+
+
+def match_source_rows(comments: List[Dict[str, Any]], source_rows: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    """Pair each analyzed comment with the bulk-export row it came from.
+
+    Document IDs are NOT unique in the government export, so this cannot be a plain
+    id join (see CLAUDE.md). `read_comments_from_csv` suffixes repeat ids as
+    `<Document ID>#<Tracking Number>`, so candidates are narrowed by tracking
+    number, then by exact comment text, and every source row is claimed at most
+    once. Raises if any comment is unmatched.
+    """
+    by_doc_id: Dict[str, List[int]] = {}
+    for i, row in enumerate(source_rows):
+        by_doc_id.setdefault((row.get('Document ID') or '').strip(), []).append(i)
+
+    claimed = set()
+    matched = []
+    unmatched = []
+    text_mismatch = 0
+    for c in comments:
+        cid = c.get('id', '') or ''
+        base, _, suffix = cid.partition('#')
+        candidates = [i for i in by_doc_id.get(base, []) if i not in claimed]
+        if suffix:
+            by_tn = [i for i in candidates if (source_rows[i].get('Tracking Number') or '').strip() == suffix]
+            if by_tn:
+                candidates = by_tn
+        if len(candidates) > 1:
+            ctext = (c.get('comment_text') or '').strip()
+            by_text = [i for i in candidates if (source_rows[i].get('Comment') or '').strip() == ctext]
+            if by_text:
+                candidates = by_text
+        if not candidates:
+            unmatched.append(cid)
+            matched.append(None)
+            continue
+        idx = candidates[0]
+        claimed.add(idx)
+        matched.append(source_rows[idx])
+        if (source_rows[idx].get('Comment') or '').strip() != (c.get('comment_text') or '').strip():
+            text_mismatch += 1
+
+    if unmatched:
+        raise RuntimeError(
+            f"{len(unmatched)} analyzed comments have no row in the source CSV "
+            f"(first few: {unmatched[:5]}). The CSV is older than the parquet — re-export it."
+        )
+    if text_mismatch:
+        print(f"  note: {text_mismatch} matched rows differ in comment text "
+              f"(attachment-only or re-edited submissions)")
+    return matched
+
+
+def export_comments_csv(comments: List[Dict[str, Any]], output_path: str, source_csv: str) -> None:
+    """Write one row per comment: every original bulk-export column, then every
+    covariate this tool derived (analysis fields, per-option indicators, regex
+    flags and values, dedup/campaign membership, attachment text).
+
+    Columns are derived from analyzer_config.yaml and the data, so this stays
+    generic across regulations.
+    """
+    csv.field_size_limit(2 ** 31 - 1)
+    with open(source_csv, newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        source_fields = list(reader.fieldnames or [])
+        source_rows = list(reader)
+    print(f"  source CSV: {len(source_rows):,} rows x {len(source_fields)} columns")
+
+    matched = match_source_rows(comments, source_rows)
+
+    fields = load_fields() or []
+    _, regex_patterns = compute_value_sections(comments, fields)
+
+    # Derived column set, all discovered rather than hardcoded.
+    analysis_keys = sorted({k for c in comments for k in (c.get('analysis') or {})})
+    skip_top = {'id', 'text', 'comment_text', 'analysis', 'attachment_status',
+                'submitter', 'organization', 'date'}
+    top_keys = [k for k in (comments[0].keys() if comments else []) if k not in skip_top]
+    option_cols = []  # (column name, field name, option value) for multi/single enums
+    for fld in fields:
+        if fld.get('type') in ('multi_enum', 'single_enum') and fld.get('options'):
+            for opt in fld['options']:
+                option_cols.append((f"{fld['name']}__{_export_slug(opt)}", fld['name'], opt))
+
+    derived = (['analyzer_id', 'position']
+               + analysis_keys
+               + [c[0] for c in option_cols]
+               + [f'{name}_values' for name in regex_patterns]
+               + top_keys
+               + ['attachment_char_count', 'attachment_files_total', 'attachment_files_failed'])
+
+    collisions = sorted(set(derived) & set(source_fields))
+    if collisions:
+        raise RuntimeError(f"derived column names collide with bulk-export columns: {collisions}")
+    if len(derived) != len(set(derived)):
+        dupes = sorted({c for c in derived if derived.count(c) > 1})
+        raise RuntimeError(f"duplicate derived column names: {dupes}")
+
+    header = source_fields + derived
+    with open(output_path, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=header, extrasaction='raise')
+        writer.writeheader()
+        for c, src in zip(comments, matched):
+            analysis = c.get('analysis') or {}
+            status = c.get('attachment_status') or {}
+            row = dict(src)
+            row['analyzer_id'] = c.get('id', '')
+            row['position'] = comment_position(c)
+            for k in analysis_keys:
+                row[k] = _export_value(analysis.get(k))
+            for col, fname, opt in option_cols:
+                val = analysis.get(fname)
+                if hasattr(val, 'tolist'):
+                    val = val.tolist()
+                if isinstance(val, (list, tuple)):
+                    row[col] = str(opt in val)
+                else:
+                    row[col] = str(val == opt)
+            for name, pat in regex_patterns.items():
+                row[f'{name}_values'] = ' | '.join(extract_regex_values(c.get('comment_text', '') or '', pat))
+            for k in top_keys:
+                row[k] = _export_value(c.get(k))
+            row['attachment_char_count'] = len(c.get('attachment_text') or '')
+            row['attachment_files_total'] = _export_value(status.get('total'))
+            row['attachment_files_failed'] = _export_value(status.get('failed'))
+            writer.writerow(row)
+
+    size_mb = os.path.getsize(output_path) / 1e6
+    print(f"  wrote {output_path}: {len(comments):,} rows x {len(header)} columns ({size_mb:.1f} MB)")
+    print(f"  {len(source_fields)} bulk-export columns + {len(derived)} derived")
+
+
 def main():
     parser = argparse.ArgumentParser(description='Generate HTML report from comment analysis results')
     parser.add_argument('--json', type=str, help='Input JSON file')
     parser.add_argument('--parquet', type=str, default='analyzed_comments.parquet', help='Input Parquet file')
     parser.add_argument('--output', type=str, default='index.html', help='Output HTML file')
     parser.add_argument('--model', type=str, default=None, help='Model name to show in the report footer (overrides the value recorded in the data)')
+    parser.add_argument('--export-csv', type=str, default=None, help='Write one row per comment (bulk-export columns + derived covariates) to this CSV instead of rendering the report')
+    parser.add_argument('--source-csv', type=str, default='source.csv', help='Bulk-export CSV to take the original columns from (with --export-csv)')
 
     args = parser.parse_args()
 
@@ -1060,6 +1213,11 @@ def main():
         comments = load_results_parquet(args.parquet)
     else:
         print(f"Error: Neither JSON file '{args.json}' nor Parquet file '{args.parquet}' found")
+        return
+
+    if args.export_csv:
+        print(f"Exporting one row per comment to {args.export_csv}...")
+        export_comments_csv(comments, args.export_csv, args.source_csv)
         return
 
     # field_analysis still needed for pipeline.py compatibility
