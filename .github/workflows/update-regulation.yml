@@ -56,10 +56,12 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    # Generous: a heavy day can legitimately sit through several 429 backoff
-    # windows and keep draining the backlog rather than give up after one
-    # hour. A drained run exits in well under a minute regardless.
-    timeout-minutes: 300
+    # A run never waits out the hourly rate limit — fetch_comments_api.py stops
+    # as soon as the budget is spent, keeping everything it fetched, and the
+    # next scheduled run continues. So a run is bounded by one budget's worth of
+    # comments (~485 after the ~14 listing calls) plus analysis, not by hours of
+    # sleeping. A drained run exits in well under a minute.
+    timeout-minutes: 60
     permissions:
       contents: write  # to commit data_changelog.json on the publish run
     env:
