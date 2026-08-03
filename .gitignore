@@ -56,3 +56,8 @@ READ THIS CLAUDE CODE
 
 # Local Netlify folder
 .netlify
+
+# Build artifacts from deploy_report.sh (the gzipped full export; *.csv above
+# already covers the uncompressed one).
+*.csv.gz
+*.gz
