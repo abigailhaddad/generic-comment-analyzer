@@ -84,7 +84,9 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          # 3.13, not 3.14: litellm==1.91.0 declares Requires-Python <3.14, so
+          # pip finds no candidate on 3.14 and the install fails outright.
+          python-version: '3.13'
 
       # Just enough to run the cheap check below — sync_state.py needs PyYAML
       # to read the R2 bucket out of analyzer_config.yaml; fetch_comments_api.py
