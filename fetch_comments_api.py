@@ -111,21 +111,26 @@ def list_comment_ids(docket, key, since=None):
     we restart from the last timestamp seen. That is the documented way to walk
     a set larger than the cap.
 
-    `since` (YYYY-MM-DD) restricts the walk to comments posted on or after that
-    date. This matters more than it looks: listing costs one call per 250
-    comments, so walking a 61,000-comment docket burns ~245 of the ~500 calls
+    `since` (YYYY-MM-DD) starts the walk from that date instead of the beginning
+    of the docket. This matters more than it looks: listing costs one call per
+    250 comments, so walking a 61,000-comment docket burns ~245 of the ~500 calls
     the key allows per hour — half the budget spent before a single new comment
-    is fetched. Listing only what was posted since the newest row already in the
-    CSV costs a handful of calls instead.
+    is fetched. Starting from the newest row already held costs a handful.
+
+    `since` seeds the SAME lastModifiedDate cursor the paging already uses,
+    rather than adding a second postedDate filter: the API returns 400 when both
+    date filters are sent at once, which only shows up once a result set exceeds
+    the 5,000 cap and the cursor kicks in. Filtering on lastModifiedDate is a
+    superset of what we need (anything newly posted was also newly modified);
+    the extra rows are already-known ids and cost nothing.
     """
-    seen, cursor = {}, None
+    seen = {}
+    cursor = f'{since} 00:00:00' if since else None
     while True:
         page, drained = 1, False
         while page <= 20:
             params = {'filter[docketId]': docket, 'page[size]': 250,
                       'page[number]': page, 'sort': 'lastModifiedDate'}
-            if since:
-                params['filter[postedDate][ge]'] = since
             if cursor:
                 params['filter[lastModifiedDate][ge]'] = cursor
             data = get('comments', params, key)
@@ -140,7 +145,12 @@ def list_comment_ids(docket, key, since=None):
                 drained = True
                 break
             page += 1
-        last = max(seen.values()) if seen else None
+        # The filter wants 'YYYY-MM-DD HH:mm:ss'; the API hands back
+        # '2026-07-30T18:59:54Z'. Feeding its own value straight back is a 400 —
+        # a latent bug that only surfaces once a result set passes the 5,000 cap
+        # and this cursor path is first used.
+        last_raw = max(seen.values()) if seen else None
+        last = last_raw.replace('T', ' ').rstrip('Z') if last_raw else None
         if drained or last == cursor:
             break
         cursor = last
