@@ -899,6 +899,13 @@ def record_data_changelog(total_comments: int, path: str = 'data_changelog.json'
     Manual/methodology notes live in analyzer_config.yaml (`changelog:`); this file
     holds only the auto-generated data-update entries (newest first). The report
     merges both. Re-running with no new comments is a no-op.
+
+    The automated workflow (.github/workflows/update-regulation.yml) runs the
+    pipeline — and therefore this function — on every ingest run, several times
+    a day, but only *commits* the resulting data_changelog.json on the once-daily
+    publish run; intermediate runs' local edits are discarded uncommitted. So the
+    "last entry" this always diffs against is whatever was last committed (the
+    previous publish), and in practice one entry lands in git per day.
     """
     from datetime import date
     state = {'last_total': None, 'entries': []}
