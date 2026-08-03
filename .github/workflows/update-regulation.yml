@@ -100,9 +100,17 @@ jobs:
       - name: Fetch new comments from regulations.gov (capped)
         id: fetch
         run: |
+          # pipefail matters: the default shell is `bash -e`, so without it a
+          # crashed fetch would exit 0 (tee's status), `added` would come out
+          # empty, every later step would skip, and the run would go green
+          # having silently done nothing.
+          set -o pipefail
           python fetch_comments_api.py --regulation "$REGULATION" --limit "$MAX_NEW" | tee fetch.log
+          # No "appended" line at all means the docket was already drained
+          # (fetch_comments_api.py returns early) — a real 0, not a parse miss.
           added=$(grep -oE 'appended [0-9,]+ rows' fetch.log | grep -oE '[0-9,]+' | tr -d ',')
           echo "added=${added:-0}" >> "$GITHUB_OUTPUT"
+          echo "fetched ${added:-0} new comment(s) this run"
 
       - name: Nothing new — done
         if: steps.fetch.outputs.added == '0'
