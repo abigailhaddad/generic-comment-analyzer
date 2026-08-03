@@ -37,7 +37,7 @@ import threading
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 
 # Import the generic comment analyzer
-from comment_analyzer import CommentAnalyzer
+from comment_analyzer import CommentAnalyzer, LLMCredentialsError
 
 # Simple logging setup
 logging.basicConfig(
@@ -474,6 +474,10 @@ def analyze_single_comment(analyzer, comment, truncate_chars=None):
                                            submitter=submitter, organization=organization)
         return {**comment, 'analysis': analysis_result, 'model_used': analyzer.model}
 
+    except LLMCredentialsError:
+        # Dead or unfunded key: the fallback model uses the same credentials and
+        # would fail identically. Let it out so the run aborts.
+        raise
     except Exception as e:
         logger.warning(f"Primary model failed for {comment['id']}: {e}. Trying {FALLBACK_MODEL}...")
 
@@ -489,6 +493,8 @@ def analyze_single_comment(analyzer, comment, truncate_chars=None):
         logger.info(f"Fallback model succeeded for {comment['id']}")
         return {**comment, 'analysis': analysis_result, 'model_used': FALLBACK_MODEL}
 
+    except LLMCredentialsError:
+        raise
     except Exception as e2:
         logger.error(f"Fallback model also failed for {comment['id']}: {e2}")
         return {**comment, 'analysis': None, 'analysis_error': str(e2), 'model_used': analyzer.model}
@@ -588,7 +594,23 @@ def analyze_comments_parallel(comments: List[Dict[str, Any]], model: str = "gemi
                 # Collect results as they complete
                 batch_results = []
                 for future in as_completed(future_to_comment):
-                    result = future.result()
+                    try:
+                        result = future.result()
+                    except LLMCredentialsError as e:
+                        # Every remaining comment would fail the same way. Keep
+                        # what this batch already produced, checkpoint it, and
+                        # abort — this needs a human, not a retry.
+                        for f in future_to_comment:
+                            f.cancel()
+                        if batch_results:
+                            _append_checkpoint(batch_results)
+                        logger.error(
+                            "LLM credentials rejected (key invalid or out of credit): %s", e)
+                        logger.error(
+                            "Aborting after %d comments analyzed this run; everything "
+                            "already analyzed is checkpointed and will be reused.",
+                            len(analyzed_comments) + len(batch_results))
+                        raise
                     batch_results.append(result)
                     overall_pbar.update(1)  # Update overall progress bar
 
@@ -1290,4 +1312,15 @@ def main():
         raise
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except LLMCredentialsError as e:
+        # Exit non-zero so a scheduled run goes red and someone is told. Unlike a
+        # regulations.gov rate limit — which resolves itself within the hour and
+        # exits 0 — a rejected key needs a human to refill or replace it. Comments
+        # already fetched stay in source.csv and everything already analyzed stays
+        # checkpointed, so the next run resumes without redoing any of it.
+        logger.error("Stopping: the LLM API key was rejected (invalid or out of credit).")
+        logger.error("  %s", e)
+        logger.error("Fetched comments and completed analyses are saved; rerun once the key works.")
+        raise SystemExit(1)

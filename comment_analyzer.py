@@ -28,6 +28,38 @@ class TimeoutError(Exception):
     """Custom timeout exception for API calls"""
     pass
 
+
+class LLMCredentialsError(Exception):
+    """The API key is invalid, revoked, or out of credit.
+
+    Unlike a per-comment failure this affects every comment equally, so it must
+    abort the run rather than be retried and recorded. Callers should stop, keep
+    whatever was already analyzed, and surface it loudly — it needs a human.
+    """
+
+
+# Substrings that mean "this will fail identically for every remaining comment".
+# Matched case-insensitively against the exception text, since LiteLLM wraps
+# provider errors in several different exception classes.
+_CREDENTIALS_MARKERS = (
+    'insufficient_quota',
+    'exceeded your current quota',
+    'billing_hard_limit_reached',
+    'billing hard limit',
+    'invalid_api_key',
+    'incorrect api key',
+    'authenticationerror',
+    'no api key provided',
+    'account is not active',
+    'error code: 401',
+)
+
+
+def is_credentials_error(exc: Exception) -> bool:
+    """True when an exception means the key is dead or unfunded, not that one call failed."""
+    text = f'{type(exc).__name__}: {exc}'.lower()
+    return any(marker in text for marker in _CREDENTIALS_MARKERS)
+
 class CommentAnalysisResult(BaseModel):
     """Standard model for comment analysis results"""
     stances: List[str] = Field(
@@ -413,7 +445,15 @@ Analyze objectively and avoid inserting personal opinions or biases."""
                 
                 return result
                 
+            except LLMCredentialsError:
+                raise
             except Exception as e:
+                if is_credentials_error(e):
+                    # A dead key or an exhausted balance fails identically for
+                    # every comment. Retrying, falling back to another model and
+                    # recording a per-comment error would burn thousands of calls
+                    # and write a parquet full of empty analyses. Abort instead.
+                    raise LLMCredentialsError(str(e)) from e
                 last_error = e
                 if attempt < max_retries:
                     logger.warning(f"Analysis attempt {attempt + 1} failed for comment{f' (ID: {comment_id})' if comment_id else ''}: {e}. Retrying...")
