@@ -1,6 +1,50 @@
 {
-  "last_total": 54003,
+  "last_total": 60418,
   "entries": [
+    {
+      "date": "2026-08-01",
+      "note": "The comment table now lists every submission. It previously collapsed identical comment texts into one row, so the table showed 52,511 rows against 60,418 comments — its row count, its filters and its CSV download all quietly undercounted, and anyone who sent a form letter could not find their own comment. Near-identical letters are still grouped and summarized as campaigns."
+    },
+    {
+      "date": "2026-08-01",
+      "note": "Added a \"Download everything\" button. The existing Download CSV button gives the table as filtered on screen; the new one gives every comment with every field — the original regulations.gov columns (submitter, city, state, ZIP, dates, tracking number, attachment files) alongside everything this tool derives (position, concerns, entity type, campaign, quotes, rationale), one row per submission. Both buttons now explain themselves on hover."
+    },
+    {
+      "date": "2026-07-31",
+      "note": "Updated to 60,418 comments (+703 new)."
+    },
+    {
+      "date": "2026-07-30",
+      "note": "Updated to 59,715 comments (+1,640 new)."
+    },
+    {
+      "date": "2026-07-30",
+      "note": "Stopped reading duplicate copies of the same attachment. regulations.gov stores a submitter's original file alongside a PDF rendition of it, and both were being read, so around 700 comments had their attachment text counted twice. Each upload is now read once, preferring the format least likely to need optical character recognition. One comment's stance was corrected as a result."
+    },
+    {
+      "date": "2026-07-29",
+      "note": "Recovered the text of ~130 attachments that previously extracted to nothing — scanned PDFs with no text layer, text drawn as vector outlines, and files whose fonts carried no readable character map. Comment count unchanged; the text behind it is more complete. One comment was reclassified from oppose to support once its 21-page attachment could be read."
+    },
+    {
+      "date": "2026-07-29",
+      "note": "Updated to 58,075 comments (+1,086 new)."
+    },
+    {
+      "date": "2026-07-28",
+      "note": "Updated to 56,989 comments (+879 new)."
+    },
+    {
+      "date": "2026-07-27",
+      "note": "Updated to 56,110 comments (+1,056 new)."
+    },
+    {
+      "date": "2026-07-23",
+      "note": "Updated to 55,054 comments (+897 new)."
+    },
+    {
+      "date": "2026-07-23",
+      "note": "Updated to 54,157 comments (+154 new)."
+    },
     {
       "date": "2026-07-18",
       "note": "Corrected a data-processing error that had mislabeled the largest support form-letter campaign (~2,400 comments) as opposed. Root cause: the regulations.gov export assigns the same Document ID to a few different comments, which crossed some classifications during a data rebuild. Fixed by matching each comment's classification to its own text, and hardened so duplicate IDs are handled automatically going forward. Stance totals restored to 94% oppose / 5% support."

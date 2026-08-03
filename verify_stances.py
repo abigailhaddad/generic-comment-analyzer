@@ -33,8 +33,6 @@ from pydantic import BaseModel, Field, create_model
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from attachment_utils import reextract_attachment_text
-
 load_dotenv()
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -987,19 +985,10 @@ def verify_stances(comments: List[Dict[str, Any]], model: str = None,
             idx, comment = idx_comment
             comment_id = comment.get('id', '')
 
-            # Pick up extractor fixes (e.g. the PyPDF2 -> PyMuPDF swap) for this
-            # comment's attachment before detecting the signer block, so the
-            # verbatim quotes the model returns match the text we'll slice below.
-            refreshed = reextract_attachment_text(comment_id)
-            if refreshed is not None:
-                comment_text = comment.get('comment_text', '') or ''
-                if refreshed and comment_text:
-                    full_text = f"{comment_text}\n\n--- ATTACHMENT CONTENT ---\n{refreshed}"
-                else:
-                    full_text = refreshed or comment_text
-                comment['text'] = full_text
-                comment['attachment_text'] = refreshed
-
+            # NOTE: never mutate comment['text'] here. The parquet's text is the
+            # cross-run reuse key; rewriting it (as an old re-extraction hook did)
+            # made it diverge from the read-time build and forced these comments
+            # to be re-analyzed on every run.
             text = comment.get('text') or ''
             submitter = comment.get('submitter', '')
             org = comment.get('organization', '')

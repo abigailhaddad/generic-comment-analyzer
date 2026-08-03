@@ -4,6 +4,7 @@ Utility functions for handling attachments in comments.
 Used by both pipeline.py and discover_stances.py
 """
 
+import collections
 import os
 import re
 import base64
@@ -20,58 +21,42 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
-def is_gibberish(text: str, min_words: int = 3, min_english_ratio: float = 0.10) -> bool:
-    """Detect if extracted text is gibberish/unreadable.
+def is_gibberish(text: str, min_chars: int = 10, max_control: float = 0.02,
+                 min_printable: float = 0.80, min_alpha: float = 0.10) -> bool:
+    """True when extracted text looks like a failed extraction rather than content.
 
-    Checks:
-    1. Too few real words
-    2. Low ratio of common English words
-    3. High ratio of non-ASCII characters
+    Judges character classes, not vocabulary. The previous version required a
+    minimum share of common English words, which discarded legitimate documents
+    whose text is mostly names, places or tabular data: a real 21-page petition
+    with a signatory list scored 4.3% common words (its top terms were state
+    abbreviations — ca, tx, pa, ga, fl) and was thrown away even though the
+    prose was clean. That check also hard-coded terms from one docket into
+    shared code, which the rest of this tool deliberately avoids.
+
+    A genuinely failed extraction does not look like prose at the character
+    level. A PDF whose fonts carry no usable cmap yields raw control bytes: one
+    real example measured 58% control characters and 5.6% letters, against
+    0% and 73.5% for the petition above. That gap is wide, language-agnostic,
+    and needs no word list.
     """
-    if not text or len(text.strip()) < 10:
+    stripped = text.strip() if text else ''
+    if len(stripped) < min_chars:
         return True
 
-    # Check non-ASCII ratio
-    ascii_chars = sum(1 for c in text if ord(c) < 128)
-    if len(text) > 0 and ascii_chars / len(text) < 0.5:
-        logger.warning(f"Gibberish detected: {ascii_chars / len(text):.0%} ASCII in '{text[:60]}...'")
+    n = len(text)
+    control = sum(1 for c in text if (ord(c) < 32 and c not in '\t\n\r') or ord(c) == 127)
+    if control / n > max_control:
+        logger.warning(f"Gibberish: {control / n:.0%} control characters in {text[:60]!r}")
         return True
 
-    # Split into words (alphabetic sequences of 2+ chars)
-    words = re.findall(r'[a-zA-Z]{2,}', text)
-    if len(words) < min_words:
-        logger.warning(f"Gibberish detected: only {len(words)} words in '{text[:60]}...'")
+    printable = sum(1 for c in text if c.isprintable() or c in '\t\n\r')
+    if printable / n < min_printable:
+        logger.warning(f"Gibberish: only {printable / n:.0%} printable in {text[:60]!r}")
         return True
 
-    # Check against common English words (top ~100 + domain terms)
-    common = {
-        'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'it',
-        'for', 'not', 'on', 'with', 'he', 'as', 'you', 'do', 'at', 'this',
-        'but', 'his', 'by', 'from', 'they', 'we', 'her', 'she', 'or', 'an',
-        'will', 'my', 'one', 'all', 'would', 'there', 'their', 'what', 'so',
-        'if', 'about', 'who', 'which', 'when', 'can', 'no', 'was', 'are',
-        'is', 'am', 'has', 'been', 'were', 'had', 'did', 'does', 'its',
-        'also', 'than', 'other', 'into', 'could', 'may', 'after', 'use',
-        'two', 'how', 'our', 'work', 'first', 'well', 'way', 'even', 'new',
-        'because', 'any', 'these', 'give', 'most', 'us', 'should', 'need',
-        'said', 'each', 'tell', 'does', 'set', 'three', 'want', 'still',
-        'own', 'make', 'made', 'just', 'over', 'such', 'take', 'only',
-        'some', 'very', 'then', 'them', 'same', 'being', 'many', 'those',
-        'must', 'before', 'between', 'more', 'through', 'under', 'against',
-        'law', 'rule', 'state', 'federal', 'attorney', 'bar', 'comment',
-        'proposed', 'public', 'department', 'justice', 'oppose', 'support',
-        'cases', 'special', 'agent', 'reported', 'misconduct', 'actions',
-        'court', 'legal', 'government', 'investigation', 'oversight',
-        'amendment', 'section', 'act', 'authority', 'conduct', 'rights',
-        'general', 'ethical', 'professional', 'independent', 'system',
-        'united', 'states', 'people', 'country', 'citizens', 'american',
-    }
-    lower_words = [w.lower() for w in words]
-    english_count = sum(1 for w in lower_words if w in common)
-    ratio = english_count / len(lower_words) if lower_words else 0
-
-    if ratio < min_english_ratio:
-        logger.warning(f"Gibberish detected: {ratio:.0%} common words in '{text[:60]}...'")
+    alpha = sum(1 for c in text if c.isalpha())
+    if alpha / n < min_alpha:
+        logger.warning(f"Gibberish: only {alpha / n:.0%} letters in {text[:60]!r}")
         return True
 
     return False
@@ -137,6 +122,117 @@ def extract_text_with_gemini(file_path: str) -> str:
         logger.warning(f"Vision extraction failed for {file_path}: {e}")
         return ""
 
+# Order to try the files of one logical attachment. regulations.gov stores the
+# submitter's original alongside a PDF rendition of the same document, so these
+# are alternative encodings of one thing, not separate content: .docx + .pdf
+# alone covers 688 of 862 multi-file comments on OMB-2026-0034.
+#
+# .docx leads because it cannot be a scan, cannot carry a broken font cmap, and
+# needs no OCR — the three ways PDFs failed here. Measured against 20 real
+# pairs it recovers 97-99% of the PDF's text, the shortfall being page numbers
+# and running headers the renderer adds. Images come last: they cost a vision
+# call, so they are only reached when nothing else exists.
+_FORMAT_PREFERENCE = ['.docx', '.doc', '.pdf', '.txt', '.rtf', '.html', '.htm',
+                      '.png', '.jpg', '.jpeg', '.gif', '.webp']
+
+
+def _attachment_stem(filename: str) -> str:
+    """Filename with our attachment_N_ prefix and extension removed.
+
+    Siblings of one upload share this stem — true for 846 of 862 multi-file
+    comments — so it is what groups alternative encodings together.
+    """
+    base = re.sub(r'\.[A-Za-z0-9]+$', '', filename)
+    return re.sub(r'^attachment_\d+_', '', base).strip().lower()
+
+
+def _rank(filename: str) -> int:
+    ext = os.path.splitext(filename)[1].lower()
+    return _FORMAT_PREFERENCE.index(ext) if ext in _FORMAT_PREFERENCE else len(_FORMAT_PREFERENCE)
+
+
+def group_attachments(entries: list) -> list:
+    """Group (url, filename) pairs by stem; order each group by preference.
+
+    Returns a list of groups. Extracting the first entry of a group that yields
+    text is enough — the rest are the same document in another format.
+    """
+    groups = collections.OrderedDict()
+    for url, filename in entries:
+        groups.setdefault(_attachment_stem(filename), []).append((url, filename))
+    return [sorted(v, key=lambda uf: _rank(uf[1])) for v in groups.values()]
+
+
+def _pages_needing_ocr(doc, min_chars: int = 100) -> list:
+    """Page indexes with visible content but no usable text, so only OCR can read them.
+
+    Three real cases reach this, and an image test alone catches only the first:
+      - an image-only scan (no text layer at all)
+      - text drawn as vector outlines, which carries no text and no image either
+      - a font with no usable cmap, which yields control bytes rather than nothing
+
+    So the test is "has ink but no readable text", not "has a big image". Pages
+    that are genuinely blank have no ink and are skipped, since OCR would only
+    spend a call to confirm they are empty.
+    """
+    out = []
+    for i, page in enumerate(doc):
+        text = page.get_text().strip()
+        if len(text) >= min_chars and not is_gibberish(text):
+            continue
+        if page.get_image_info() or page.get_drawings():
+            out.append(i)
+    return out
+
+
+def ocr_scanned_pdf(file_path: str, max_pages: int = 20) -> str:
+    """OCR the scan-like pages of a PDF by rasterising them and using the vision path.
+
+    Capped at max_pages so one long scan can't run away with the budget.
+    """
+    import tempfile
+
+    import fitz
+
+    try:
+        doc = fitz.open(file_path)
+    except Exception as e:
+        logger.error(f"Cannot open PDF for OCR {file_path}: {e}")
+        return ""
+
+    with doc:
+        targets = _pages_needing_ocr(doc)
+        if not targets:
+            return ""
+        if len(targets) > max_pages:
+            logger.warning(
+                f"{os.path.basename(file_path)}: {len(targets)} scanned pages, "
+                f"OCRing the first {max_pages}")
+            targets = targets[:max_pages]
+
+        logger.info(f"  {os.path.basename(file_path)}: OCRing {len(targets)} scanned page(s)")
+        chunks = []
+        for i in targets:
+            tmp = None
+            try:
+                # 200 dpi is enough for body text and keeps the PNG under the
+                # vision path's 5 MB ceiling.
+                pix = doc[i].get_pixmap(dpi=200)
+                with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as fh:
+                    tmp = fh.name
+                pix.save(tmp)
+                page_text = extract_text_with_gemini(tmp)
+                if page_text:
+                    chunks.append(page_text)
+            except Exception as e:
+                logger.warning(f"  OCR failed on page {i + 1} of {file_path}: {e}")
+            finally:
+                if tmp and os.path.exists(tmp):
+                    os.remove(tmp)
+
+    return '\n'.join(chunks)
+
+
 def download_attachment(attachment_url: str, output_path: str) -> bool:
     """Download an attachment file."""
     try:
@@ -172,14 +268,43 @@ def extract_text_from_file(file_path: str, use_gemini: bool = False) -> str:
         try:
             with fitz.open(file_path) as doc:
                 text = '\n'.join(page.get_text() for page in doc)
+                scanned = _pages_needing_ocr(doc)
         except Exception as e:
             logger.error(f"Failed to extract text from PDF {file_path}: {e}")
             return ""
 
+        # A broken font cmap yields control bytes rather than nothing. Drop that
+        # before merging so it can't contaminate the OCR result we are about to
+        # fetch, or trip the gibberish check on the combined string.
+        if text.strip() and is_gibberish(text):
+            logger.info(
+                f"{os.path.basename(file_path)}: text layer is unreadable, "
+                f"using OCR instead")
+            text = ""
+
+        # Pages with ink but no readable text need OCR, or they extract to nothing.
+        if scanned:
+            ocr_text = ocr_scanned_pdf(file_path)
+            if ocr_text:
+                text = f"{text}\n{ocr_text}".strip() if text.strip() else ocr_text
+            else:
+                logger.warning(
+                    f"{os.path.basename(file_path)}: {len(scanned)} unreadable page(s) "
+                    f"yielded no OCR text")
+
     elif file_path.lower().endswith(('.doc', '.docx')):
         try:
             doc = docx.Document(file_path)
-            text = '\n'.join([paragraph.text for paragraph in doc.paragraphs])
+            parts = [p.text for p in doc.paragraphs]
+            # Tables are not paragraphs. Reading only doc.paragraphs dropped
+            # 3,336 characters from one real 53k-character submission, because
+            # its signatory block was a table.
+            for table in doc.tables:
+                for row in table.rows:
+                    cells = [c.text.strip() for c in row.cells]
+                    if any(cells):
+                        parts.append(' '.join(cells))
+            text = '\n'.join(parts)
         except Exception as e:
             logger.error(f"Failed to extract text from DOC {file_path}: {e}")
             return ""
@@ -288,74 +413,113 @@ def process_attachments(comment_data: Dict[str, Any], attachments_dir: str,
                  'unknown_comment')
     comment_attachment_dir = os.path.join(attachments_dir, comment_id)
     
+    # One upload is stored as several files (the submitter's original plus a PDF
+    # rendition). Group them and read only the first that yields text, instead of
+    # extracting every copy of the same document.
+    entries = []
     for i, url in enumerate(attachment_urls):
         url = url.strip()
         if not url:
             continue
-            
-        # Generate filename from URL
         filename = f"attachment_{i+1}_{url.split('/')[-1]}"
         if '.' not in filename:
             filename += '.pdf'  # Default extension
-            
-        file_path = os.path.join(comment_attachment_dir, filename)
-        text_cache_path = os.path.join(comment_attachment_dir, f"{filename}.extracted.txt")
-        
-        # Check if we already have extracted text
-        if os.path.exists(text_cache_path):
-            try:
-                logger.info(f"  Found cached text for {filename}, loading...")
-                with open(text_cache_path, 'r', encoding='utf-8') as f:
-                    text = f.read()
-                if text.strip():
-                    combined_attachment_text.append(text.strip())
-                    logger.info(f"  SUCCESS: Loaded {len(text)} characters from cache")
-                    processing_status["processed"] += 1
-                continue
-            except Exception as e:
-                logger.warning(f"  Failed to load cached text: {e}")
-        
-        # Check if attachment file already exists
-        if os.path.exists(file_path):
-            logger.info(f"  Attachment {filename} already exists, skipping download")
-        else:
-            if not download_missing:
-                logger.info(f"  Skipping download of {filename} (download_missing=False)")
-                processing_status["failed"] += 1
-                processing_status["failures"].append({"filename": filename, "reason": "skipped_download"})
-                continue
-                
-            # Download attachment
-            logger.info(f"  Downloading attachment: {filename}")
-            if not download_attachment(url, file_path):
-                processing_status["failed"] += 1
-                processing_status["failures"].append({"filename": filename, "reason": "download_failed"})
-                continue
-        
-        # Extract text from file
-        logger.info(f"  Extracting text from {filename}...")
-        text = extract_text_from_file(file_path, use_gemini=use_gemini)
-        
-        # Save extracted text for future use (even if empty, to avoid re-processing)
-        os.makedirs(os.path.dirname(text_cache_path), exist_ok=True)
-        try:
-            with open(text_cache_path, 'w', encoding='utf-8') as f:
-                f.write(text or "")
-            logger.info(f"  Cached extracted text to {text_cache_path}")
-        except Exception as e:
-            logger.warning(f"  Failed to save text cache: {e}")
+        entries.append((url, filename))
 
-        if not text or not text.strip():
-            logger.warning(f"  No text extracted from {filename}")
-            processing_status["failed"] += 1
-            processing_status["failures"].append({"filename": filename, "reason": "no_text_extracted"})
-            continue
-        
-        combined_attachment_text.append(text.strip())
-        logger.info(f"  SUCCESS: Extracted {len(text)} characters from {filename}")
-        logger.info(f"  First 100 chars: {text.strip()[:100]}...")
-        processing_status["processed"] += 1
-    
+    groups = group_attachments(entries)
+    processing_status["groups"] = len(groups)
+    processing_status["skipped_duplicate"] = 0
+    had_pdf = any(f.lower().endswith('.pdf') for _, f in entries)
+
+    for group in groups:
+        got_text = False
+        for url, filename in group:
+            if got_text:
+                # An earlier format in this group already gave us the document.
+                logger.info(f"  Skipping {filename}: same document as a file already read")
+                processing_status["skipped_duplicate"] += 1
+                continue
+
+            file_path = os.path.join(comment_attachment_dir, filename)
+            text_cache_path = os.path.join(comment_attachment_dir, f"{filename}.extracted.txt")
+
+            # An EMPTY cache file is not treated as an answer: it used to
+            # permanently pin scanned PDFs at no text, so a fix to the extractor
+            # could never reach them. Falling through re-extracts, and a
+            # successful extraction then caches real text.
+            if os.path.exists(text_cache_path):
+                try:
+                    with open(text_cache_path, 'r', encoding='utf-8') as f:
+                        text = f.read()
+                    if text.strip():
+                        combined_attachment_text.append(text.strip())
+                        logger.info(f"  SUCCESS: Loaded {len(text)} characters from cache "
+                                    f"({filename})")
+                        processing_status["processed"] += 1
+                        got_text = True
+                        continue
+                    logger.info(f"  Cached text for {filename} is empty, re-extracting")
+                except Exception as e:
+                    logger.warning(f"  Failed to load cached text: {e}")
+
+            # Check if attachment file already exists
+            if os.path.exists(file_path):
+                logger.info(f"  Attachment {filename} already exists, skipping download")
+            else:
+                if not download_missing:
+                    logger.info(f"  Skipping download of {filename} (download_missing=False)")
+                    processing_status["failed"] += 1
+                    processing_status["failures"].append(
+                        {"filename": filename, "reason": "skipped_download"})
+                    continue
+
+                logger.info(f"  Downloading attachment: {filename}")
+                if not download_attachment(url, file_path):
+                    processing_status["failed"] += 1
+                    processing_status["failures"].append(
+                        {"filename": filename, "reason": "download_failed"})
+                    continue
+
+            # An image is only reached when no richer format exists in the group,
+            # so read it rather than skipping: that is the one case where the
+            # picture IS the comment. Cheap, because it is rare.
+            is_image = os.path.splitext(filename)[1].lower() in {
+                '.png', '.jpg', '.jpeg', '.gif', '.webp'}
+
+            logger.info(f"  Extracting text from {filename}...")
+            text = extract_text_from_file(file_path, use_gemini=use_gemini or is_image)
+
+            os.makedirs(os.path.dirname(text_cache_path), exist_ok=True)
+            try:
+                with open(text_cache_path, 'w', encoding='utf-8') as f:
+                    f.write(text or "")
+            except Exception as e:
+                logger.warning(f"  Failed to save text cache: {e}")
+
+            if not text or not text.strip():
+                logger.warning(f"  No text extracted from {filename}")
+                processing_status["failed"] += 1
+                processing_status["failures"].append(
+                    {"filename": filename, "reason": "no_text_extracted"})
+                continue
+
+            combined_attachment_text.append(text.strip())
+            logger.info(f"  SUCCESS: Extracted {len(text)} characters from {filename}")
+            processing_status["processed"] += 1
+            got_text = True
+
+        if not got_text:
+            # Every format of this upload failed. Say so loudly, and say whether a
+            # PDF was even on offer — regulations.gov renders one for all but
+            # ~1 in 2,600 uploads, so "no PDF" means this docket breaks the
+            # pattern the extractor is built around.
+            names = ', '.join(f for _, f in group)
+            logger.warning(
+                f"  UNREADABLE ATTACHMENT on {comment_id}: no text from any of [{names}]"
+                + ("" if had_pdf else "  (no PDF rendition offered — unusual, check this docket)"))
+            processing_status["failures"].append(
+                {"filename": names, "reason": "no_pdf_rendition" if not had_pdf else "all_formats_empty"})
+
     logger.info(f"=== ATTACHMENT PROCESSING COMPLETE FOR {comment_id} ===")
     logger.info(f"  Status: {processing_status}")
     logger.info(f"  Total text extracted: {len(''.join(combined_attachment_text))} characters")

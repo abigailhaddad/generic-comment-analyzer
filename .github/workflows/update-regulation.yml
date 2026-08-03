@@ -1,0 +1,177 @@
+name: Update regulation from regulations.gov
+
+# Replaces the manual "download the bulk CSV, run the pipeline, deploy" loop with
+# scheduled runs against the regulations.gov v4 API. State (source.csv,
+# full_run.parquet) is gitignored and lives in Cloudflare R2 instead — see
+# sync_state.py and the "Automated updates" section of CLAUDE.md.
+#
+# Two schedules, gated by which one fired (github.event.schedule):
+#   - Catch-up ingest, every couple of hours during the day: pull state, fetch
+#     new comments, run the pipeline, push state. No report, no deploy, no
+#     git commit. Its only job is to keep chipping away at the backlog.
+#   - Daily publish, once in the evening after that day's posting is done:
+#     everything ingest does, then updates the changelog, renders the report,
+#     and deploys (Netlify + the full export to R2).
+#
+# The regulations.gov API key is capped at ~500 "comment" calls/hour, so a big
+# backlog can't always be caught up in one run — fetch_comments_api.py backs
+# off on 429 and keeps going, so a single run can legitimately sit through
+# more than one hourly window (see timeout-minutes below). Either way the job
+# succeeds; a run that stops early because comments are still missing just
+# logs how many, for the next scheduled run to pick up.
+#
+# A day with nothing new to fetch is designed to be nearly free: the fetch
+# step runs before any heavy dependency install or the (larger) parquet
+# download, and if it finds nothing missing, everything else is skipped.
+
+on:
+  schedule:
+    # Catch-up ingest — 9am/11am/1pm/3pm/5pm US Eastern (UTC-4). Ingest only.
+    - cron: '23 13-21/2 * * *'
+    # Daily publish — 7pm US Eastern, after that day's OMB posting is done.
+    # Ingest + report + deploy. Nothing scheduled overnight (8pm-8am ET).
+    - cron: '23 23 * * *'
+  workflow_dispatch:
+    inputs:
+      regulation:
+        description: 'Regulation slug under regulations/<slug>/'
+        default: 'omb-financial-assistance'
+        required: true
+      max_new:
+        description: 'Cap on new comments fetched this run (high enough that the rate limit/timeout binds first, not this)'
+        default: '5000'
+        required: true
+      deploy:
+        description: 'Publish: update changelog, render report, deploy to Netlify + R2'
+        type: boolean
+        default: true
+
+# Only one run per regulation at a time — an overlapping catch-up and publish
+# run pulling/pushing the same R2 state (and the same git branch, for the
+# changelog commit) would race.
+concurrency:
+  group: update-regulation-${{ github.event.inputs.regulation || 'omb-financial-assistance' }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    # Generous: a heavy day can legitimately sit through several 429 backoff
+    # windows and keep draining the backlog rather than give up after one
+    # hour. A drained run exits in well under a minute regardless.
+    timeout-minutes: 300
+    permissions:
+      contents: write  # to commit data_changelog.json on the publish run
+    env:
+      REGULATIONS_API_KEY: ${{ secrets.REGULATIONS_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      CF_R2_ACCOUNT_ID: ${{ secrets.CF_R2_ACCOUNT_ID }}
+      CF_R2_ACCESS_KEY_ID: ${{ secrets.CF_R2_ACCESS_KEY_ID }}
+      CF_R2_SECRET_ACCESS_KEY: ${{ secrets.CF_R2_SECRET_ACCESS_KEY }}
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      REGULATION: ${{ github.event.inputs.regulation || 'omb-financial-assistance' }}
+      MAX_NEW: ${{ github.event.inputs.max_new || '5000' }}
+      # True on the daily-publish schedule, or on a manual run with deploy left
+      # at its default-true. False on the catch-up schedule (unless dispatched
+      # by hand with deploy explicitly enabled — same input either way).
+      IS_PUBLISH: ${{ (github.event_name == 'workflow_dispatch' && (github.event.inputs.deploy || 'true') == 'true') || (github.event_name == 'schedule' && github.event.schedule == '23 23 * * *') }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history, needed to rebase the changelog commit if origin moved
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      # Just enough to run the cheap check below — sync_state.py needs PyYAML
+      # to read the R2 bucket out of analyzer_config.yaml; fetch_comments_api.py
+      # itself is stdlib-only. The full requirements.txt (PyMuPDF, litellm, etc.)
+      # is only installed further down, once we know there's real work to do.
+      - name: Install minimal dependencies for the drained-run check
+        run: pip install "pyyaml==6.0.3"
+
+      - name: Pull source.csv from R2 (cheap - enough to know what's missing)
+        run: python sync_state.py pull --regulation "$REGULATION" --files source.csv
+
+      # Doubles as the cheap check: on a drained docket this returns almost
+      # immediately (one listing pass, nothing to fetch) without ever having
+      # installed the heavy dependencies or downloaded full_run.parquet.
+      - name: Fetch new comments from regulations.gov (capped)
+        id: fetch
+        run: |
+          # pipefail matters: the default shell is `bash -e`, so without it a
+          # crashed fetch would exit 0 (tee's status), `added` would come out
+          # empty, every later step would skip, and the run would go green
+          # having silently done nothing.
+          set -o pipefail
+          python fetch_comments_api.py --regulation "$REGULATION" --limit "$MAX_NEW" | tee fetch.log
+          # No "appended" line at all means the docket was already drained
+          # (fetch_comments_api.py returns early) — a real 0, not a parse miss.
+          added=$(grep -oE 'appended [0-9,]+ rows' fetch.log | grep -oE '[0-9,]+' | tr -d ',')
+          echo "added=${added:-0}" >> "$GITHUB_OUTPUT"
+          echo "fetched ${added:-0} new comment(s) this run"
+
+      - name: Nothing new — done
+        if: steps.fetch.outputs.added == '0'
+        run: echo "No new comments on the docket (or none fetched) — nothing to do this run."
+
+      - name: Install full dependencies
+        if: steps.fetch.outputs.added != '0'
+        run: pip install -r requirements.txt
+
+      - name: Pull full_run.parquet from R2 (now that there's real work to do)
+        if: steps.fetch.outputs.added != '0'
+        run: python sync_state.py pull --regulation "$REGULATION" --files full_run.parquet
+
+      - name: Run analysis pipeline (incremental)
+        if: steps.fetch.outputs.added != '0'
+        run: python pipeline.py --regulation "$REGULATION" --workers 8
+
+      # Runs whenever the fetch step completed AND added anything, even if the
+      # pipeline above failed partway — a successful fetch is never lost,
+      # regardless of how analysis went. (The extra "!= ''" excludes the case
+      # where the fetch step itself failed outright and never set the output —
+      # always() alone would otherwise still try to run this.) Pushes both
+      # files back together so they stay paired.
+      - name: Push state to R2 (source.csv, full_run.parquet)
+        if: ${{ always() && steps.fetch.outputs.added != '' && steps.fetch.outputs.added != '0' }}
+        run: python sync_state.py push --regulation "$REGULATION"
+
+      # data_changelog.json is a committed file (small, not regenerable), so
+      # publishing means committing pipeline.py's changelog update and pushing
+      # it back to this branch. Only actually pushes when the file changed
+      # (pipeline.py's own no-op-if-unchanged logic already usually makes this
+      # true only on the first publish after new comments landed). Rebases and
+      # retries once if origin moved under us; the concurrency group above
+      # should make that rare.
+      - name: Commit and push data_changelog.json
+        if: ${{ env.IS_PUBLISH == 'true' && steps.fetch.outputs.added != '0' }}
+        run: |
+          if git diff --quiet -- "regulations/$REGULATION/data_changelog.json"; then
+            echo "data_changelog.json unchanged — nothing to commit."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add "regulations/$REGULATION/data_changelog.json"
+            git commit -m "Record $REGULATION data update ($(date -u +%F))"
+            if ! git push origin "HEAD:${{ github.ref_name }}"; then
+              echo "Push rejected — rebasing once and retrying."
+              git fetch origin "${{ github.ref_name }}"
+              git rebase "origin/${{ github.ref_name }}"
+              git push origin "HEAD:${{ github.ref_name }}"
+            fi
+          fi
+
+      - name: Generate report
+        if: ${{ env.IS_PUBLISH == 'true' && steps.fetch.outputs.added != '0' }}
+        run: python ../../generate_report.py --parquet full_run.parquet --output index.html
+        working-directory: regulations/${{ env.REGULATION }}
+
+      - name: Install Netlify CLI
+        if: ${{ env.IS_PUBLISH == 'true' && steps.fetch.outputs.added != '0' }}
+        run: npm install -g netlify-cli
+
+      - name: Deploy report + full export
+        if: ${{ env.IS_PUBLISH == 'true' && steps.fetch.outputs.added != '0' }}
+        run: ./deploy_report.sh "$REGULATION"

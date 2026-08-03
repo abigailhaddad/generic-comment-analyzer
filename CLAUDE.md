@@ -45,9 +45,11 @@ is gitignored. A private/sensitive regulation's directory can be kept entirely l
 - `pipeline.py` — CSV → attachments → dedup → LLM analysis → second-pass verification → campaign detection → parquet → report. `--regulation <slug>` chdirs into `regulations/<slug>/`. **Resume is text-keyed** (checkpoint every 50 comments + parquet snapshot every 250) so restarts don't lose work. **Duplicate Document IDs:** the regulations.gov bulk export sometimes assigns the *same Document ID to different comments* (OMB-2026-0034 had ~10). `read_comments_from_csv` keeps the first occurrence on the bare Document ID and disambiguates later ones as `<id>#<TrackingNumber>` (Tracking Number is unique per submission — verified 0 dupes — so the id is stable across re-runs; falls back to `#dupN` only if the Tracking Number is blank, which only happens on non-comment rows like the rule doc / empty submissions that get skipped anyway). It warns on any duplicates. Separately, the incremental-reuse loop drops any text-key that maps to *conflicting* stances rather than trust it. See `_stance_bucket` and the reuse block.
 - `verify_stances.py` — second-pass verification (stance/entity/state/political/cosigner). Prompts + triggers come from `second_pass` in the config; enum outputs are config-constrained. The `cosigner_span` task detects joint/coalition letters (phrase triggers + a structural repeated-short-line check), locates the signer-block span via verbatim quotes, and parses it into names/count in plain Python — no extra LLM call.
 - `attachment_utils.py` — download/extract attachment text (PyMuPDF for PDFs — preserves visual reading order, unlike PyPDF2 which garbles multi-column layouts; docx via python-docx; caches to `.extracted.txt`). Image OCR uses OpenAI vision via LiteLLM (opt-in `--use-gemini`, a legacy flag name). `reextract_attachment_text()` re-runs extraction for one comment's cached PDF, refreshing the cache — used to pick up extractor fixes without a full re-run.
-- `generate_report.py` — renders `index.html` from the parquet + config, and `read-the-rule.html` if `rule_sections.json` is present. Everything (columns, cards, filters, flag/section/campaign bars, colors) is derived from the config.
+- `generate_report.py` — renders `index.html` from the parquet + config, and `read-the-rule.html` if `rule_sections.json` is present. Everything (columns, cards, filters, flag/section/campaign bars, colors) is derived from the config. `--export-csv <path>` instead writes a one-row-per-comment CSV: every original bulk-export column, then every derived covariate (analysis fields, one `<field>__<option>` TRUE/FALSE indicator per enum option, regex flags/values, dedup + campaign membership, attachment text). Columns come from the config and the data, never hardcoded. The join back to `source.csv` is by Document ID **narrowed by Tracking Number then exact comment text**, claiming each source row once — never a bare ID join (ids repeat; see below) — and raises rather than emitting an unmatched row.
 - `fetch_rule_text.py` — fetches the proposed rule's XML from the Federal Register (per the config `rule_text` block) and parses it into `rule_sections.json` (per-section text).
 - `check_new.py` — compares regulations.gov comment counts to the local CSV for a docket.
+- `fetch_comments_api.py` — pulls comments not already in `source.csv` from the regulations.gov v4 API and appends them in the identical bulk-export CSV schema, so everything downstream (pipeline, report) is unchanged. Replaces the manual bulk-download form, which cannot actually be submitted (its date-range instructions have no input field). Incremental (Document-ID-keyed against the existing CSV), append-only (a partial run is never destructive), and retries HTTP 429 with backoff. `--limit N` stops after N new comments — the API key is capped at roughly 500 "comment" calls/hour, so a large backlog is fetched over several runs; a capped run logs how many comments are still missing and exits 0 (not an error). `--dry-run` reports what's missing without fetching. See "Automated updates" below.
+- `sync_state.py` — `pull`/`push` a regulation's gitignored state (`source.csv`, `full_run.parquet`) to/from Cloudflare R2, gzipped, under `state/<slug>/`. This is what lets a clean CI checkout (which starts with neither file) resume from the last run. Bucket comes from the regulation's `state.bucket` (or `report.full_export.bucket`) config, never hardcoded. Refuses to let a 0-byte/corrupt download clobber good local state, or an empty local file overwrite good remote state.
 
 ## The config: `analyzer_config.yaml` (single source of truth)
 
@@ -56,7 +58,8 @@ is gitignored. A private/sensitive regulation's directory can be kept entirely l
 - **`stances:` / `entity_types:`** — the value lists referenced by `options_from`.
 - **`regex_flags:`** — `name → {label, description, patterns}`; boolean per-comment flags → clickable stat cards + filters.
 - **`second_pass:`** — `model`, `max_workers`, per-field triggers (`stance`, `entity_type`, `state`, `political_affiliation`), and required `prompts.stance` / `prompts.entity` (+ optional `prompts.state` / `.political` / `.cosigner`). Optional `cosigner_span.trigger_patterns` (regex list) opts a regulation into joint/coalition-letter detection (e.g. `omb-financial-assistance`); omitting the key disables it entirely.
-- **`report:`** — display options: `colors:` (full palette — `bg, surface, text, accent, oppose, support, unclear, mixed, highlight, border, …`; edit any color here, it flows everywhere), `show_state`, `show_political`.
+- **`report:`** — display options: `full_export:` (`url` for the report's "Download everything" link, `bucket`/`key` for the R2 upload in `deploy_report.sh`), `netlify_site_id` (non-secret; lets `deploy_report.sh` deploy from CI where there's no local `.netlify/state.json`), `colors:` (full palette — `bg, surface, text, accent, oppose, support, unclear, mixed, highlight, border, …`; edit any color here, it flows everywhere), `show_state`, `show_political`.
+- **`state:`** — `bucket` for `sync_state.py`'s R2 state backup (falls back to `report.full_export.bucket` if omitted).
 - **`rule_text:`** — `federal_register_document` + `part` for `fetch_rule_text.py` / the Read-the-Rule page.
 
 ## Running
@@ -75,6 +78,9 @@ python generate_report.py --parquet regulations/omb-financial-assistance/full_ru
 
 # Fetch the rule text (for the Read-the-Rule page):
 python fetch_rule_text.py --regulation omb-financial-assistance
+
+# Export one row per comment for analysis in R/Stata/Excel (run from the reg dir):
+python ../../generate_report.py --parquet full_run.parquet --export-csv comments_export.csv
 ```
 
 ## Deploy
@@ -83,9 +89,89 @@ The report is a single self-contained HTML (~120 MB at ~47k comments — over Gi
 100 MB limit), so host on **Netlify**, not GitHub Pages:
 `netlify deploy --dir=<dir with index.html + read-the-rule.html> --prod --site <id>`.
 
+`./deploy_report.sh <slug>` does the whole publish: when the config declares
+`report.full_export.{bucket,key}` it rebuilds `comments_export.csv` from the parquet,
+gzips it, uploads it to Cloudflare R2 (`aws s3 cp` against the R2 endpoint, credentials
+`CF_R2_*` sourced from `.env`), then deploys the site to Netlify. The export is far too
+big for Netlify, so the report links out to `report.full_export.url` — rebuilding it on
+every deploy is what keeps that link from going stale. No `full_export` in the config
+means the upload step is skipped. Credentials come from `.env` when it's present (local
+use); when it's absent (CI), they must already be in the environment — anything missing
+fails loudly, naming the variable. The Netlify site id comes from the regulation's
+gitignored `.netlify/state.json` when present, falling back to the non-secret
+`report.netlify_site_id` in `analyzer_config.yaml` (set once via `netlify link`, or by
+reading the site id from the Netlify dashboard).
+
+## Automated updates
+
+`.github/workflows/update-regulation.yml` replaces the manual "download the bulk CSV,
+run the pipeline, deploy" loop with scheduled runs against the regulations.gov v4 API.
+It runs on two schedules, distinguished by `github.event.schedule`:
+
+- **Catch-up ingest** (`23 13-21/2 * * *`, i.e. 9am/11am/1pm/3pm/5pm US Eastern): pull
+  state from R2 → `fetch_comments_api.py --limit "$MAX_NEW"` → `pipeline.py` (incremental)
+  → push state back to R2. No report, no deploy, no git commit — its only job is to keep
+  chipping away at the regulations.gov rate limit (~500 "comment" calls/hour) so the
+  backlog never falls far behind.
+- **Daily publish** (`23 23 * * *`, 7pm ET, after that day's OMB posting is done):
+  everything the catch-up run does, then commits `data_changelog.json`, renders the
+  report (`generate_report.py`), and deploys (`deploy_report.sh` — Netlify + the full
+  export to R2). Also runs on `workflow_dispatch` when `deploy` is left at its default
+  `true`.
+
+Both schedules land in the middle of the US day on purpose — nothing runs overnight
+(8pm-8am ET).
+
+**Making a drained run cheap.** At up to 6 runs/day, most runs should find nothing new.
+The workflow orders steps so a drained run costs well under a minute: it installs only
+PyYAML and pulls just `source.csv` (not the much bigger `full_run.parquet`) before
+running `fetch_comments_api.py`, which is stdlib-only and itself doubles as the "is
+there anything new" check — if it appends 0 rows, every later step (heavy `pip install
+-r requirements.txt`, the `full_run.parquet` pull, the pipeline, the report, the
+deploy) is skipped via `if: steps.fetch.outputs.added != '0'`. A run that legitimately
+finds a big backlog is expected to sit through several 429 backoff windows rather than
+give up after an hour (`fetch_comments_api.py` already retries), so the job
+`timeout-minutes` is a generous 300; the rate limit and the schedule (not this timeout)
+are what actually bound a run in practice.
+
+**Concurrency.** A single `concurrency:` group keyed on the regulation means a catch-up
+run and the publish run for the same regulation never overlap — important since both
+pull/push the same R2 state, and the publish run also commits to the branch.
+
+**The changelog commit.** `data_changelog.json` is a committed file (see Layout above),
+so publishing it means the workflow pushes back to the branch it's running on
+(`permissions: contents: write`, a `github-actions[bot]` commit identity). It only pushes
+when the file actually changed, and rebases and retries once if `origin` moved in the
+meantime (the concurrency group should make that rare, not impossible).
+
+**Secrets** (repo Settings → Secrets and variables → Actions):
+
+| Secret | Used for | How to get it |
+|---|---|---|
+| `REGULATIONS_API_KEY` | `fetch_comments_api.py` — the regulations.gov v4 API | Free, instant: https://open.gsa.gov/api/regulationsgov/ |
+| `OPENAI_API_KEY` | `pipeline.py` — LLM analysis (LiteLLM) and attachment OCR | OpenAI platform dashboard |
+| `CF_R2_ACCOUNT_ID` | `sync_state.py`, `deploy_report.sh` — Cloudflare R2 endpoint | Cloudflare dashboard → R2 → Overview (account id in the URL/sidebar) |
+| `CF_R2_ACCESS_KEY_ID` | same | Cloudflare dashboard → R2 → Manage API tokens → create an R2 token with read+write on `regulations-comments` |
+| `CF_R2_SECRET_ACCESS_KEY` | same | issued alongside the access key id above, shown once |
+| `NETLIFY_AUTH_TOKEN` | `deploy_report.sh` → `netlify deploy` | Netlify dashboard → User settings → Applications → New access token |
+
+No `NETLIFY_SITE_ID` secret is needed — the site id isn't a secret (it can't deploy
+anything on its own without the auth token above), so it lives in
+`report.netlify_site_id` in each regulation's `analyzer_config.yaml` instead, keeping
+the code generic and the config the single source of truth.
+
+**Per-run cap.** `max_new` (workflow input, default 5000) is a safety ceiling, not the
+normal binding constraint — a normal day is on the order of ~1,000 new comments,
+comfortably drained within the rate limit and the 300-minute timeout. It exists so a
+genuine anomaly (e.g. a docket ID mixup) can't trigger an unbounded fetch.
+
 ## Environment
 
-`.env` (next to the code): `OPENAI_API_KEY`. (`GEMINI_API_KEY` optional/unused.)
+`.env` (next to the code): `OPENAI_API_KEY`, `REGULATIONS_API_KEY` (falls back to a
+heavily-rate-limited `DEMO_KEY` if unset), `CF_R2_ACCOUNT_ID` / `CF_R2_ACCESS_KEY_ID` /
+`CF_R2_SECRET_ACCESS_KEY` (R2 state sync + full-export upload). (`GEMINI_API_KEY`
+optional/unused.) Netlify auth for local deploys is handled separately by `netlify
+login`, not an env var — see Automated updates above for the CI equivalent.
 
 ## Adding a new regulation
 

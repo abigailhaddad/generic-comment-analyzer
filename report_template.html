@@ -518,12 +518,13 @@
             <div class="filters-bar" id="filtersBar">
                 <button class="add-filter-btn" id="addFilterBtn" type="button">+ Add Filter</button>
                 <span class="filters-spacer"></span>
-                <button class="toolbar-btn" id="downloadCsvBtn" type="button"><i class="fas fa-download"></i> Download CSV</button>
+                <button class="toolbar-btn" id="downloadCsvBtn" type="button" title="The table as you see it right now: only the rows left after your filters and search, and only the columns shown above. Small file, opens straight in Excel."><i class="fas fa-download"></i> Download CSV</button>
+                {% if full_export_url %}<a class="toolbar-btn" href="{{ full_export_url }}" download title="Every comment in the docket with every field, ignoring your filters: the original regulations.gov columns (submitter, city, state, ZIP, dates, tracking number, attachment files) plus everything this tool derived (position, concerns, entity type, campaign, quotes, rationale). One row per submission, gzipped CSV — unzip before opening."><i class="fas fa-file-archive"></i> Download everything</a>{% endif %}
                 <button class="toolbar-btn" id="copyLinkBtn" type="button"><i class="fas fa-link"></i> Copy Link</button>
             </div>
             <div class="active-filters" id="activeChips"></div>
 
-            <p style="color: var(--color-text-muted); font-size: 0.82rem; margin-bottom: 0.75rem;">Click any row to see full details. Showing {{ "{:,}".format(rows | length) }} unique comments.</p>
+            <p style="color: var(--color-text-muted); font-size: 0.82rem; margin-bottom: 0.75rem;">Click any row to see full details. Showing {{ "{:,}".format(rows | length) }} comments.{% if full_export_url %} &ldquo;Download CSV&rdquo; gives the columns and rows currently shown; &ldquo;Download everything&rdquo; gives every comment with every field, including the original regulations.gov columns (gzipped CSV).{% endif %}</p>
             <!-- Column headers are built from the config-driven column spec in JS. -->
             <table id="commentsTable" class="table table-hover" style="width:100%">
                 <thead><tr></tr></thead>

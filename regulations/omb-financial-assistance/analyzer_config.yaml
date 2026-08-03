@@ -239,11 +239,31 @@ instructions:
 # -------------------------------------------------------------------
 report:
   source_url: "https://github.com/abigailhaddad/generic-comment-analyzer"
+  # Full-dataset export published to Cloudflare R2 by deploy_report.sh: one row per
+  # submission, every bulk-export column plus every field this tool derived.
+  # `url` drives the report's download link; `bucket`/`key` drive the upload.
+  full_export:
+    url: "https://pub-12d71e7096fd42248d69c317dbd4f5c4.r2.dev/omb-financial-assistance/comments_export.csv.gz"
+    bucket: "regulations-comments"
+    key: "omb-financial-assistance/comments_export.csv.gz"
+  # Non-secret Netlify site id (same value `netlify link` writes to the gitignored
+  # regulations/<slug>/.netlify/state.json). deploy_report.sh falls back to this
+  # when that local link file doesn't exist, e.g. in CI. Site ids aren't secrets —
+  # they're not enough on their own to deploy anything (that needs NETLIFY_AUTH_TOKEN).
+  netlify_site_id: "7c5a37ea-f12c-4469-b327-9c82c3dc72bb"
   colors:
     accent: "#1B3A5C"    # navy — neutral accent (counts, links, buttons, chips)
     support: "#2D6A4F"   # green — Support
     oppose: "#C0392B"    # red — Oppose
     # unclear/mixed/highlight/bg/surface/border/… inherit the house defaults
+
+# -------------------------------------------------------------------
+# Remote state backup (sync_state.py), so a scheduled CI run can resume from
+# the last run's source.csv + full_run.parquet even though both are gitignored.
+# Reuses the same public R2 bucket as report.full_export.bucket above.
+# -------------------------------------------------------------------
+state:
+  bucket: "regulations-comments"
 
 # -------------------------------------------------------------------
 # Form-letter campaign detection (MinHash clustering).

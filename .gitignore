@@ -33,6 +33,11 @@ test_*.html
 test_report.html
 posting_lag.html
 
+# Local backlog view for OMB-2026-0034 (which receipt dates have nothing posted
+# yet). Not part of the published report and not deployed.
+waiting-on.html
+build_waiting_on.py
+
 # OS files
 .DS_Store
 Thumbs.db
@@ -51,3 +56,8 @@ READ THIS CLAUDE CODE
 
 # Local Netlify folder
 .netlify
+
+# Build artifacts from deploy_report.sh (the gzipped full export; *.csv above
+# already covers the uncompressed one).
+*.csv.gz
+*.gz
