@@ -367,6 +367,7 @@ def merge_analysis_results(unique_analyzed_comments: List[Dict[str, Any]], dupli
                 # Add the analysis result
                 merged_comment['analysis'] = unique_comment.get('analysis')
                 merged_comment['analysis_error'] = unique_comment.get('analysis_error')
+                merged_comment['model_used'] = unique_comment.get('model_used')
                 
                 # Add duplication tracking info
                 merged_comment['total_count'] = unique_comment['total_count']
@@ -535,6 +536,11 @@ def _append_checkpoint(results: List[Dict[str, Any]]):
                 'id': r['id'],
                 'analysis': r.get('analysis'),
                 'analysis_error': r.get('analysis_error'),
+                # Persist which model produced this. Without it the value is lost
+                # on every checkpoint restore, the parquet ends up with no
+                # model_used column at all, and the report footer falls back to
+                # 'unknown' -- masked until now by runs passing --model by hand.
+                'model_used': r.get('model_used'),
             }) + '\n')
 
 
@@ -554,6 +560,8 @@ def analyze_comments_parallel(comments: List[Dict[str, Any]], model: str = "gemi
         if key in checkpoint:
             cp = checkpoint[key]
             comment['analysis'] = cp.get('analysis')
+            if cp.get('model_used'):
+                comment['model_used'] = cp['model_used']
             if cp.get('analysis_error'):
                 comment['analysis_error'] = cp['analysis_error']
             already_done.append(comment)
