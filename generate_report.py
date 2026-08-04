@@ -738,7 +738,11 @@ def determine_model(comments: List[Dict[str, Any]], override: str = None) -> str
     """
     if override:
         return override
-    vals = [c.get('model_used') for c in comments if c.get('model_used')]
+    # Must be a non-empty STRING. Rows analyzed before model_used was recorded
+    # read back from the parquet as float NaN, and NaN is truthy in Python — so a
+    # bare truthiness test lets it win the count and prints the model as "nan".
+    vals = [c.get('model_used') for c in comments
+            if isinstance(c.get('model_used'), str) and c['model_used'].strip()]
     if vals:
         return Counter(vals).most_common(1)[0][0]
     return 'unknown'
