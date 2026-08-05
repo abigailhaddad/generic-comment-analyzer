@@ -20,9 +20,17 @@ name: Update regulation from regulations.gov
 # succeeds; a run that stops early because comments are still missing just
 # logs how many, for the next scheduled run to pick up.
 #
-# A day with nothing new to fetch is designed to be nearly free: the fetch
-# step runs before any heavy dependency install or the (larger) parquet
+# A CATCH-UP day with nothing new to fetch is designed to be nearly free: the
+# fetch step runs before any heavy dependency install or the (larger) parquet
 # download, and if it finds nothing missing, everything else is skipped.
+#
+# The PUBLISH run is deliberately NOT gated that way. Catch-up runs fetch ahead
+# of it, so by the evening there is usually nothing left to fetch — and gating
+# publish on "did this run fetch something" meant the site was never updated
+# precisely when the catch-up runs had done their job. Publish instead asks
+# whether anything is UNPUBLISHED: pipeline.py rewrites data_changelog.json only
+# when the comment total has grown past the last published entry, so a dirty
+# changelog is the signal, and a clean one means the live report is current.
 
 on:
   schedule:
@@ -124,15 +132,15 @@ jobs:
         run: echo "No new comments on the docket (or none fetched) — nothing to do this run."
 
       - name: Install full dependencies
-        if: steps.fetch.outputs.added != '0'
+        if: ${{ steps.fetch.outputs.added != '0' || env.IS_PUBLISH == 'true' }}
         run: pip install -r requirements.txt
 
       - name: Pull full_run.parquet from R2 (now that there's real work to do)
-        if: steps.fetch.outputs.added != '0'
+        if: ${{ steps.fetch.outputs.added != '0' || env.IS_PUBLISH == 'true' }}
         run: python sync_state.py pull --regulation "$REGULATION" --files full_run.parquet
 
       - name: Run analysis pipeline (incremental)
-        if: steps.fetch.outputs.added != '0'
+        if: ${{ steps.fetch.outputs.added != '0' || env.IS_PUBLISH == 'true' }}
         run: python pipeline.py --regulation "$REGULATION" --workers 8
 
       # Runs whenever the fetch step completed AND added anything, even if the
@@ -145,6 +153,26 @@ jobs:
         if: ${{ always() && steps.fetch.outputs.added != '' && steps.fetch.outputs.added != '0' }}
         run: python sync_state.py push --regulation "$REGULATION"
 
+      # The catch-up runs deliberately fetch ahead of the publish run, so by
+      # the evening there is usually nothing left to fetch — and gating publish
+      # on "did THIS run fetch something" therefore skipped publishing exactly
+      # when the catch-up runs had done their job. Gate on whether there is
+      # anything UNPUBLISHED instead: pipeline.py rewrites data_changelog.json
+      # only when the comment total has grown since the last published entry,
+      # so a dirty changelog is precisely the "there is something new to show"
+      # signal, and an unchanged one means the live report is already current.
+      - name: Is there anything unpublished?
+        id: pub
+        if: ${{ env.IS_PUBLISH == 'true' }}
+        run: |
+          if git diff --quiet -- "regulations/$REGULATION/data_changelog.json"; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Changelog unchanged — the published report is already current, skipping deploy."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git --no-pager diff --stat -- "regulations/$REGULATION/data_changelog.json"
+          fi
+
       # data_changelog.json is a committed file (small, not regenerable), so
       # publishing means committing pipeline.py's changelog update and pushing
       # it back to this branch. Only actually pushes when the file changed
@@ -153,7 +181,7 @@ jobs:
       # retries once if origin moved under us; the concurrency group above
       # should make that rare.
       - name: Commit and push data_changelog.json
-        if: ${{ env.IS_PUBLISH == 'true' && steps.fetch.outputs.added != '0' }}
+        if: ${{ env.IS_PUBLISH == 'true' && steps.pub.outputs.changed == 'true' }}
         run: |
           if git diff --quiet -- "regulations/$REGULATION/data_changelog.json"; then
             echo "data_changelog.json unchanged — nothing to commit."
@@ -171,14 +199,14 @@ jobs:
           fi
 
       - name: Generate report
-        if: ${{ env.IS_PUBLISH == 'true' && steps.fetch.outputs.added != '0' }}
+        if: ${{ env.IS_PUBLISH == 'true' && steps.pub.outputs.changed == 'true' }}
         run: python ../../generate_report.py --parquet full_run.parquet --output index.html
         working-directory: regulations/${{ env.REGULATION }}
 
       - name: Install Netlify CLI
-        if: ${{ env.IS_PUBLISH == 'true' && steps.fetch.outputs.added != '0' }}
+        if: ${{ env.IS_PUBLISH == 'true' && steps.pub.outputs.changed == 'true' }}
         run: npm install -g netlify-cli
 
       - name: Deploy report + full export
-        if: ${{ env.IS_PUBLISH == 'true' && steps.fetch.outputs.added != '0' }}
+        if: ${{ env.IS_PUBLISH == 'true' && steps.pub.outputs.changed == 'true' }}
         run: ./deploy_report.sh "$REGULATION"
