@@ -9,8 +9,10 @@ Uses Jinja2 template (report_template.html) for HTML generation.
 import argparse
 import csv
 import json
+import math
 import os
 import re
+import shutil
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
@@ -768,6 +770,64 @@ def load_regex_flag_patterns():
     return {name: flag.get('patterns', []) for name, flag in load_regex_flags().items()}
 
 
+DETAIL_SHARD_SIZE = 500
+
+DETAIL_FIELDS = {
+    'comment': 'comment_text',
+    'key_quote': 'key_quote',
+    'rationale': 'rationale',
+    'entity_name': 'entity_name',
+    'cosigner_names': 'cosigner_names',
+    'state_quote': 'state_quote',
+    'political_quote': 'political_affiliation_quote',
+}
+
+
+def write_detail_shards(rows, out_dir, shard_size=DETAIL_SHARD_SIZE):
+    """Write per-comment detail to comment_detail/<n>.json and return (size, count).
+
+    Detail-only fields (full comment text, key quote, rationale) are shown in the
+    per-comment modal and searched by the full-text filter, but never rendered in
+    the table — so they live in sidecar JSON rather than the page itself.
+
+    Sharded, and NOT fetched on page load. As one file at 65k comments this
+    reached 124 MB (~26 MB gzipped) and *every* visitor paid it in a background
+    fetch whether or not they opened a single comment: about 3,700 pageviews
+    exhausted a 100 GB monthly bandwidth allowance. Opening one comment needs one
+    comment's detail, so the page now fetches only the shard containing it. The
+    full-text filter is the one feature that genuinely needs the whole corpus,
+    and it pulls every shard — but only once someone opens the search box.
+
+    Shards are keyed by position in `rows`, which is the order the table is built
+    from, so the page derives a comment's shard from its row index with no lookup
+    table. Anything that reorders `rows` between here and the template render
+    would silently send the browser to the wrong shard — see
+    tests/test_detail_shards.py.
+    """
+    detail_dir = os.path.join(out_dir, 'comment_detail')
+    if os.path.isdir(detail_dir):
+        shutil.rmtree(detail_dir)
+    os.makedirs(detail_dir)
+
+    shard_count = math.ceil(len(rows) / shard_size) if rows else 0
+    for shard in range(shard_count):
+        chunk = rows[shard * shard_size:(shard + 1) * shard_size]
+        payload = {
+            r['id']: {key: r[source] for key, source in DETAIL_FIELDS.items()}
+            for r in chunk
+        }
+        with open(os.path.join(detail_dir, f'{shard}.json'), 'w', encoding='utf-8') as f:
+            json.dump(payload, f, ensure_ascii=False, separators=(',', ':'))
+
+    # The single-file sidecar this replaced. Deleting it stops a stale 124 MB
+    # copy being picked up by a deploy or shadowing the new directory.
+    legacy = os.path.join(out_dir, 'comment_detail.json')
+    if os.path.exists(legacy):
+        os.remove(legacy)
+
+    return shard_size, shard_count
+
+
 def load_derived_flags() -> Dict[str, Dict[str, Any]]:
     """Load derived_flags config: boolean flags computed from an analysis field
     (e.g. cosigner_count >= 2) rather than a regex. Same card/filter machinery as
@@ -970,27 +1030,8 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
     regex_patterns = load_regex_flag_patterns()
     show_cosigners = any(r.get('cosigner_count', 1) > 1 for r in rows)
 
-    # Detail-only fields (full comment text, key quote, rationale, etc.) are
-    # only ever shown in the per-comment modal — never in the table or its
-    # filters — so they're written to a sidecar JSON instead of the main HTML.
-    # That keeps the page itself small enough to load and stay interactive on
-    # a phone; the browser fetches this file once, in the background, after
-    # the table is already up.
-    detail_path = os.path.join(os.path.dirname(output_file) or '.', 'comment_detail.json')
-    comment_detail = {
-        r['id']: {
-            'comment': r['comment_text'],
-            'key_quote': r['key_quote'],
-            'rationale': r['rationale'],
-            'entity_name': r['entity_name'],
-            'cosigner_names': r['cosigner_names'],
-            'state_quote': r['state_quote'],
-            'political_quote': r['political_affiliation_quote'],
-        }
-        for r in rows
-    }
-    with open(detail_path, 'w', encoding='utf-8') as f:
-        json.dump(comment_detail, f, ensure_ascii=False, separators=(',', ':'))
+    detail_shard_size, detail_shard_count = write_detail_shards(
+        rows, os.path.dirname(output_file) or '.')
 
     # Read-the-Rule page — only when the regulation has proposed-rule text prepared.
     rule_sections = load_rule_sections()
@@ -1009,6 +1050,8 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         value_sections=value_sections,
         colors=colors,
         accent_rgb=accent_rgb,
+        detail_shard_size=detail_shard_size,
+        detail_shard_count=detail_shard_count,
         show_stance_cards=show_stance_cards,
         show_entity_cards=show_entity_cards,
         show_cosigners=show_cosigners,

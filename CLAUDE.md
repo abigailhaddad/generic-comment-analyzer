@@ -87,9 +87,24 @@ python ../../generate_report.py --parquet full_run.parquet --export-csv comments
 
 ## Deploy
 
-The report is a single self-contained HTML (~120 MB at ~47k comments — over GitHub's
-100 MB limit), so host on **Netlify**, not GitHub Pages:
-`netlify deploy --dir=<dir with index.html + read-the-rule.html> --prod --site <id>`.
+The report is `index.html` plus a `comment_detail/` directory of sharded JSON, far
+over GitHub's 100 MB limit, so host on **Netlify**, not GitHub Pages:
+`netlify deploy --dir=<dir with index.html + comment_detail/ + read-the-rule.html> --prod --site <id>`.
+
+**Detail is sharded and lazy — do not undo this.** `write_detail_shards` writes
+`comment_detail/<n>.json`, 500 comments each (131 shards at 65k), and the page
+fetches **none** of them on load. Opening a comment fetches only the shard holding
+it (~240 KB gzipped); the full-text filter is the one feature needing the whole
+corpus and pulls every shard, but only when the search box is opened. Previously
+this was one 124 MB file (~26 MB gzipped) fetched eagerly on every pageview — about
+3,700 visits exhausted a 100 GB monthly bandwidth allowance for data most visitors
+never opened. Measured: a typical pageview went 28,000 KB → 1,800 KB gzipped (−93.6%).
+
+A comment's shard is derived in the browser from its **row index**
+(`Math.floor(commentIndexById[id] / DETAIL_SHARD_SIZE)`), so the shard files and
+`commentDataRaw` must stay in the same order — both come from `rows`. Reorder one
+without the other and the modal silently renders blank; nothing raises.
+`tests/test_detail_shards.py` pins this.
 
 `./deploy_report.sh <slug>` does the whole publish: when the config declares
 `report.full_export.{bucket,key}` it rebuilds `comments_export.csv` from the parquet,

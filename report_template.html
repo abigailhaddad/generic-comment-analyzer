@@ -628,25 +628,56 @@
         commentData.forEach(function (c, i) { commentIndexById[c.id] = i; });
 
         // Full comment text, key quote, rationale, and other per-comment detail
-        // fields live in a sidecar JSON, not the page itself — they're only
-        // used in the detail modal and the full-text search filter, and together
-        // they're the overwhelming majority of this dataset's size. Fetched once,
-        // in the background, right after the table is already interactive.
-        let commentDetail = {};
-        let commentDetailLoaded = false;
-        const commentDetailWaiters = [];
-        function onCommentDetailReady(fn) {
-            if (commentDetailLoaded) { fn(); } else { commentDetailWaiters.push(fn); }
+        // fields live in sidecar JSON, not the page itself — they're the
+        // overwhelming majority of this dataset's size and only two things
+        // need them: the detail modal (one comment) and the full-text search
+        // filter (all of them).
+        //
+        // Nothing is fetched on page load. Opening a comment pulls only the
+        // shard holding it; searching pulls everything, but not until someone
+        // opens the search box. Most visitors read the table and leave, and
+        // now pay nothing for either.
+        const DETAIL_SHARD_SIZE = {{ detail_shard_size }};
+        const DETAIL_SHARD_COUNT = {{ detail_shard_count }};
+
+        // id -> detail, filled in as shards arrive. One owner; shards only ever
+        // add their own comments' keys to it.
+        const commentDetail = {};
+        const shardRequests = {};
+
+        function loadDetailShard(shard) {
+            if (!shardRequests[shard]) {
+                shardRequests[shard] = fetch('comment_detail/' + shard + '.json')
+                    .then(function (r) {
+                        if (!r.ok) throw new Error('comment_detail/' + shard + '.json: HTTP ' + r.status);
+                        return r.json();
+                    })
+                    .then(function (data) { Object.assign(commentDetail, data); });
+            }
+            return shardRequests[shard];
         }
-        fetch('comment_detail.json')
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                commentDetail = data;
-                commentDetailLoaded = true;
-                commentDetailWaiters.forEach(function (fn) { fn(); });
-                commentDetailWaiters.length = 0;
-            })
-            .catch(function (e) { console.error('Failed to load comment detail:', e); });
+
+        // A comment's shard follows from its row index, because the shards were
+        // written in the same order this table was built from.
+        function loadDetailFor(id) {
+            return loadDetailShard(Math.floor(commentIndexById[id] / DETAIL_SHARD_SIZE));
+        }
+
+        function haveDetailFor(id) {
+            return Object.prototype.hasOwnProperty.call(commentDetail, id);
+        }
+
+        // Only the full-text search filter needs the whole corpus.
+        let allDetailLoaded = false;
+        let allDetailRequest = null;
+        function loadAllDetail() {
+            if (!allDetailRequest) {
+                const shards = [];
+                for (let i = 0; i < DETAIL_SHARD_COUNT; i++) { shards.push(loadDetailShard(i)); }
+                allDetailRequest = Promise.all(shards).then(function () { allDetailLoaded = true; });
+            }
+            return allDetailRequest;
+        }
 
         const stateSummary = [
             {% for state, count in briefing.state_counts %}
@@ -827,10 +858,10 @@
             renderCommentModalBody(idx);
             new bootstrap.Modal(document.getElementById('commentModal')).show();
             // Detail fields (full text, key quote, rationale, cosigner names,
-            // quotes) load in the background; re-render once they land, but
-            // only if this same comment is still the one being shown.
-            if (!commentDetailLoaded) {
-                onCommentDetailReady(function () {
+            // quotes) are fetched when the comment is opened; re-render once
+            // they land, but only if this same comment is still the one shown.
+            if (!haveDetailFor(commentData[idx].id)) {
+                loadDetailFor(commentData[idx].id).then(function () {
                     const body = document.getElementById('commentModalBody');
                     if (body.getAttribute('data-comment-idx') === String(idx)) {
                         renderCommentModalBody(idx);
@@ -842,7 +873,7 @@
         function renderCommentModalBody(idx) {
             const c = commentData[idx];
             const d = commentDetail[c.id] || {};
-            const detailReady = commentDetailLoaded;
+            const detailReady = haveDetailFor(c.id);
             document.getElementById('commentModalTitle').textContent = c.id;
             let html = '';
 
@@ -1244,12 +1275,15 @@
             });
         };
 
-        // Per-column text dialog (comment-body substring search). Disabled
-        // until the comment_detail.json background fetch completes, since
-        // matching against it before then would silently return zero results.
+        // Per-column text dialog (comment-body substring search). This is the
+        // only feature that needs every comment's text, so opening this dialog
+        // is what triggers the full download — it is not paid for by visitors
+        // who never search. Disabled until it lands, since matching against a
+        // partial corpus would silently return too few results.
         Report.openText = function (def) {
             const current = (Report.activeFilters[def.key] || [''])[0] || '';
-            const loading = !commentDetailLoaded;
+            const loading = !allDetailLoaded;
+            if (loading) { loadAllDetail(); }
             const m = createFilterModal('<div class="filter-popover"><div class="filter-title">Filter: ' + escapeHtml(def.name) + '</div>'
                 + (loading ? '<p class="text-muted" style="font-size:0.85rem;">Loading full comment text&hellip; this box will enable automatically.</p>' : '')
                 + '<input type="text" class="filter-search filter-text-input" placeholder="Type text to search comments..." value="' + escapeHtml(current) + '"' + (loading ? ' disabled' : '') + '>'
@@ -1271,7 +1305,7 @@
                 Report.refresh();
             });
             if (loading) {
-                onCommentDetailReady(function () {
+                loadAllDetail().then(function () {
                     if (!m.isConnected) return;
                     const note = m.querySelector('.filter-popover p.text-muted');
                     if (note) note.remove();
