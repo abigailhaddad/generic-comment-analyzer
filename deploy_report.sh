@@ -131,16 +131,19 @@ cp -R "$REG/comment_detail" "$STAGE/comment_detail"
 # The source must be a full URL: a bare `/*` would match on the custom domain
 # too and redirect it to itself forever. The trailing `!` forces the rule to
 # win over index.html, which would otherwise be served first.
-# Via a file, not an interpolated string: the JSON contains backslash escapes
-# that a Python literal would re-interpret, corrupting it before json.loads.
-netlify api getSite --data "{\"site_id\":\"$SITE_ID\"}" > "$STAGE/.site.json" 2>/dev/null || true
-REDIRECT_RULES="$("$PYTHON" - "$STAGE/.site.json" <<'PY'
+#
+# Read into a file, not an interpolated string: the JSON contains backslash
+# escapes a Python literal would re-interpret, corrupting it before json.loads.
+#
+# A failed lookup and a site with no custom domain both produce no rule, but
+# only one of them is a problem — so they are reported differently rather than
+# both printing "nothing to do". A publish is not worth aborting over a missing
+# redirect, but it is worth saying loudly that the redirect is missing.
+if netlify api getSite --data "{\"site_id\":\"$SITE_ID\"}" > "$STAGE/.site.json" 2>"$STAGE/.site.err"; then
+    REDIRECT_RULES="$("$PYTHON" - "$STAGE/.site.json" <<'PY'
 import json, sys
-try:
-    with open(sys.argv[1]) as f:
-        site = json.load(f)
-except Exception:
-    site = {}
+with open(sys.argv[1]) as f:
+    site = json.load(f)
 primary = site.get('custom_domain')
 sub = site.get('name')
 if primary and sub:
@@ -148,15 +151,21 @@ if primary and sub:
         print(f'{scheme}://{sub}.netlify.app/* https://{primary}/:splat 302!')
 PY
 )"
-rm -f "$STAGE/.site.json"
-
-if [ -n "$REDIRECT_RULES" ]; then
-    printf '%s\n' "$REDIRECT_RULES" > "$STAGE/_redirects"
-    echo "Adding _redirects (platform URL -> custom domain):"
-    sed 's/^/  /' "$STAGE/_redirects"
+    if [ -n "$REDIRECT_RULES" ]; then
+        printf '%s\n' "$REDIRECT_RULES" > "$STAGE/_redirects"
+        echo "Adding _redirects (platform URL -> custom domain):"
+        sed 's/^/  /' "$STAGE/_redirects"
+    else
+        echo "No custom domain on this site — skipping the _redirects rule."
+    fi
 else
-    echo "No custom domain on this site — skipping the _redirects rule."
+    echo "WARNING: could not read site $SITE_ID from the Netlify API, so the" >&2
+    echo "         netlify.app -> custom domain redirect was NOT written. The" >&2
+    echo "         report still deploys; the old platform URL just keeps serving" >&2
+    echo "         it instead of redirecting. API said:" >&2
+    sed 's/^/           /' "$STAGE/.site.err" >&2
 fi
+rm -f "$STAGE/.site.json" "$STAGE/.site.err"
 
 echo "Deploying '$SLUG' to Netlify site $SITE_ID"
 echo "Publishing:"
