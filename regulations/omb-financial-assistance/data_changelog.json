@@ -77,5 +77,11 @@
       "date": "2026-07-15",
       "note": "Updated to the latest set of public comments (53,181 total)."
     }
-  ]
+  ],
+  "last_shares": {
+    "Oppose": 94.84,
+    "Support": 4.524,
+    "none": 0.391,
+    "other": 0.245
+  }
 }

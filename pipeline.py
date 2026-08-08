@@ -581,7 +581,8 @@ def stance_shares(analyses: List[Any]) -> Dict[str, float]:
 def check_batch_quality(analyzed_comments: List[Dict[str, Any]],
                         previous_ids: set,
                         previous_analyses: List[Any],
-                        config: Dict[str, Any]) -> List[str]:
+                        config: Dict[str, Any],
+                        published_shares: Optional[Dict[str, float]] = None) -> List[str]:
     """Compare this run against the corpus it is joining; return reasons to stop.
 
     Every bad publish here has had the same shape: the totals still looked
@@ -620,22 +621,28 @@ def check_batch_quality(analyzed_comments: List[Dict[str, Any]],
                     f"{bucket} against {baseline.get(bucket, 0.0):.1f}% in the existing "
                     f"{len(previous_analyses):,} ({shift:+.1f} points)")
 
-    # 2. The corpus as a whole against what the last run left behind.
-    if previous_analyses:
-        baseline = stance_shares(previous_analyses)
+    # 2/3. The corpus as a whole. Measured against what is actually live where we
+    # know it, because the previous parquet is not a trustworthy yardstick: state
+    # is pushed to R2 even by a run this gate stopped, so a parquet baseline
+    # absorbs the blocked batch and waves the same change through next time. The
+    # published figures only move when something is genuinely published.
+    baseline = published_shares or stance_shares(previous_analyses)
+    since = 'since the last publish' if published_shares else 'since the last run'
+    if baseline:
         for bucket in ('Oppose', 'Support'):
             shift = current.get(bucket, 0.0) - baseline.get(bucket, 0.0)
             if abs(shift) > gate['max_corpus_shift_pp']:
                 problems.append(
                     f"overall {bucket} moved {baseline.get(bucket, 0.0):.1f}% -> "
-                    f"{current.get(bucket, 0.0):.1f}% ({shift:+.1f} points)")
+                    f"{current.get(bucket, 0.0):.1f}% ({shift:+.1f} points {since})")
 
-        # 3. Analysis quietly failing shows up here before anywhere else.
+        # Analysis quietly failing shows up here before anywhere else.
         rise = current.get('none', 0.0) - baseline.get('none', 0.0)
         if rise > gate['max_no_stance_rise_pp']:
             problems.append(
                 f"comments with no stance rose {baseline.get('none', 0.0):.1f}% -> "
-                f"{current.get('none', 0.0):.1f}% (+{rise:.1f} points) — analysis may be failing")
+                f"{current.get('none', 0.0):.1f}% (+{rise:.1f} points {since}) — "
+                f"analysis may be failing")
 
     return problems
 
@@ -1108,7 +1115,34 @@ def save_results(analyzed_comments: List[Dict[str, Any]], output_file: str, forc
     logger.info(f"✅ Saved results to {output_file}")
 
 
-def record_data_changelog(total_comments: int, path: str = 'data_changelog.json') -> None:
+def published_baseline(path: str = 'data_changelog.json') -> Dict[str, float]:
+    """Stance shares as of the last publish, or {} if none were recorded.
+
+    `data_changelog.json` is the one artifact that marks a publish: the pipeline
+    rewrites it when the corpus grows, and the workflow commits it only on the
+    run that actually deploys. So the committed copy — which is what a fresh CI
+    checkout reads — describes the figures that are live on the site right now.
+
+    That makes it a better yardstick for the quality gate than the previous
+    parquet. State is pushed to R2 even by a run the gate stopped, so a parquet
+    baseline quietly absorbs the very batch that was blocked, and the second run
+    of a bad change sails through. These figures only move when something is
+    genuinely published.
+    """
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path) as f:
+            state = json.load(f)
+    except Exception as e:
+        logger.warning(f"Could not read {path} for the published baseline ({e})")
+        return {}
+    shares = state.get('last_shares')
+    return shares if isinstance(shares, dict) else {}
+
+
+def record_data_changelog(total_comments: int, path: str = 'data_changelog.json',
+                          shares: Optional[Dict[str, float]] = None) -> None:
     """Append a dated 'data updated' entry to data_changelog.json when the comment
     count grows, so the report's Changelog reflects new comments automatically.
 
@@ -1147,8 +1181,16 @@ def record_data_changelog(total_comments: int, path: str = 'data_changelog.json'
     else:
         return  # no new comments — don't record anything
 
+    # `shares` rides along with the entry rather than being written on every run:
+    # a dirty changelog is the workflow's signal that something is unpublished, so
+    # touching this file when nothing grew would make every run look publishable.
+    # Writing it here means the recorded figures move exactly when a publish does.
+    payload = {'last_total': total_comments, 'entries': entries}
+    recorded = shares if shares else state.get('last_shares')
+    if recorded:
+        payload['last_shares'] = {k: round(v, 3) for k, v in recorded.items()}
     with open(path, 'w') as f:
-        json.dump({'last_total': total_comments, 'entries': entries}, f, indent=2)
+        json.dump(payload, f, indent=2)
     logger.info(f"Recorded data-changelog entry ({total_comments:,} comments)")
 
 
@@ -1481,8 +1523,10 @@ def main():
         # Step 7: Save final results
         logger.info("=== STEP 7: Saving Final Results ===")
         save_results(analyzed_comments, args.output, force=args.force)
-        # Auto-append a "data updated" changelog entry when the comment count grows.
-        record_data_changelog(len(analyzed_comments))
+
+        # Read what is currently live BEFORE the changelog is rewritten below,
+        # so the gate compares against the published figures rather than its own.
+        published = published_baseline()
 
         # State is saved above, so nothing this run did is lost — but a run that
         # could not reach the API must not go on to publish. An exhausted key
@@ -1507,7 +1551,8 @@ def main():
         # actually resemble the corpus it is joining? State is already saved, so
         # stopping here costs nothing but the publish.
         problems = check_batch_quality(analyzed_comments, previous_ids,
-                                       previous_analyses, load_yaml_config())
+                                       previous_analyses, load_yaml_config(),
+                                       published_shares=published)
         if problems:
             if args.force:
                 logger.warning("Quality gate flagged this run, continuing anyway (--force):")
@@ -1521,6 +1566,12 @@ def main():
                 for p in problems:
                     logger.error(f"  - {p}")
                 sys.exit(1)
+
+        # Only now record the update. Doing this after the guards means a run that
+        # was stopped never leaves behind a changelog entry claiming it published,
+        # and never moves the baseline the next run will be measured against.
+        record_data_changelog(len(analyzed_comments),
+                              shares=stance_shares([c.get('analysis') for c in analyzed_comments]))
 
         # Step 7: Store in PostgreSQL
         if args.to_database:

@@ -11,6 +11,7 @@ reading a percentage days later.
   - a run continuing after the API stopped answering, publishing the hole
   - a batch landing that looks nothing like the corpus it joins
 """
+import json
 import os
 import sys
 
@@ -22,6 +23,8 @@ from pipeline import (  # noqa: E402
     _is_credentials_error,
     check_batch_quality,
     localize_identity_quotes,
+    published_baseline,
+    record_data_changelog,
     stance_shares,
 )
 
@@ -186,3 +189,64 @@ def test_a_first_run_with_no_previous_corpus_passes():
     """Nothing to compare against — the gate must not block a bootstrap."""
     current = [comment(i, OPPOSE) for i in range(500)]
     assert check_batch_quality(current, set(), [], {}) == []
+
+
+# --- measuring against what is actually published -------------------------
+
+def test_published_figures_beat_the_previous_parquet():
+    """The case the parquet baseline cannot catch.
+
+    Run 1 corrupts the corpus and the gate stops it — but CI pushes state
+    regardless, so run 2's parquet baseline already contains the corruption and
+    sees nothing wrong. Measuring against the last *published* figures keeps
+    flagging it until someone actually looks.
+    """
+    published = {'Oppose': 94.0, 'Support': 5.0, 'none': 0.4, 'other': 0.6}
+    corrupted_corpus = [OPPOSE] * 990 + [SUPPORT] * 10   # what run 1 pushed
+    current = [comment(i, OPPOSE) for i in range(990)] \
+        + [comment(1000 + i, SUPPORT) for i in range(10)]
+
+    # Parquet baseline: run 2 compares corruption against corruption -> silence.
+    assert check_batch_quality(current, set(range(2000)), corrupted_corpus, {}) == []
+
+    # Published baseline: still flagged.
+    problems = check_batch_quality(current, set(range(2000)), corrupted_corpus, {},
+                                   published_shares=published)
+    assert any('since the last publish' in p for p in problems)
+
+
+def test_it_falls_back_to_the_parquet_when_nothing_is_published_yet():
+    previous = [OPPOSE] * 940 + [SUPPORT] * 60
+    current = [comment(i, OPPOSE) for i in range(1000)]
+    problems = check_batch_quality(current, set(range(2000)), previous, {},
+                                   published_shares={})
+    assert any('since the last run' in p for p in problems)
+
+
+def test_published_baseline_reads_recorded_shares(tmp_path):
+    path = tmp_path / 'data_changelog.json'
+    path.write_text(json.dumps({'last_total': 100, 'entries': [],
+                                'last_shares': {'Oppose': 94.0}}))
+    assert published_baseline(str(path)) == {'Oppose': 94.0}
+
+
+def test_published_baseline_is_empty_when_absent(tmp_path):
+    assert published_baseline(str(tmp_path / 'nope.json')) == {}
+    path = tmp_path / 'old.json'
+    path.write_text(json.dumps({'last_total': 100, 'entries': []}))
+    assert published_baseline(str(path)) == {}
+
+
+def test_recording_an_entry_stores_the_shares(tmp_path):
+    path = str(tmp_path / 'data_changelog.json')
+    record_data_changelog(100, path=path, shares={'Oppose': 94.0, 'Support': 5.0})
+    assert published_baseline(path) == {'Oppose': 94.0, 'Support': 5.0}
+
+
+def test_a_run_that_adds_nothing_leaves_the_file_alone(tmp_path):
+    """A dirty changelog is the workflow's 'something is unpublished' signal."""
+    path = str(tmp_path / 'data_changelog.json')
+    record_data_changelog(100, path=path, shares={'Oppose': 94.0})
+    before = open(path).read()
+    record_data_changelog(100, path=path, shares={'Oppose': 20.0})
+    assert open(path).read() == before
