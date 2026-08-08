@@ -1250,7 +1250,17 @@ def main():
                 # they get freshly re-analyzed instead of silently poisoning.
                 cache_bucket = {}
                 ambiguous_keys = set()
+                unanalyzed = 0
                 for _, row in prev_df.iterrows():
+                    analysis = row.get('analysis')
+                    if not isinstance(analysis, dict) or not analysis:
+                        # A failed analysis is not a result. Caching it would mark the
+                        # comment "already analyzed" forever, so one transient API error
+                        # (rate limit, exhausted credits) would become a permanent hole
+                        # that quietly drags every published percentage down. Leave the
+                        # key out so the comment is retried on the next run.
+                        unanalyzed += 1
+                        continue
                     text_key = (row.get('text', '') or '').strip().lower()
                     bucket = _stance_bucket(row.get('analysis'))
                     if text_key in cache_bucket and cache_bucket[text_key] != bucket:
@@ -1264,6 +1274,9 @@ def main():
                     logger.warning(f"Reuse cache: {len(ambiguous_keys)} text-key(s) map to "
                                    f"CONFLICTING stances — dropping them so they are re-analyzed "
                                    f"rather than reused. This indicates a misaligned/corrupted cache.")
+                if unanalyzed:
+                    logger.info(f"Reuse cache: {unanalyzed:,} previous row(s) had no analysis "
+                                f"(earlier failures) — they will be re-analyzed, not reused")
                 logger.info(f"Loaded {len(previous_results)} previously analyzed results from {args.output}")
             except Exception as e:
                 logger.warning(f"Could not load previous results: {e}")
