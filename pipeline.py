@@ -13,6 +13,7 @@ import json
 import os
 import csv
 import re
+import sys
 import logging
 import base64
 import time
@@ -507,6 +508,26 @@ def validate_analysis(analysis: dict, comment_text: str, submitter: str = '', or
 
 
 FALLBACK_MODEL = 'gpt-5.4-mini'  # stronger OpenAI model retried when the primary model errors
+
+# Errors that mean "the account cannot call the API right now", as opposed to a
+# problem with this particular comment. These are worth stopping the run over:
+# they hit every comment equally, so the data is short through no fault of its own.
+_CREDENTIALS_ERROR_MARKERS = (
+    'no credits remaining',
+    'ratelimiterror',
+    'insufficient_quota',
+    'exceeded your current quota',
+    'authenticationerror',
+    'invalid api key',
+)
+
+
+def _is_credentials_error(error: Any) -> bool:
+    """True when an analysis failed because the API key was out of credit/invalid."""
+    if not error:
+        return False
+    text = str(error).lower()
+    return any(marker in text for marker in _CREDENTIALS_ERROR_MARKERS)
 
 
 def analyze_single_comment(analyzer, comment, truncate_chars=None):
@@ -1346,6 +1367,25 @@ def main():
         save_results(analyzed_comments, args.output, force=args.force)
         # Auto-append a "data updated" changelog entry when the comment count grows.
         record_data_changelog(len(analyzed_comments))
+
+        # State is saved above, so nothing this run did is lost — but a run that
+        # could not reach the API must not go on to publish. An exhausted key
+        # fails every analysis AND every attachment OCR, and both failures are
+        # survivable per-comment: the comment lands with no stance, or with its
+        # attached letter missing. The run then exits green and quietly publishes
+        # a smaller, wronger dataset (Aug 2026: 161 comments unanalysed and ~174
+        # attachments dropped took the oppose share from 94.0% to 92.2%). Stop
+        # here instead, and let the next run pick the work back up.
+        blocked = [c for c in analyzed_comments
+                   if _is_credentials_error(c.get('analysis_error'))]
+        if blocked:
+            logger.error(
+                f"{len(blocked):,} comment(s) could not be analysed because the API "
+                f"rejected the request (no credits / rate limit). State was saved, so "
+                f"re-running once the account is funded will pick them up. Refusing to "
+                f"generate or publish a report from data this run could not complete.")
+            logger.error(f"  first error: {blocked[0].get('analysis_error')}")
+            sys.exit(1)
 
         # Step 7: Store in PostgreSQL
         if args.to_database:
