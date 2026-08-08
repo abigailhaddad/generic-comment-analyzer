@@ -35,12 +35,28 @@ import gzip
 import os
 import shutil
 import subprocess
+import tarfile
 import sys
 import tempfile
 
 import yaml
 
-FILES = ['source.csv', 'full_run.parquet']
+# `attachment_cache` is a directory of extracted text rather than one file, so it
+# travels as a tar. It holds only the `.extracted.txt` files (~30 MB for 65k
+# comments), never the downloaded PDFs/images themselves (~450 MB) — the text is
+# the expensive part, because reproducing it means re-downloading, re-extracting,
+# and for scanned pages paying for vision OCR.
+#
+# Syncing it matters for more than speed. `process_attachments` reads a cached
+# extraction before it downloads anything, so a CI run that starts with the cache
+# skips that work entirely. Without it every run re-OCRs from scratch, and OCR
+# output varies run to run, which changes the comment's text, which misses the
+# text-keyed analysis cache and re-analyses a comment nothing about which changed.
+# It is also what stopped an API outage from silently dropping attachments: on
+# 2026-08-07 an exhausted key failed ~174 OCR calls, and with no cache to fall
+# back on those comments were published with their attached letter missing.
+ATTACHMENT_CACHE = 'attachment_cache'
+FILES = ['source.csv', 'full_run.parquet', ATTACHMENT_CACHE]
 CREDS = ('CF_R2_ACCOUNT_ID', 'CF_R2_ACCESS_KEY_ID', 'CF_R2_SECRET_ACCESS_KEY')
 
 
@@ -88,6 +104,61 @@ def s3_cp(src, dst, env):
     return proc.returncode == 0, proc.stderr
 
 
+def remote_name(fname):
+    """Object name under state/<slug>/ for a synced artifact."""
+    return f'{fname}.tar.gz' if fname == ATTACHMENT_CACHE else f'{fname}.gz'
+
+
+def build_attachment_cache_tar(reg_dir, dest_tar):
+    """Tar every `.extracted.txt` under the regulation's attachments/ dir.
+
+    Returns the number of files archived (0 means there is nothing to push).
+    Paths are stored relative to reg_dir so a pull unpacks straight back into place.
+    """
+    attachments = os.path.join(reg_dir, 'attachments')
+    if not os.path.isdir(attachments):
+        return 0
+
+    count = 0
+    with tarfile.open(dest_tar, 'w') as tar:
+        for root, _dirs, files in os.walk(attachments):
+            for name in sorted(files):
+                if not name.endswith('.extracted.txt'):
+                    continue
+                full = os.path.join(root, name)
+                # An empty cache file is not an answer (see process_attachments):
+                # shipping one would teach another machine to stop retrying.
+                if os.path.getsize(full) == 0:
+                    continue
+                tar.add(full, arcname=os.path.relpath(full, reg_dir))
+                count += 1
+    return count
+
+
+def extract_attachment_cache_tar(src_tar, reg_dir):
+    """Unpack a pulled cache tar into the regulation dir.
+
+    A non-empty local extraction already on disk wins: it may have been re-run
+    against a newer extractor, and the remote copy could predate that fix.
+    Returns (written, kept).
+    """
+    written = kept = 0
+    with tarfile.open(src_tar, 'r') as tar:
+        members = []
+        for m in tar.getmembers():
+            if not (m.isfile() and m.name.endswith('.extracted.txt')):
+                continue
+            local = os.path.join(reg_dir, m.name)
+            if os.path.exists(local) and os.path.getsize(local) > 0:
+                kept += 1
+                continue
+            members.append(m)
+        # filter='data' refuses absolute paths and paths escaping the destination.
+        tar.extractall(reg_dir, members=members, filter='data')
+        written = len(members)
+    return written, kept
+
+
 def s3_size(uri, env):
     """Size in bytes of an existing S3 object, or None if it isn't there."""
     proc = subprocess.run(['aws', 's3', 'ls', uri], env=env,
@@ -109,11 +180,18 @@ def pull(args):
 
     with tempfile.TemporaryDirectory() as tmp:
         for fname in args.files:
-            key = f'{prefix}/{fname}.gz'
+            key = f'{prefix}/{remote_name(fname)}'
             local_gz = os.path.join(tmp, fname + '.gz')
             ok, err = s3_cp(f's3://{bucket}/{key}', local_gz, env)
             if not ok:
                 if 'does not exist' in err or 'Not Found' in err or '404' in err:
+                    # The attachment cache is an optimisation, not state: a run
+                    # without it re-downloads and re-extracts, which is slower and
+                    # costs OCR calls but is still correct. Never fail the run over
+                    # a missing one (it won't exist at all until the first push).
+                    if fname == ATTACHMENT_CACHE:
+                        print(f'  no remote {fname} yet — continuing without it')
+                        continue
                     # Carrying on without state is how a CI run silently destroys
                     # it: with no source.csv the fetcher thinks the docket is
                     # empty, re-fetches from scratch, and the push at the end
@@ -158,6 +236,12 @@ def pull(args):
                 print(f'  WARNING: decompressed {fname} is 0 bytes — leaving local {fname} untouched')
                 continue
 
+            if fname == ATTACHMENT_CACHE:
+                written, kept = extract_attachment_cache_tar(staged, reg_dir)
+                print(f'  pulled {fname} ({written:,} cached extractions written, '
+                      f'{kept:,} local kept)')
+                continue
+
             dest = os.path.join(reg_dir, fname)
             shutil.move(staged, dest)
             print(f'  pulled {fname} ({os.path.getsize(dest):,} bytes)')
@@ -172,7 +256,15 @@ def push(args):
 
     with tempfile.TemporaryDirectory() as tmp:
         for fname in args.files:
-            src = os.path.join(reg_dir, fname)
+            if fname == ATTACHMENT_CACHE:
+                src = os.path.join(tmp, f'{fname}.tar')
+                archived = build_attachment_cache_tar(reg_dir, src)
+                if not archived:
+                    print(f'  no cached extractions to push — skipping {fname}')
+                    continue
+                print(f'  archiving {archived:,} cached extractions')
+            else:
+                src = os.path.join(reg_dir, fname)
             if not os.path.exists(src):
                 print(f'  no local {fname} — skipping')
                 continue
@@ -182,7 +274,7 @@ def push(args):
             local_gz = os.path.join(tmp, fname + '.gz')
             with open(src, 'rb') as fin, gzip.open(local_gz, 'wb') as fout:
                 shutil.copyfileobj(fin, fout)
-            key = f'{prefix}/{fname}.gz'
+            key = f'{prefix}/{remote_name(fname)}'
 
             # State only ever grows. A push that would shrink it sharply means
             # something upstream went wrong — a failed pull, a truncated fetch,

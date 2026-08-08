@@ -135,9 +135,14 @@ jobs:
         if: ${{ steps.fetch.outputs.added != '0' || env.IS_PUBLISH == 'true' }}
         run: pip install -r requirements.txt
 
-      - name: Pull full_run.parquet from R2 (now that there's real work to do)
+      # The attachment cache comes down with the parquet: it is what lets this run
+      # reuse the text already extracted from PDFs and scans instead of
+      # re-downloading and re-OCRing them. Without it, OCR output varies run to
+      # run, which changes a comment's text and re-triggers analysis of comments
+      # nothing about which changed — and an API outage drops attachments silently.
+      - name: Pull full_run.parquet + attachment cache from R2 (now that there's real work to do)
         if: ${{ steps.fetch.outputs.added != '0' || env.IS_PUBLISH == 'true' }}
-        run: python sync_state.py pull --regulation "$REGULATION" --files full_run.parquet
+        run: python sync_state.py pull --regulation "$REGULATION" --files full_run.parquet attachment_cache
 
       - name: Run analysis pipeline (incremental)
         if: ${{ steps.fetch.outputs.added != '0' || env.IS_PUBLISH == 'true' }}
@@ -149,7 +154,7 @@ jobs:
       # where the fetch step itself failed outright and never set the output —
       # always() alone would otherwise still try to run this.) Pushes both
       # files back together so they stay paired.
-      - name: Push state to R2 (source.csv, full_run.parquet)
+      - name: Push state to R2 (source.csv, full_run.parquet, attachment cache)
         if: ${{ always() && steps.fetch.outputs.added != '' && steps.fetch.outputs.added != '0' }}
         run: python sync_state.py push --regulation "$REGULATION"
 
