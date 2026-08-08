@@ -282,6 +282,9 @@ campaigns:
 # time; keep those out of here. Newest first. Omit the key to hide the section.
 # -------------------------------------------------------------------
 changelog:
+  - date: "2026-08-07"
+    note: "Corrected the “Identified As” name shown on some comments. Comments with identical wording are analyzed once and the result shared across them, but that analysis also saw the submitter's name — so when several people submitted exactly the same text, one of their names could appear on the others' comments. A name (and any state inferred from it) is now kept only when it actually appears in that person's own submission. This corrected about 5,700 comments; positions, concerns, and campaign grouping were not affected."
+
   - date: "2026-07-15"
     note: "Improved form-letter grouping: very short, generic one-line comments are no longer counted as coordinated campaigns, and campaigns whose text lives in an attachment are now labeled by the attached letter instead of “See attached file(s).”"
 

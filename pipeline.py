@@ -350,22 +350,75 @@ def create_dedup_table(comments: List[Dict[str, Any]]) -> tuple[List[Dict[str, A
     
     return unique_comments, duplicate_mapping
 
+# Quote fields that can be lifted from the "Submitter:"/"Organization:" lines the
+# analyzer prepends to the comment text, rather than from the text itself. Each maps
+# to the field it justifies, cleared alongside it when the quote isn't this
+# commenter's. entity_type is deliberately absent: it is an inference about what kind
+# of commenter this is, and stays right for the group even when the name doesn't.
+IDENTITY_QUOTE_FIELDS = {
+    'entity_name': None,
+    'state_quote': 'state_identified',
+    'political_affiliation_quote': 'political_affiliation',
+}
+
+
+def localize_identity_quotes(analysis: Any, comment: Dict[str, Any]) -> Any:
+    """Drop identity quotes belonging to a *different* commenter.
+
+    Comments are deduplicated by text, so one analysis is shared by everyone who
+    submitted the same words — but `comment_analyzer.analyze_with_timeout` prepends
+    "Submitter: <name>" / "Organization: <org>" to that text, so an extracted quote
+    can come from whichever commenter happened to be the group's representative and
+    then get stamped onto everyone else. (This is how Greg Power's comment came to
+    display Erin Brandewie's name: five people submitted "I oppose this proposed
+    rule." verbatim.) Keep a quote only when it really appears in this comment's own
+    text or metadata; otherwise clear it, along with the value it was the evidence for.
+
+    Returns the analysis unchanged (same object) when nothing needed clearing.
+    """
+    if not isinstance(analysis, dict):
+        return analysis
+
+    own_source = f"{comment.get('submitter', '')} {comment.get('organization', '')} {comment.get('text', '')}"
+    localized = None
+    for field, justified in IDENTITY_QUOTE_FIELDS.items():
+        quote = analysis.get(field)
+        if not quote or validate_extracted_quote(quote, own_source)['valid']:
+            continue
+        if localized is None:
+            localized = dict(analysis)
+        localized[field] = ''
+        if justified:
+            localized[justified] = ''
+    return localized if localized is not None else analysis
+
+
 def merge_analysis_results(unique_analyzed_comments: List[Dict[str, Any]], duplicate_mapping: Dict[str, List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
     """Merge analysis results back to all original comments."""
     logger.info("Merging analysis results back to full dataset...")
-    
+
     all_analyzed_comments = []
-    
+    localized_count = 0
+
     for unique_comment in unique_analyzed_comments:
         text_key = unique_comment['text'].strip().lower()
-        
+
         if text_key in duplicate_mapping:
+            group = duplicate_mapping[text_key]
+            shared_analysis = unique_comment.get('analysis')
             # Apply the analysis to all comments with this text
-            for original_comment in duplicate_mapping[text_key]:
+            for original_comment in group:
                 merged_comment = original_comment.copy()
-                
-                # Add the analysis result
-                merged_comment['analysis'] = unique_comment.get('analysis')
+
+                # Add the analysis result. Only a group with more than one member can
+                # carry another commenter's identity, so skip the check for singletons
+                # (the overwhelming majority of comments).
+                analysis = shared_analysis
+                if len(group) > 1:
+                    analysis = localize_identity_quotes(analysis, original_comment)
+                    if analysis is not shared_analysis:
+                        localized_count += 1
+                merged_comment['analysis'] = analysis
                 merged_comment['analysis_error'] = unique_comment.get('analysis_error')
                 merged_comment['model_used'] = unique_comment.get('model_used')
                 
@@ -379,6 +432,8 @@ def merge_analysis_results(unique_analyzed_comments: List[Dict[str, Any]], dupli
                 all_analyzed_comments.append(merged_comment)
     
     logger.info(f"Merged analysis results to {len(all_analyzed_comments)} total comments")
+    if localized_count:
+        logger.info(f"Cleared identity quotes belonging to another commenter on {localized_count:,} comments")
     return all_analyzed_comments
 
 def validate_extracted_quote(quote: str, source_text: str, threshold: float = 0.7) -> dict:
