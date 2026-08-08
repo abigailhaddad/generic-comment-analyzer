@@ -9,6 +9,7 @@ Usage: python pipeline.py --csv comments.csv [--sample N] [--model gemini-2.0-fl
 """
 
 import argparse
+import collections
 import json
 import os
 import csv
@@ -528,6 +529,115 @@ def _is_credentials_error(error: Any) -> bool:
         return False
     text = str(error).lower()
     return any(marker in text for marker in _CREDENTIALS_ERROR_MARKERS)
+
+
+# Thresholds for the quality gate below. Overridable per regulation with a
+# `quality_gate:` block in analyzer_config.yaml; the defaults suit a docket whose
+# split has been stable for weeks. Set `enabled: false` to turn the gate off.
+QUALITY_GATE_DEFAULTS = {
+    'min_batch': 50,            # smaller batches swing on their own noise
+    'max_batch_shift_pp': 30,   # new arrivals vs the corpus they join
+    'max_corpus_shift_pp': 3,   # whole corpus vs what the last run produced
+    'max_no_stance_rise_pp': 1.5,  # comments that came back with no stance at all
+}
+
+
+def _gate_bucket(analysis: Any) -> str:
+    """'Oppose' / 'Support' / 'other' / 'none' for the quality gate.
+
+    Deliberately not `_stance_bucket`, which answers a different question. That
+    one sorts comments for cache-conflict detection and files an empty stance
+    list under 'other', alongside comments that raised concerns without taking a
+    position. The gate has to tell those apart: "took no position" is a normal
+    thing for a comment to do, while "has no stance at all" is what an analysis
+    that never ran looks like, and conflating them hides the failure.
+    """
+    if not isinstance(analysis, dict) or not analysis:
+        return 'none'
+    stances = analysis.get('stances')
+    try:
+        items = [] if stances is None else list(stances)
+    except TypeError:
+        return 'none'
+    if not items:
+        return 'none'
+    text = ' | '.join(str(x) for x in items)
+    if 'Position: Oppose' in text:
+        return 'Oppose'
+    if 'Position: Support' in text:
+        return 'Support'
+    return 'other'
+
+
+def stance_shares(analyses: List[Any]) -> Dict[str, float]:
+    """Percentage of each bucket ('Oppose'/'Support'/'other'/'none')."""
+    counts = collections.Counter(_gate_bucket(a) for a in analyses)
+    total = sum(counts.values())
+    if not total:
+        return {}
+    return {bucket: count * 100.0 / total for bucket, count in counts.items()}
+
+
+def check_batch_quality(analyzed_comments: List[Dict[str, Any]],
+                        previous_ids: set,
+                        previous_analyses: List[Any],
+                        config: Dict[str, Any]) -> List[str]:
+    """Compare this run against the corpus it is joining; return reasons to stop.
+
+    Every bad publish here has had the same shape: the totals still looked
+    plausible, so nothing failed, and the error was only caught by someone
+    reading a percentage. In July a duplicate-ID join flipped the largest support
+    campaign to oppose and pushed the headline 94% -> 98%. In August an exhausted
+    API key left comments unanalysed and dragged it 94% -> 92.2%. Both would have
+    tripped one of the checks below.
+
+    Three questions, in order of how early they catch a problem:
+      1. Do the comments that arrived this run look anything like the ones
+         already here? A batch that is wildly different is either a real event
+         worth a human's attention (an organised campaign landing) or a bug.
+      2. Did the corpus as a whole move more than new arrivals could explain?
+      3. Did the share of comments with no stance jump — i.e. did analysis
+         quietly stop working for some of them?
+    """
+    gate = {**QUALITY_GATE_DEFAULTS, **(config.get('quality_gate') or {})}
+    if not gate.get('enabled', True):
+        return []
+
+    problems = []
+    current_analyses = [c.get('analysis') for c in analyzed_comments]
+    current = stance_shares(current_analyses)
+
+    # 1. The new batch against the established corpus.
+    batch = [c.get('analysis') for c in analyzed_comments if c.get('id') not in previous_ids]
+    if previous_analyses and len(batch) >= gate['min_batch']:
+        batch_shares = stance_shares(batch)
+        baseline = stance_shares(previous_analyses)
+        for bucket in ('Oppose', 'Support'):
+            shift = batch_shares.get(bucket, 0.0) - baseline.get(bucket, 0.0)
+            if abs(shift) > gate['max_batch_shift_pp']:
+                problems.append(
+                    f"the {len(batch):,} new comment(s) are {batch_shares.get(bucket, 0.0):.1f}% "
+                    f"{bucket} against {baseline.get(bucket, 0.0):.1f}% in the existing "
+                    f"{len(previous_analyses):,} ({shift:+.1f} points)")
+
+    # 2. The corpus as a whole against what the last run left behind.
+    if previous_analyses:
+        baseline = stance_shares(previous_analyses)
+        for bucket in ('Oppose', 'Support'):
+            shift = current.get(bucket, 0.0) - baseline.get(bucket, 0.0)
+            if abs(shift) > gate['max_corpus_shift_pp']:
+                problems.append(
+                    f"overall {bucket} moved {baseline.get(bucket, 0.0):.1f}% -> "
+                    f"{current.get(bucket, 0.0):.1f}% ({shift:+.1f} points)")
+
+        # 3. Analysis quietly failing shows up here before anywhere else.
+        rise = current.get('none', 0.0) - baseline.get('none', 0.0)
+        if rise > gate['max_no_stance_rise_pp']:
+            problems.append(
+                f"comments with no stance rose {baseline.get('none', 0.0):.1f}% -> "
+                f"{current.get('none', 0.0):.1f}% (+{rise:.1f} points) — analysis may be failing")
+
+    return problems
 
 
 def analyze_single_comment(analyzer, comment, truncate_chars=None):
@@ -1260,9 +1370,15 @@ def main():
 
         # Load previous results for incremental mode
         previous_results = {}
+        # Kept for the quality gate below: which comments the corpus already had,
+        # and what it looked like, so this run can be compared against it.
+        previous_ids = set()
+        previous_analyses = []
         if not args.reprocess and os.path.exists(args.output):
             try:
                 prev_df = pd.read_parquet(args.output)
+                previous_ids = set(prev_df['id'])
+                previous_analyses = list(prev_df['analysis'])
                 # Build the text-keyed reuse cache, but guard against an
                 # INCONSISTENT cache: if the same text maps to two different
                 # stances (e.g. a misaligned rebuild, or duplicate-ID fallout),
@@ -1386,6 +1502,25 @@ def main():
                 f"generate or publish a report from data this run could not complete.")
             logger.error(f"  first error: {blocked[0].get('analysis_error')}")
             sys.exit(1)
+
+        # Same idea, one level up: the run completed, but does what it produced
+        # actually resemble the corpus it is joining? State is already saved, so
+        # stopping here costs nothing but the publish.
+        problems = check_batch_quality(analyzed_comments, previous_ids,
+                                       previous_analyses, load_yaml_config())
+        if problems:
+            if args.force:
+                logger.warning("Quality gate flagged this run, continuing anyway (--force):")
+                for p in problems:
+                    logger.warning(f"  - {p}")
+            else:
+                logger.error(
+                    "Quality gate: this run does not look like the corpus it is joining. "
+                    "State was saved; nothing is lost. Check the figures below, then re-run "
+                    "with --force if the change is real (e.g. an organised campaign landing).")
+                for p in problems:
+                    logger.error(f"  - {p}")
+                sys.exit(1)
 
         # Step 7: Store in PostgreSQL
         if args.to_database:
