@@ -3,7 +3,7 @@
 # Deploy a regulation's report to its Netlify site.
 #
 # Publishes ONLY the runtime files the report actually serves:
-#   index.html, comment_detail.json, and read-the-rule.html (if built).
+#   index.html, comment_detail/ (sharded), and read-the-rule.html (if built).
 # It never uploads source.csv, the parquet, the attachment cache, or any of
 # the other regenerable/private files that live in the regulation directory.
 #
@@ -42,7 +42,7 @@ PYTHON="$ROOT/myenv/bin/python"
 
 [ -d "$REG" ] || { echo "No such regulation dir: $REG" >&2; exit 1; }
 [ -f "$REG/index.html" ] || { echo "No index.html in $REG — generate the report first." >&2; exit 1; }
-[ -f "$REG/comment_detail.json" ] || { echo "No comment_detail.json in $REG — regenerate the report first." >&2; exit 1; }
+[ -d "$REG/comment_detail" ] || { echo "No comment_detail/ dir in $REG — regenerate the report first." >&2; exit 1; }
 
 STATE="$REG/.netlify/state.json"
 if [ -f "$STATE" ]; then
@@ -113,8 +113,50 @@ fi
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 cp "$REG/index.html" "$STAGE/"
-cp "$REG/comment_detail.json" "$STAGE/"
+cp -R "$REG/comment_detail" "$STAGE/comment_detail"
 [ -f "$REG/read-the-rule.html" ] && cp "$REG/read-the-rule.html" "$STAGE/"
+
+# Send the *.netlify.app hostname to the site's own custom domain, so the
+# platform URL stops being the address people bookmark and cite. Netlify does
+# NOT do this on its own: setting a primary custom domain only adds a
+# `link: rel="canonical"` header — an SEO hint search engines may honour, which
+# does nothing for a human who followed an old link. Only an explicit rule
+# actually moves them.
+#
+# Both hostnames are read from the API rather than written here, because this
+# script is regulation-agnostic and each regulation has its own site. No
+# custom domain configured (the normal case for a site that hasn't been moved
+# yet) means no rule is written and nothing changes.
+#
+# The source must be a full URL: a bare `/*` would match on the custom domain
+# too and redirect it to itself forever. The trailing `!` forces the rule to
+# win over index.html, which would otherwise be served first.
+# Via a file, not an interpolated string: the JSON contains backslash escapes
+# that a Python literal would re-interpret, corrupting it before json.loads.
+netlify api getSite --data "{\"site_id\":\"$SITE_ID\"}" > "$STAGE/.site.json" 2>/dev/null || true
+REDIRECT_RULES="$("$PYTHON" - "$STAGE/.site.json" <<'PY'
+import json, sys
+try:
+    with open(sys.argv[1]) as f:
+        site = json.load(f)
+except Exception:
+    site = {}
+primary = site.get('custom_domain')
+sub = site.get('name')
+if primary and sub:
+    for scheme in ('https', 'http'):
+        print(f'{scheme}://{sub}.netlify.app/* https://{primary}/:splat 302!')
+PY
+)"
+rm -f "$STAGE/.site.json"
+
+if [ -n "$REDIRECT_RULES" ]; then
+    printf '%s\n' "$REDIRECT_RULES" > "$STAGE/_redirects"
+    echo "Adding _redirects (platform URL -> custom domain):"
+    sed 's/^/  /' "$STAGE/_redirects"
+else
+    echo "No custom domain on this site — skipping the _redirects rule."
+fi
 
 echo "Deploying '$SLUG' to Netlify site $SITE_ID"
 echo "Publishing:"
