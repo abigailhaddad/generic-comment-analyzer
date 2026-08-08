@@ -60,7 +60,17 @@ PY
              "link the site once (cd '$REG' && netlify link) or add netlify_site_id to the config." >&2; exit 1; }
 fi
 
-if [ -z "${NETLIFY_AUTH_TOKEN:-}" ] && [ ! -f "$HOME/.netlify/config.json" ]; then
+# `netlify login` writes its config to a platform-specific path, so check all of
+# them: macOS puts it under Library/Preferences, Linux under XDG config. Looking
+# only at ~/.netlify/config.json rejected an authenticated macOS laptop and made
+# every local deploy impossible.
+netlify_logged_in() {
+    [ -f "$HOME/.netlify/config.json" ] \
+        || [ -f "$HOME/Library/Preferences/netlify/config.json" ] \
+        || [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/netlify/config.json" ]
+}
+
+if [ -z "${NETLIFY_AUTH_TOKEN:-}" ] && ! netlify_logged_in; then
     echo "No Netlify auth found: set NETLIFY_AUTH_TOKEN (CI) or run 'netlify login' (local)." >&2
     exit 1
 fi
