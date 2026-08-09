@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Deploy a regulation's report to its Netlify site.
+# Deploy a regulation's report to its Cloudflare Pages project.
 #
 # Publishes ONLY the runtime files the report actually serves:
 #   index.html, comment_rows/ + comment_detail/ (both sharded), and
@@ -8,14 +8,20 @@
 # It never uploads source.csv, the parquet, the attachment cache, or any of
 # the other regenerable/private files that live in the regulation directory.
 #
-# The Netlify site id normally comes from the regulation's own gitignored
-# .netlify/state.json (linked once locally with `netlify link`, run inside the
-# regulation dir). Where that file doesn't exist — a fresh CI checkout — it
-# falls back to the non-secret report.netlify_site_id in analyzer_config.yaml.
+# Pages, not Netlify: Netlify bills per deploy, and a report that publishes
+# daily spends roughly half of a whole month's account-wide deploy budget on
+# its own. Pages does not meter deploys at all. The old Netlify site keeps
+# serving a static _redirects stub that points its netlify.app URL at the
+# custom domain — it is never redeployed, so it costs nothing.
 #
-# Credentials (CF_R2_*, NETLIFY_AUTH_TOKEN) come from .env when present
-# (local use); otherwise they must already be in the environment (CI use) —
-# missing ones fail loudly below, naming what's missing.
+# The Pages project name comes from report.pages_project in the regulation's
+# analyzer_config.yaml. It is not a secret and needs no local link step, so
+# unlike the Netlify site id it works the same on a laptop and in a fresh CI
+# checkout.
+#
+# Credentials (CF_R2_*, CLOUDFLARE_*) come from .env when present (local use);
+# otherwise they must already be in the environment (CI use) — missing ones
+# fail loudly below, naming what's missing.
 #
 # Usage:
 #   ./deploy_report.sh <regulation-slug>
@@ -46,36 +52,22 @@ PYTHON="$ROOT/myenv/bin/python"
 [ -d "$REG/comment_detail" ] || { echo "No comment_detail/ dir in $REG — regenerate the report first." >&2; exit 1; }
 [ -d "$REG/comment_rows" ]   || { echo "No comment_rows/ dir in $REG — regenerate the report first." >&2; exit 1; }
 
-STATE="$REG/.netlify/state.json"
-if [ -f "$STATE" ]; then
-    SITE_ID="$("$PYTHON" -c "import json; print(json.load(open('$STATE'))['siteId'])")"
-else
-    SITE_ID="$("$PYTHON" - "$REG/analyzer_config.yaml" <<'PY'
+PAGES_PROJECT="$("$PYTHON" - "$REG/analyzer_config.yaml" <<'PY'
 import sys, yaml
 cfg = yaml.safe_load(open(sys.argv[1])) or {}
-site_id = (cfg.get('report') or {}).get('netlify_site_id')
-if not site_id:
+project = (cfg.get('report') or {}).get('pages_project')
+if not project:
     sys.exit(1)
-print(site_id)
+print(project)
 PY
-)" || { echo "No $STATE and no report.netlify_site_id in $REG/analyzer_config.yaml — " \
-             "link the site once (cd '$REG' && netlify link) or add netlify_site_id to the config." >&2; exit 1; }
-fi
+)" || { echo "No report.pages_project in $REG/analyzer_config.yaml — set it to the" \
+             "Cloudflare Pages project name that serves this regulation." >&2; exit 1; }
 
-# `netlify login` writes its config to a platform-specific path, so check all of
-# them: macOS puts it under Library/Preferences, Linux under XDG config. Looking
-# only at ~/.netlify/config.json rejected an authenticated macOS laptop and made
-# every local deploy impossible.
-netlify_logged_in() {
-    [ -f "$HOME/.netlify/config.json" ] \
-        || [ -f "$HOME/Library/Preferences/netlify/config.json" ] \
-        || [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/netlify/config.json" ]
-}
-
-if [ -z "${NETLIFY_AUTH_TOKEN:-}" ] && ! netlify_logged_in; then
-    echo "No Netlify auth found: set NETLIFY_AUTH_TOKEN (CI) or run 'netlify login' (local)." >&2
-    exit 1
-fi
+# wrangler reads both of these from the environment. Checked here rather than
+# left to wrangler because it fails late — after the R2 export has already been
+# built and uploaded, which on this report is several minutes of work.
+: "${CLOUDFLARE_API_TOKEN:?set CLOUDFLARE_API_TOKEN (account-scoped, Cloudflare Pages: Edit) to deploy}"
+: "${CLOUDFLARE_ACCOUNT_ID:?set CLOUDFLARE_ACCOUNT_ID to deploy}"
 
 # Full-dataset export → Cloudflare R2. Runs only when the regulation's config
 # declares report.full_export.{bucket,key}; the report's "Download everything"
@@ -147,58 +139,27 @@ cat > "$STAGE/404.html" <<'HTML'
 </div>
 HTML
 
-# Send the *.netlify.app hostname to the site's own custom domain, so the
-# platform URL stops being the address people bookmark and cite. Netlify does
-# NOT do this on its own: setting a primary custom domain only adds a
-# `link: rel="canonical"` header — an SEO hint search engines may honour, which
-# does nothing for a human who followed an old link. Only an explicit rule
-# actually moves them.
+# No pages.dev -> custom domain redirect is written here, deliberately.
 #
-# Both hostnames are read from the API rather than written here, because this
-# script is regulation-agnostic and each regulation has its own site. No
-# custom domain configured (the normal case for a site that hasn't been moved
-# yet) means no rule is written and nothing changes.
+# The Netlify version of this script wrote a `_redirects` rule with a full URL
+# as its source, so the platform hostname sent visitors to the custom domain.
+# That does not port: Cloudflare Pages matches `_redirects` on the PATH only,
+# and silently ignores a rule whose source is an absolute URL. Tested against
+# this project — the rule uploads, and https://<project>.pages.dev/ still
+# returns 200 with the report rather than a 302.
 #
-# The source must be a full URL: a bare `/*` would match on the custom domain
-# too and redirect it to itself forever. The trailing `!` forces the rule to
-# win over index.html, which would otherwise be served first.
-#
-# Read into a file, not an interpolated string: the JSON contains backslash
-# escapes a Python literal would re-interpret, corrupting it before json.loads.
-#
-# A failed lookup and a site with no custom domain both produce no rule, but
-# only one of them is a problem — so they are reported differently rather than
-# both printing "nothing to do". A publish is not worth aborting over a missing
-# redirect, but it is worth saying loudly that the redirect is missing.
-if netlify api getSite --data "{\"site_id\":\"$SITE_ID\"}" > "$STAGE/.site.json" 2>"$STAGE/.site.err"; then
-    REDIRECT_RULES="$("$PYTHON" - "$STAGE/.site.json" <<'PY'
-import json, sys
-with open(sys.argv[1]) as f:
-    site = json.load(f)
-primary = site.get('custom_domain')
-sub = site.get('name')
-if primary and sub:
-    for scheme in ('https', 'http'):
-        print(f'{scheme}://{sub}.netlify.app/* https://{primary}/:splat 302!')
-PY
-)"
-    if [ -n "$REDIRECT_RULES" ]; then
-        printf '%s\n' "$REDIRECT_RULES" > "$STAGE/_redirects"
-        echo "Adding _redirects (platform URL -> custom domain):"
-        sed 's/^/  /' "$STAGE/_redirects"
-    else
-        echo "No custom domain on this site — skipping the _redirects rule."
-    fi
-else
-    echo "WARNING: could not read site $SITE_ID from the Netlify API, so the" >&2
-    echo "         netlify.app -> custom domain redirect was NOT written. The" >&2
-    echo "         report still deploys; the old platform URL just keeps serving" >&2
-    echo "         it instead of redirecting. API said:" >&2
-    sed 's/^/           /' "$STAGE/.site.err" >&2
-fi
-rm -f "$STAGE/.site.json" "$STAGE/.site.err"
+# The workaround is a Pages Function (functions/_middleware.js), which would run
+# a Worker on every single request to the site just to redirect the small
+# fraction that arrive on pages.dev. Not worth it here: unlike the netlify.app
+# URL, this project's pages.dev hostname was created during the migration and
+# has never been published or cited anywhere, so there is nothing to move off
+# it. The legacy netlify.app URL is still redirected — by the static stub left
+# behind on the old Netlify site, which is never redeployed.
 
-echo "Deploying '$SLUG' to Netlify site $SITE_ID"
+echo "Deploying '$SLUG' to Cloudflare Pages project $PAGES_PROJECT"
 echo "Publishing:"
 ls -la "$STAGE"
-netlify deploy --prod --dir="$STAGE" --site "$SITE_ID"
+npx --yes wrangler@4 pages deploy "$STAGE" \
+    --project-name="$PAGES_PROJECT" \
+    --branch=main \
+    --commit-dirty=true
