@@ -594,6 +594,17 @@
         </div>
     </div>
 
+    <!-- Table rows, in chunked sidecar scripts rather than inline.
+         Inline, this data was 33.6 MB of a 36.3 MB page - 93% of the file -
+         which the browser had to parse before rendering anything, and which put
+         index.html over Cloudflare Pages' 25 MiB per-file limit. Split out, the
+         page itself is ~2.6 MB.
+         These are ordinary blocking <script> tags on purpose: they execute in
+         order, before the inline block below, so commentDataRaw is populated
+         synchronously and nothing downstream has to become async. -->
+    {% for i in range(row_chunk_count) %}<script src="comment_rows/{{ i }}.js"></script>
+    {% endfor %}
+
     <!-- Embedded data -->
     <script>
         const entityData = {
@@ -606,15 +617,21 @@
             {% endfor %}
         };
 
-        // One array per row instead of one object per row — with ~42k rows,
+        // One array per row instead of one object per row — with ~65k rows,
         // repeating 16 JSON key names in every row adds up to several MB of
         // pure overhead. COMMENT_FIELDS below defines what each position means;
-        // the two lists MUST stay in the same order.
-        const commentDataRaw = [
-            {% for row in rows %}
-            [{{ row.id | tojson }}, {{ row.date | tojson }}, {{ row.submitter | tojson }}, {{ row.organization | tojson }}, {{ row.entity_type | tojson }}, {{ row.cosigner_count | tojson }}, {{ row.stances_list | tojson }}, {{ row.flags | tojson }}, {{ row.state_identified | tojson }}, {{ row.political_affiliation | tojson }}, {{ "true" if row.attachment_text else "false" }}, {{ row.campaign_id if row.campaign_id is not none else "null" }}, {{ row.campaign_rank if row.campaign_rank is not none else "null" }}, {{ row.campaign_size if row.campaign_size is not none else "0" }}, {{ row.campaign_stance | tojson }}, {{ row.multi_values | tojson }}]{% if not loop.last %},{% endif %}
-            {% endfor %}
-        ];
+        // the two lists MUST stay in the same order, and they are also the
+        // order write_row_chunks() serialises in — all three must agree.
+        //
+        // The rows themselves arrive from the comment_rows/*.js tags above.
+        // Failing loudly here matters: an empty array would render an empty
+        // table that looks like a legitimately filtered result rather than a
+        // loading failure, which is exactly the kind of silent wrong answer
+        // this report must never give.
+        if (!Array.isArray(window.__ROWS__) || window.__ROWS__.length === 0) {
+            throw new Error('comment_rows/*.js did not load — refusing to render an empty table');
+        }
+        const commentDataRaw = window.__ROWS__;
         const COMMENT_FIELDS = ['id', 'date', 'submitter', 'organization', 'entity_type', 'cosigner_count',
             'stances', 'flags', 'state', 'political', 'has_attachment', 'campaign_id', 'campaign_rank',
             'campaign_size', 'campaign_stance', 'multi_values'];

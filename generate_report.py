@@ -770,6 +770,74 @@ def load_regex_flag_patterns():
     return {name: flag.get('patterns', []) for name, flag in load_regex_flags().items()}
 
 
+# Cloudflare Pages refuses any single file over 25 MiB, so the row data is split
+# well under that. Chunking by bytes rather than row count means a corpus whose
+# rows get fatter cannot silently drift over the limit.
+ROW_CHUNK_MAX_BYTES = 8 * 1024 * 1024
+
+# Positional, not keyed: repeating 16 key names across 65k rows costs several MB
+# for nothing. This order is load-bearing — it must match COMMENT_FIELDS in
+# report_template.html exactly, or every column in the table shifts.
+def _row_to_list(r):
+    return [
+        r['id'],
+        r['date'],
+        r['submitter'],
+        r['organization'],
+        r['entity_type'],
+        r['cosigner_count'],
+        r['stances_list'],
+        r['flags'],
+        r['state_identified'],
+        r['political_affiliation'],
+        bool(r.get('attachment_text')),
+        r.get('campaign_id'),
+        r.get('campaign_rank'),
+        r.get('campaign_size') if r.get('campaign_size') is not None else 0,
+        r['campaign_stance'],
+        r['multi_values'],
+    ]
+
+
+def write_row_chunks(rows, out_dir, max_bytes=ROW_CHUNK_MAX_BYTES):
+    """Write table rows to comment_rows/<n>.js and return the chunk count.
+
+    These are plain blocking <script> tags in the page, not fetches, so they run
+    in order before the inline script and commentDataRaw is ready synchronously —
+    no downstream code has to become async.
+
+    Inline, this data was 33.6 MB of a 36.3 MB index.html (93% of it): parsed
+    before anything could render, and over Cloudflare Pages' 25 MiB per-file
+    limit, which blocked hosting the report there at all.
+    """
+    chunk_dir = os.path.join(out_dir, 'comment_rows')
+    if os.path.isdir(chunk_dir):
+        shutil.rmtree(chunk_dir)
+    os.makedirs(chunk_dir)
+
+    def flush(buf, index):
+        with open(os.path.join(chunk_dir, f'{index}.js'), 'w', encoding='utf-8') as f:
+            # concat, not push(...spread): spreading tens of thousands of rows
+            # into a call blows the argument limit in some browsers.
+            f.write('window.__ROWS__ = (window.__ROWS__ || []).concat([\n')
+            f.write(',\n'.join(buf))
+            f.write('\n]);\n')
+
+    buf, size, index = [], 0, 0
+    for r in rows:
+        line = json.dumps(_row_to_list(r), ensure_ascii=False, separators=(',', ':'))
+        if buf and size + len(line) > max_bytes:
+            flush(buf, index)
+            index += 1
+            buf, size = [], 0
+        buf.append(line)
+        size += len(line) + 2
+    if buf:
+        flush(buf, index)
+        index += 1
+    return index
+
+
 DETAIL_SHARD_SIZE = 500
 
 DETAIL_FIELDS = {
@@ -1032,6 +1100,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
 
     detail_shard_size, detail_shard_count = write_detail_shards(
         rows, os.path.dirname(output_file) or '.')
+    row_chunk_count = write_row_chunks(rows, os.path.dirname(output_file) or '.')
 
     # Read-the-Rule page — only when the regulation has proposed-rule text prepared.
     rule_sections = load_rule_sections()
@@ -1052,6 +1121,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         accent_rgb=accent_rgb,
         detail_shard_size=detail_shard_size,
         detail_shard_count=detail_shard_count,
+        row_chunk_count=row_chunk_count,
         show_stance_cards=show_stance_cards,
         show_entity_cards=show_entity_cards,
         show_cosigners=show_cosigners,

@@ -3,7 +3,8 @@
 # Deploy a regulation's report to its Netlify site.
 #
 # Publishes ONLY the runtime files the report actually serves:
-#   index.html, comment_detail/ (sharded), and read-the-rule.html (if built).
+#   index.html, comment_rows/ + comment_detail/ (both sharded), and
+#   read-the-rule.html (if built).
 # It never uploads source.csv, the parquet, the attachment cache, or any of
 # the other regenerable/private files that live in the regulation directory.
 #
@@ -43,6 +44,7 @@ PYTHON="$ROOT/myenv/bin/python"
 [ -d "$REG" ] || { echo "No such regulation dir: $REG" >&2; exit 1; }
 [ -f "$REG/index.html" ] || { echo "No index.html in $REG — generate the report first." >&2; exit 1; }
 [ -d "$REG/comment_detail" ] || { echo "No comment_detail/ dir in $REG — regenerate the report first." >&2; exit 1; }
+[ -d "$REG/comment_rows" ]   || { echo "No comment_rows/ dir in $REG — regenerate the report first." >&2; exit 1; }
 
 STATE="$REG/.netlify/state.json"
 if [ -f "$STATE" ]; then
@@ -114,6 +116,9 @@ STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 cp "$REG/index.html" "$STAGE/"
 cp -R "$REG/comment_detail" "$STAGE/comment_detail"
+# The table rows. index.html is inert without these - it throws rather than
+# rendering an empty table - so a deploy that omits them is a broken deploy.
+cp -R "$REG/comment_rows" "$STAGE/comment_rows"
 [ -f "$REG/read-the-rule.html" ] && cp "$REG/read-the-rule.html" "$STAGE/"
 
 # Send the *.netlify.app hostname to the site's own custom domain, so the
