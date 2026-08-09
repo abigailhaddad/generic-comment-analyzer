@@ -121,6 +121,32 @@ cp -R "$REG/comment_detail" "$STAGE/comment_detail"
 cp -R "$REG/comment_rows" "$STAGE/comment_rows"
 [ -f "$REG/read-the-rule.html" ] && cp "$REG/read-the-rule.html" "$STAGE/"
 
+# A real 404 page. Cloudflare Pages serves index.html for any unmatched path
+# when no 404.html is present, so a typo'd URL returned the entire report with
+# an HTTP 200 - a soft 404 that search engines index and that ships megabytes
+# for a broken link. Netlify 404s by default; Pages does not.
+cat > "$STAGE/404.html" <<'HTML'
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Page not found</title>
+<style>
+ body{font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,sans-serif;
+      margin:0;min-height:100vh;display:grid;place-items:center;padding:2rem;
+      background:#fff;color:#111}
+ @media (prefers-color-scheme:dark){body{background:#14161a;color:#e9e9ea}}
+ .box{max-width:36rem;text-align:center}
+ h1{font-size:1.3rem;margin:0 0 .5rem}
+ p{margin:0 0 1.2rem;opacity:.75}
+ a{color:inherit}
+</style>
+<div class="box">
+  <h1>Page not found</h1>
+  <p>That address does not match anything in this report.</p>
+  <p><a href="/">Go to the report</a></p>
+</div>
+HTML
+
 # Send the *.netlify.app hostname to the site's own custom domain, so the
 # platform URL stops being the address people bookmark and cite. Netlify does
 # NOT do this on its own: setting a primary custom domain only adds a
