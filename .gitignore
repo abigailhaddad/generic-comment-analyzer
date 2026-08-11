@@ -61,3 +61,8 @@ READ THIS CLAUDE CODE
 # already covers the uncompressed one).
 *.csv.gz
 *.gz
+
+# Sharded table rows, written next to comment_detail/ on every report build
+# (~30 MB, regenerated wholesale). comment_detail/ is already covered by *.json;
+# these sidecars are .js, so they need their own line.
+comment_rows/
