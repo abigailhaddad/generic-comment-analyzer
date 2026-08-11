@@ -1024,9 +1024,18 @@
         const COLUMN_SPECS = [
             { key: 'id', title: 'ID',
               cell: function (c) { return '<a href="https://www.regulations.gov/comment/' + c.id + '" target="_blank" onclick="event.stopPropagation();">' + c.id.split('-').pop() + '</a>'; } },
-            { key: 'date', title: 'Date', isDate: true, cell: function (c) { return c.date; } },
+            { key: 'date', title: 'Date', isDate: true, cell: function (c) { return c.date; },
+              // Dates are YYYY-MM-DD and there are only tens of them, so the plain
+              // multiselect (with counts and select-all) is the right control — no
+              // separate range picker to build or explain.
+              filter: { name: 'Date', vals: function (c) { return c.date ? [c.date] : []; } } },
             { key: 'submitter', title: 'Submitter',
-              cell: function (c) { return escapeHtml(c.submitter) + (c.organization ? ' <span class="text-muted" style="font-size:11px;">(' + escapeHtml(c.organization) + ')</span>' : ''); } },
+              cell: function (c) { return escapeHtml(c.submitter) + (c.organization ? ' <span class="text-muted" style="font-size:11px;">(' + escapeHtml(c.organization) + ')</span>' : ''); },
+              // Text, not multiselect: there is very nearly one distinct submitter
+              // per comment, so enumerating every value would build a list as long
+              // as the table itself.
+              filter: { name: 'Submitter', type: 'text', placeholder: 'Type part of a submitter name...',
+                        match: function (c, term) { return (c.submitter || '').toLowerCase().indexOf(term) >= 0; } } },
             { key: 'entity_type', title: fieldLabel('entity_type', 'Entity Type'), enabled: showsField('entity_type', 'column'),
               cell: function (c) { return '<span class="stance-tag tag-entity">' + escapeHtml(c.entity_type) + '</span>'; },
               filter: showsField('entity_type', 'filter') ? { name: fieldLabel('entity_type', 'Entity Type'), vals: function (c) { return c.entity_type ? [c.entity_type] : []; } } : null },
@@ -1065,11 +1074,22 @@
         // Filter definitions = enabled column filters + campaign-stance + comment-text + config flags.
         const FILTER_DEFS = [];
         COLUMNS.forEach(function (col) {
-            if (col.filter) FILTER_DEFS.push({ key: col.key, name: col.filter.name, vals: col.filter.vals });
+            // Copy the whole filter object, not a fixed name+vals pair: a column
+            // filter may also carry type/match/placeholder (the text-search kind),
+            // and picking off two keys would drop them silently.
+            if (col.filter) FILTER_DEFS.push(Object.assign({ key: col.key }, col.filter));
         });
         // Campaign stance (Support/Oppose/Mixed) — only meaningful for comments in a campaign.
         FILTER_DEFS.push({ key: 'campaign_stance', name: 'Campaign stance', vals: function (c) { return c.campaign_stance ? [c.campaign_stance] : []; } });
-        FILTER_DEFS.push({ key: 'q', name: 'Comment text', type: 'text' });
+        // Organization has no column of its own — it rides along inside the
+        // Submitter cell — but it is on every row, so it filters without touching
+        // the lazy detail shards.
+        FILTER_DEFS.push({ key: 'organization', name: 'Organization', type: 'text',
+            placeholder: 'Type part of an organization name...',
+            match: function (c, term) { return (c.organization || '').toLowerCase().indexOf(term) >= 0; } });
+        // The one text filter that needs the whole corpus: comment bodies live in
+        // the detail shards, so this def opts into the full download.
+        FILTER_DEFS.push({ key: 'q', name: 'Comment text', type: 'text', needsDetail: true });
         flagMeta.forEach(function (f) {
             FILTER_DEFS.push({
                 key: f.key,
@@ -1108,8 +1128,12 @@
                 const def = DEF_BY_KEY[key];
                 if (def.type === 'text') {
                     const term = sel[0];
-                    const text = (commentDetail[c.id] || {}).comment || '';
-                    if (term && text.toLowerCase().indexOf(term) < 0) return false;
+                    if (!term) continue;
+                    // Row-field text filters (Submitter, Organization) bring their own
+                    // matcher and read straight off the row. Without one we fall back
+                    // to the comment body, which only exists once the shards land.
+                    if (def.match) { if (!def.match(c, term)) return false; }
+                    else if (((commentDetail[c.id] || {}).comment || '').toLowerCase().indexOf(term) < 0) return false;
                 } else {
                     const rowVals = def.vals(c);
                     if (!rowVals.some(function (v) { return sel.indexOf(v) >= 0; })) return false;
@@ -1292,18 +1316,22 @@
             });
         };
 
-        // Per-column text dialog (comment-body substring search). This is the
-        // only feature that needs every comment's text, so opening this dialog
-        // is what triggers the full download — it is not paid for by visitors
-        // who never search. Disabled until it lands, since matching against a
-        // partial corpus would silently return too few results.
+        // Substring-search dialog, shared by every `type: 'text'` filter.
+        //
+        // Only the defs marked `needsDetail` (Comment text) search the comment
+        // bodies, which live in the sidecar shards — opening that one is what
+        // triggers the full download, so it is not paid for by visitors who never
+        // search, and the box stays disabled until it lands rather than matching a
+        // partial corpus and silently returning too few results. Submitter and
+        // Organization read off the rows the page already has, so they open ready
+        // to type and cost nothing.
         Report.openText = function (def) {
             const current = (Report.activeFilters[def.key] || [''])[0] || '';
-            const loading = !allDetailLoaded;
+            const loading = !!def.needsDetail && !allDetailLoaded;
             if (loading) { loadAllDetail(); }
             const m = createFilterModal('<div class="filter-popover"><div class="filter-title">Filter: ' + escapeHtml(def.name) + '</div>'
                 + (loading ? '<p class="text-muted" style="font-size:0.85rem;">Loading full comment text&hellip; this box will enable automatically.</p>' : '')
-                + '<input type="text" class="filter-search filter-text-input" placeholder="Type text to search comments..." value="' + escapeHtml(current) + '"' + (loading ? ' disabled' : '') + '>'
+                + '<input type="text" class="filter-search filter-text-input" placeholder="' + escapeHtml(def.placeholder || 'Type text to search comments...') + '" value="' + escapeHtml(current) + '"' + (loading ? ' disabled' : '') + '>'
                 + '<div class="filter-buttons"><button class="btn-clear">Clear</button><button class="btn-apply"' + (loading ? ' disabled' : '') + '>Apply</button></div></div>');
             const inp = m.querySelector('.filter-text-input');
             const applyBtn = m.querySelector('.btn-apply');
