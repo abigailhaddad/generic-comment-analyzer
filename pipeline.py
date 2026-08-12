@@ -110,6 +110,7 @@ def load_column_mapping() -> Dict[str, str]:
                 'text': 'Comment',
                 'id': 'Document ID', 
                 'date': 'Posted Date',
+                'received_date': 'Received Date',
                 'first_name': 'First Name',
                 'last_name': 'Last Name',
                 'organization': 'Organization Name',
@@ -280,7 +281,13 @@ def read_comments_from_csv(csv_file: str, limit: Optional[int] = None, sample_si
             'attachment_status': attachment_status,
             'submitter': submitter,
             'organization': row.get(column_mapping.get('organization', 'Organization Name'), ''),
+            # Two different dates, and readers mean the first one. `received_date`
+            # is when the commenter submitted; `date` is when regulations.gov
+            # published it, which on this docket runs a median of 4 days and up to
+            # 32 days later — and therefore well past the comment deadline, which
+            # is nonsense read as a submission date.
             'date': row.get(column_mapping.get('date', 'Posted Date'), ''),
+            'received_date': row.get(column_mapping.get('received_date', 'Received Date'), ''),
         }
 
         # Apply regex-based flags from config (no LLM needed)
