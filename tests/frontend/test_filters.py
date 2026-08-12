@@ -10,7 +10,7 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeout
 # Submitted/Posted/Submitter/Organization come from fields every report has, so
 # they are always offered — unlike the config-gated ones below.
 ALWAYS_FILTER_COLUMNS = ["Campaign", "Attachment", "Comment text",
-                         "Submitted", "Posted", "Submitter", "Organization"]
+                         "Submitted Date", "Posted Date", "Submitter", "Organization"]
 # Filters offered only when the regulation's config surfaces the field
 # (show: [filter]). A given regulation may surface none, some, or all of these,
 # so tests that need one skip when it is absent.
@@ -354,7 +354,7 @@ def _apply_range(page, label, frm="", to=""):
 
 def test_date_filters_are_ranges_not_checkboxes(page):
     """Both date filters open a from/to range, and no longer a day-per-checkbox list."""
-    for label in ("Submitted", "Posted"):
+    for label in ("Submitted Date", "Posted Date"):
         _open_daterange_filter(page, label)
         assert page.query_selector(".filter-modal .dr-to") is not None, f"{label}: no To input"
         assert page.query_selector(".filter-modal .filter-options input[type='checkbox']") is None, \
@@ -371,7 +371,7 @@ def test_submitted_range_filters_and_round_trips_through_the_url(page):
         "() => { const v = commentData.map(c => c.received_date).filter(Boolean).sort();"
         "        return {min: v[0], max: v[v.length - 1]}; }")
     initial = len(page.query_selector_all("#commentsTable tbody tr"))
-    _apply_range(page, "Submitted", frm=bounds["min"], to=bounds["min"])
+    _apply_range(page, "Submitted Date", frm=bounds["min"], to=bounds["min"])
     chips = page.query_selector_all(".filter-chip")
     assert any("Submitted" in c.inner_text() for c in chips), "No Submitted chip"
     assert ".." not in " ".join(c.inner_text() for c in chips), \
@@ -393,7 +393,7 @@ def test_open_ended_range_keeps_every_later_row(page):
     cutoff = page.evaluate(
         "() => { const v = commentData.map(c => c.received_date).filter(Boolean).sort();"
         "        return v[Math.floor(v.length / 2)]; }")
-    _apply_range(page, "Submitted", frm=cutoff)
+    _apply_range(page, "Submitted Date", frm=cutoff)
     shown = page.evaluate(
         "(c) => commentData.filter(x => x.received_date && x.received_date >= c).length", cutoff)
     info = page.query_selector("#commentsTable_info").inner_text()
@@ -405,7 +405,7 @@ def test_backwards_range_is_swapped_not_silently_empty(page):
     v = page.evaluate(
         "() => { const s = commentData.map(c => c.received_date).filter(Boolean).sort();"
         "        return {lo: s[0], hi: s[s.length - 1]}; }")
-    _apply_range(page, "Submitted", frm=v["hi"], to=v["lo"])
+    _apply_range(page, "Submitted Date", frm=v["hi"], to=v["lo"])
     assert len(page.query_selector_all("#commentsTable tbody tr")) > 0, \
         "Backwards range emptied the table instead of swapping the ends"
 
@@ -422,8 +422,10 @@ def test_date_column_is_labelled_submitted(page):
     """The column says which date it is. It used to say just 'Date' while showing the
     posted date, which on a closed docket runs weeks past the comment deadline."""
     heads = [h.inner_text().strip() for h in page.query_selector_all("#commentsTable thead th")]
-    assert "Submitted" in heads, f"No 'Submitted' column: {heads}"
+    assert "Submitted Date" in heads, f"No 'Submitted Date' column: {heads}"
     assert "Date" not in heads, f"Ambiguous 'Date' column still present: {heads}"
+    # "Submitted" alone reads as a status rather than naming a date.
+    assert "Submitted" not in heads, f"Bare 'Submitted' column still present: {heads}"
 
 
 def test_submitter_filter_matches_the_submitter_column(page):

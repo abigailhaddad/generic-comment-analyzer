@@ -907,7 +907,7 @@
             // Both dates here, since only Submitted is a table column. Naming them
             // separately is the point — the gap between the two is the agency's
             // processing lag, not anything the commenter did.
-            html += '<div class="col-sm-4"><div class="detail-label">Submitted</div><div class="detail-value">' + (c.received_date || '—')
+            html += '<div class="col-sm-4"><div class="detail-label">Submitted Date</div><div class="detail-value">' + (c.received_date || '—')
                  + '<span class="text-muted" style="font-size:0.8em;"> · posted ' + (c.date || '—') + '</span></div></div>';
             html += '</div>';
 
@@ -1039,9 +1039,12 @@
             // showed the posted date — which on a closed docket runs weeks past the
             // comment deadline and reads as nonsense to anyone taking it for when
             // the comment was written. Posted is still filterable, just not a column.
-            { key: 'received_date', title: 'Submitted', isDate: true,
+            // "Submitted Date", not "Submitted": on its own the word reads as a
+            // status — whether the thing was submitted — rather than naming what is
+            // in the cell. Both date fields say "Date" for the same reason.
+            { key: 'received_date', title: 'Submitted Date', isDate: true,
               cell: function (c) { return c.received_date; },
-              filter: { name: 'Submitted', type: 'daterange',
+              filter: { name: 'Submitted Date', type: 'daterange',
                         value: function (c) { return c.received_date; } } },
             { key: 'submitter', title: 'Submitter',
               cell: function (c) { return escapeHtml(c.submitter) + (c.organization ? ' <span class="text-muted" style="font-size:11px;">(' + escapeHtml(c.organization) + ')</span>' : ''); },
@@ -1098,7 +1101,7 @@
         // Posted date: no column (Submitted is the one readers want), but kept as a
         // filter — it is the only way to ask "what did regulations.gov publish this
         // week", which is a real question on a docket still being posted in batches.
-        FILTER_DEFS.push({ key: 'posted', name: 'Posted', type: 'daterange',
+        FILTER_DEFS.push({ key: 'posted', name: 'Posted Date', type: 'daterange',
             value: function (c) { return c.date; } });
         // Organization has no column of its own — it rides along inside the
         // Submitter cell — but it is on every row, so it filters without touching
