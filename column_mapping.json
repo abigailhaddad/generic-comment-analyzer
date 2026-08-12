@@ -2,6 +2,7 @@
   "text": "Comment",
   "id": "Document ID",
   "date": "Posted Date",
+  "received_date": "Received Date",
   "first_name": "First Name",
   "last_name": "Last Name",
   "organization": "Organization Name",

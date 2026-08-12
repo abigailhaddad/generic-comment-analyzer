@@ -430,6 +430,19 @@ def prepare_rows(comments: List[Dict[str, Any]], campaign_id_to_rank: dict = Non
     campaign_id_to_stance = campaign_id_to_stance or {}
     flag_keys = flag_keys or []
     regex_value_patterns = regex_value_patterns or {}
+
+    # The table's date column is the submitted date, which only exists in parquets
+    # written after received_date was added to read_comments_from_csv. Rendering
+    # anyway would publish a silently blank column — exactly the kind of
+    # plausible-looking wrong answer this report must never give — so say what is
+    # missing and how to fix it instead.
+    if comments and 'received_date' not in comments[0]:
+        raise SystemExit(
+            "This parquet has no `received_date` column, so the Submitted date "
+            "cannot be rendered. It predates that field; re-run pipeline.py to "
+            "rebuild it from source.csv (analysis is text-keyed and will be "
+            "reused, so nothing is re-analyzed).")
+
     rows = []
     for comment in comments:
         analysis = comment.get('analysis') or {}
@@ -457,15 +470,20 @@ def prepare_rows(comments: List[Dict[str, Any]], campaign_id_to_rank: dict = Non
         position_html = ' '.join(f'<span class="stance-tag tag-position">{s.replace("Position: ", "")}</span>' for s in positions)
         concerns_html = ' '.join(f'<span class="stance-tag tag-concern">{s.replace("Concern: ", "")}</span>' for s in concerns)
 
-        # Date
-        date_str = comment.get('date', '')
-        formatted_date = ''
-        if date_str:
+        # Dates. `received_date` is when the commenter submitted, `date` is when
+        # regulations.gov published it; the table shows the former and both are
+        # filterable. See the guard in generate_html_report for what happens when
+        # the parquet predates received_date.
+        def _fmt_date(value):
+            if not value:
+                return ''
             try:
-                dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-                formatted_date = dt.strftime('%Y-%m-%d')
+                return datetime.fromisoformat(value.replace('Z', '+00:00')).strftime('%Y-%m-%d')
             except Exception:
-                formatted_date = date_str[:10] if len(date_str) >= 10 else date_str
+                return value[:10] if len(value) >= 10 else value
+
+        formatted_date = _fmt_date(comment.get('date', ''))
+        formatted_received = _fmt_date(comment.get('received_date', ''))
 
         # Comment preview for table
         comment_text = comment.get('comment_text', '') or ''
@@ -474,6 +492,7 @@ def prepare_rows(comments: List[Dict[str, Any]], campaign_id_to_rank: dict = Non
         rows.append({
             'id': comment.get('id', ''),
             'date': formatted_date,
+            'received_date': formatted_received,
             'submitter': 'Anonymous' if (comment.get('submitter', '') or '').strip() in ('Anonymous Anonymous', '') else comment.get('submitter', '').strip(),
             'organization': comment.get('organization', '') or '',
             'entity_type': analysis.get('entity_type', 'Individual/Other'),
@@ -782,6 +801,7 @@ def _row_to_list(r):
     return [
         r['id'],
         r['date'],
+        r['received_date'],
         r['submitter'],
         r['organization'],
         r['entity_type'],
@@ -1253,7 +1273,7 @@ def export_comments_csv(comments: List[Dict[str, Any]], output_path: str, source
     # Derived column set, all discovered rather than hardcoded.
     analysis_keys = sorted({k for c in comments for k in (c.get('analysis') or {})})
     skip_top = {'id', 'text', 'comment_text', 'analysis', 'attachment_status',
-                'submitter', 'organization', 'date'}
+                'submitter', 'organization', 'date', 'received_date'}
     top_keys = [k for k in (comments[0].keys() if comments else []) if k not in skip_top]
     option_cols = []  # (column name, field name, option value) for multi/single enums
     for fld in fields:

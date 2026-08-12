@@ -13,8 +13,8 @@ def test_table_has_correct_columns(page):
 
 
 def test_sorting_by_date(page):
-    """Clicking Date header sorts the table."""
-    # Click Date header to sort
+    """Clicking the Submitted header sorts the table."""
+    # Click the date column header to sort
     page.click("#commentsTable thead th:nth-child(2)")
     page.wait_for_timeout(300)
 

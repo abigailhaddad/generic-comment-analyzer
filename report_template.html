@@ -266,6 +266,13 @@
             background: var(--color-bg); color: var(--color-text);
         }
         .filter-search:focus { outline: none; border-color: var(--color-accent); }
+        /* Date-range control: two native date inputs. Native, not a datepicker
+           library — the browser's own calendar costs nothing to ship and this page
+           deliberately loads no frontend dependency beyond jQuery/Bootstrap/DataTables. */
+        .filter-daterange { display: flex; align-items: center; gap: 9px; margin-bottom: 4px; }
+        .filter-daterange label { font-size: 0.78rem; color: var(--color-text-muted); flex: none; width: 34px; }
+        .filter-daterange input { flex: 1; margin-bottom: 0; }
+        .filter-hint { font-size: 0.78rem; color: var(--color-text-muted); margin: 8px 0 0; }
         .filter-options { display: flex; flex-direction: column; gap: 2px; max-height: 320px; overflow-y: auto; }
         .filter-option { display: flex; align-items: center; gap: 9px; padding: 7px 6px; border-radius: 7px; cursor: pointer; font-size: 0.9rem; color: var(--color-text); }
         .filter-option:hover { background: var(--color-surface); }
@@ -632,7 +639,7 @@
             throw new Error('comment_rows/*.js did not load — refusing to render an empty table');
         }
         const commentDataRaw = window.__ROWS__;
-        const COMMENT_FIELDS = ['id', 'date', 'submitter', 'organization', 'entity_type', 'cosigner_count',
+        const COMMENT_FIELDS = ['id', 'date', 'received_date', 'submitter', 'organization', 'entity_type', 'cosigner_count',
             'stances', 'flags', 'state', 'political', 'has_attachment', 'campaign_id', 'campaign_rank',
             'campaign_size', 'campaign_stance', 'multi_values'];
         const commentData = commentDataRaw.map(function (r) {
@@ -897,7 +904,11 @@
             html += '<div class="row mb-3">';
             html += '<div class="col-sm-4"><div class="detail-label">Submitter</div><div class="detail-value">' + (c.submitter || 'Anonymous') + (c.organization ? ' (' + c.organization + ')' : '') + '</div></div>';
             html += '<div class="col-sm-4"><div class="detail-label">Entity Type</div><div class="detail-value">' + c.entity_type + '</div></div>';
-            html += '<div class="col-sm-4"><div class="detail-label">Date</div><div class="detail-value">' + c.date + '</div></div>';
+            // Both dates here, since only Submitted is a table column. Naming them
+            // separately is the point — the gap between the two is the agency's
+            // processing lag, not anything the commenter did.
+            html += '<div class="col-sm-4"><div class="detail-label">Submitted</div><div class="detail-value">' + (c.received_date || '—')
+                 + '<span class="text-muted" style="font-size:0.8em;"> · posted ' + (c.date || '—') + '</span></div></div>';
             html += '</div>';
 
             if (detailReady && d.entity_name) {
@@ -1024,11 +1035,14 @@
         const COLUMN_SPECS = [
             { key: 'id', title: 'ID',
               cell: function (c) { return '<a href="https://www.regulations.gov/comment/' + c.id + '" target="_blank" onclick="event.stopPropagation();">' + c.id.split('-').pop() + '</a>'; } },
-            { key: 'date', title: 'Date', isDate: true, cell: function (c) { return c.date; },
-              // Dates are YYYY-MM-DD and there are only tens of them, so the plain
-              // multiselect (with counts and select-all) is the right control — no
-              // separate range picker to build or explain.
-              filter: { name: 'Date', vals: function (c) { return c.date ? [c.date] : []; } } },
+            // The column is the SUBMITTED date. "Date" alone was ambiguous, and it
+            // showed the posted date — which on a closed docket runs weeks past the
+            // comment deadline and reads as nonsense to anyone taking it for when
+            // the comment was written. Posted is still filterable, just not a column.
+            { key: 'received_date', title: 'Submitted', isDate: true,
+              cell: function (c) { return c.received_date; },
+              filter: { name: 'Submitted', type: 'daterange',
+                        value: function (c) { return c.received_date; } } },
             { key: 'submitter', title: 'Submitter',
               cell: function (c) { return escapeHtml(c.submitter) + (c.organization ? ' <span class="text-muted" style="font-size:11px;">(' + escapeHtml(c.organization) + ')</span>' : ''); },
               // Text, not multiselect: there is very nearly one distinct submitter
@@ -1081,6 +1095,11 @@
         });
         // Campaign stance (Support/Oppose/Mixed) — only meaningful for comments in a campaign.
         FILTER_DEFS.push({ key: 'campaign_stance', name: 'Campaign stance', vals: function (c) { return c.campaign_stance ? [c.campaign_stance] : []; } });
+        // Posted date: no column (Submitted is the one readers want), but kept as a
+        // filter — it is the only way to ask "what did regulations.gov publish this
+        // week", which is a real question on a docket still being posted in batches.
+        FILTER_DEFS.push({ key: 'posted', name: 'Posted', type: 'daterange',
+            value: function (c) { return c.date; } });
         // Organization has no column of its own — it rides along inside the
         // Submitter cell — but it is on every row, so it filters without touching
         // the lazy detail shards.
@@ -1126,7 +1145,16 @@
                 const sel = Report.activeFilters[key];
                 if (!sel || !sel.length) continue;
                 const def = DEF_BY_KEY[key];
-                if (def.type === 'text') {
+                if (def.type === 'daterange') {
+                    // Stored as one "from..to" string, either end optional. Dates are
+                    // YYYY-MM-DD, so lexical compare is chronological — no parsing.
+                    const parts = String(sel[0]).split('..');
+                    const from = parts[0], to = parts[1];
+                    const v = def.value(c);
+                    if (!v) return false;
+                    if (from && v < from) return false;
+                    if (to && v > to) return false;
+                } else if (def.type === 'text') {
                     const term = sel[0];
                     if (!term) continue;
                     // Row-field text filters (Submitter, Organization) bring their own
@@ -1149,6 +1177,17 @@
         };
 
         // ── Chips ─────────────────────────────────────────────────────────
+        // "2026-07-01..2026-07-31" -> "2026-07-01 to 2026-07-31"; an open end reads
+        // as "on or after" / "on or before" so a one-sided range is unambiguous.
+        function formatRangeLabel(v) {
+            const parts = String(v).split('..');
+            const from = parts[0], to = parts[1];
+            if (from && to) return from + ' to ' + to;
+            if (from) return 'on or after ' + from;
+            if (to) return 'on or before ' + to;
+            return '';
+        }
+
         Report.renderChips = function () {
             const host = document.getElementById('activeChips');
             host.innerHTML = '';
@@ -1162,7 +1201,9 @@
                     label.textContent = def.name + ':';
                     const value = document.createElement('span');
                     value.className = 'filter-chip-value';
-                    value.textContent = v;
+                    // A range stores "from..to"; show it as a range rather than
+                    // leaking the delimiter the URL happens to use.
+                    value.textContent = def.type === 'daterange' ? formatRangeLabel(v) : v;
                     const remove = document.createElement('button');
                     remove.className = 'filter-chip-remove';
                     remove.type = 'button';
@@ -1247,10 +1288,70 @@
                 o.addEventListener('click', function () {
                     closeFilterModal(m);
                     const def = DEF_BY_KEY[o.getAttribute('data-key')];
-                    if (def.type === 'text') { Report.openText(def); } else { Report.openMulti(def); }
+                    if (def.type === 'daterange') { Report.openDateRange(def); }
+                    else if (def.type === 'text') { Report.openText(def); }
+                    else { Report.openMulti(def); }
                 });
             });
         };
+
+        // Date-range dialog: two native date inputs, either end optional.
+        //
+        // A range rather than a checkbox per day. The day list grows by one every
+        // time the agency posts, so it only ever gets longer — but the real problem
+        // was sharing: a checkbox selection freezes the days that existed when the
+        // link was made, so "everything since the deadline" sent to a colleague
+        // silently stops including days added afterwards. A range keeps meaning what
+        // it says. Bounds come from the data, so you cannot pick an empty range.
+        Report.openDateRange = function (def) {
+            const cur = String((Report.activeFilters[def.key] || [''])[0] || '').split('..');
+            const bounds = dateBounds(def);
+            const attrs = ' min="' + bounds.min + '" max="' + bounds.max + '"';
+            const m = createFilterModal('<div class="filter-popover"><div class="filter-title">Filter: ' + escapeHtml(def.name) + '</div>'
+                + '<div class="filter-daterange"><label for="dr-from">From</label>'
+                + '<input type="date" id="dr-from" class="filter-search dr-from" value="' + escapeHtml(cur[0] || '') + '"' + attrs + '></div>'
+                + '<div class="filter-daterange"><label for="dr-to">To</label>'
+                + '<input type="date" id="dr-to" class="filter-search dr-to" value="' + escapeHtml(cur[1] || '') + '"' + attrs + '></div>'
+                + '<p class="filter-hint">Leave either box empty for an open-ended range. Data runs '
+                + escapeHtml(bounds.min) + ' to ' + escapeHtml(bounds.max) + '.</p>'
+                + '<div class="filter-buttons"><button class="btn-clear">Clear</button><button class="btn-apply">Apply</button></div></div>');
+
+            const fromI = m.querySelector('.dr-from');
+            const toI = m.querySelector('.dr-to');
+            fromI.focus();
+            m.querySelector('.btn-clear').addEventListener('click', function () {
+                delete Report.activeFilters[def.key];
+                closeFilterModal(m);
+                Report.refresh();
+            });
+            m.querySelector('.btn-apply').addEventListener('click', function () {
+                let from = fromI.value, to = toI.value;
+                // A backwards range would silently match nothing; swap instead.
+                if (from && to && from > to) { const t = from; from = to; to = t; }
+                if (from || to) { Report.activeFilters[def.key] = [from + '..' + to]; }
+                else { delete Report.activeFilters[def.key]; }
+                closeFilterModal(m);
+                Report.refresh();
+            });
+        };
+
+        // Earliest/latest value this def sees, for the pickers' min/max. Computed on
+        // demand and cached — it is one pass over every row, and most visitors never
+        // open a date filter at all.
+        const dateBoundsCache = {};
+        function dateBounds(def) {
+            if (!dateBoundsCache[def.key]) {
+                let lo = null, hi = null;
+                commentData.forEach(function (c) {
+                    const v = def.value(c);
+                    if (!v) return;
+                    if (lo === null || v < lo) lo = v;
+                    if (hi === null || v > hi) hi = v;
+                });
+                dateBoundsCache[def.key] = { min: lo || '', max: hi || '' };
+            }
+            return dateBoundsCache[def.key];
+        }
 
         // Step 2: per-column multiselect dialog (search + counts + select-all)
         Report.openMulti = function (def) {

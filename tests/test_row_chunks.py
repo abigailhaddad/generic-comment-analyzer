@@ -35,7 +35,10 @@ TEMPLATE = os.path.join(os.path.dirname(__file__), '..', 'report_template.html')
 def make_rows(n):
     return [
         {
-            'id': f'DOC-{i}', 'date': '2026-01-01', 'submitter': f'S{i}',
+            # Two dates: `received_date` is when it was submitted (the table's
+            # column), `date` is when it was posted. Posted is the later of the two.
+            'id': f'DOC-{i}', 'date': '2026-01-05', 'received_date': '2026-01-01',
+            'submitter': f'S{i}',
             'organization': f'Org{i}', 'entity_type': 'Individual/Other',
             'cosigner_count': 1, 'stances_list': ['Position: Oppose'],
             'flags': {'x': False}, 'state_identified': 'CA',
@@ -70,11 +73,16 @@ def test_rows_survive_chunking_in_exact_order(tmp_path):
     assert got == [_row_to_list(r) for r in rows]
 
 
-def test_field_order_matches_the_template(tmp_path):
-    """_row_to_list and COMMENT_FIELDS must agree, or every column shifts."""
+def template_fields():
+    """The row field names, in order, as the template names them."""
     html = open(TEMPLATE, encoding='utf-8').read()
     block = re.search(r'const COMMENT_FIELDS = \[(.*?)\];', html, re.S).group(1)
-    fields = re.findall(r"'([^']+)'", block)
+    return re.findall(r"'([^']+)'", block)
+
+
+def test_field_order_matches_the_template(tmp_path):
+    """_row_to_list and COMMENT_FIELDS must agree, or every column shifts."""
+    fields = template_fields()
     write_row_chunks(make_rows(1), str(tmp_path))
     row, _ = read_chunks(str(tmp_path))
     assert len(row[0]) == len(fields), (
@@ -82,7 +90,10 @@ def test_field_order_matches_the_template(tmp_path):
     # spot-check the positions whose meaning is unambiguous from the value
     by_name = dict(zip(fields, row[0]))
     assert by_name['id'] == 'DOC-0'
-    assert by_name['date'] == '2026-01-01'
+    # Distinct values on purpose: the two dates sit next to each other, so equal
+    # values would let a swapped pair pass this order check unnoticed.
+    assert by_name['date'] == '2026-01-05'
+    assert by_name['received_date'] == '2026-01-01'
     assert by_name['submitter'] == 'S0'
     assert by_name['entity_type'] == 'Individual/Other'
     assert by_name['state'] == 'CA'
@@ -147,4 +158,7 @@ def test_missing_optional_campaign_fields_do_not_raise(tmp_path):
         r.pop('campaign_id'); r.pop('campaign_rank'); r.pop('campaign_size')
     write_row_chunks(rows, str(tmp_path))
     got, _ = read_chunks(str(tmp_path))
-    assert got[0][11] is None and got[0][13] == 0
+    # By field name, not by position: these were hardcoded indices, and adding a
+    # column earlier in the row shifted them silently.
+    by_name = dict(zip(template_fields(), got[0]))
+    assert by_name['campaign_id'] is None and by_name['campaign_size'] == 0

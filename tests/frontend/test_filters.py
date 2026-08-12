@@ -7,10 +7,10 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeout
 
 
 # Filters the picker offers for EVERY regulation (not gated by config).
-# Date/Submitter/Organization come from columns every report has, so they are
-# always offered — unlike the config-gated ones below.
+# Submitted/Posted/Submitter/Organization come from fields every report has, so
+# they are always offered — unlike the config-gated ones below.
 ALWAYS_FILTER_COLUMNS = ["Campaign", "Attachment", "Comment text",
-                         "Date", "Submitter", "Organization"]
+                         "Submitted", "Posted", "Submitter", "Organization"]
 # Filters offered only when the regulation's config surfaces the field
 # (show: [filter]). A given regulation may surface none, some, or all of these,
 # so tests that need one skip when it is absent.
@@ -299,10 +299,11 @@ def test_sections_referenced_click_filters(page):
 
 # ── Issue #7: filter by Date, Submitter, Organization ────────────────────────
 #
-# These three were the columns the picker did not offer. Date is low-cardinality
-# so it reuses the ordinary multiselect; Submitter and Organization have nearly
-# one distinct value per comment, so they are text filters instead — enumerating
-# them would build a list as long as the table.
+# These were the columns the picker did not offer. Submitter and Organization have
+# nearly one distinct value per comment, so they are text filters — enumerating them
+# would build a list as long as the table. Dates are ranges: the day list grows every
+# time the agency posts, and a checkbox selection baked into a shared link silently
+# stops covering days added later.
 
 
 def _cell_index(page, header):
@@ -334,18 +335,95 @@ def _open_text_filter(page, label):
     page.wait_for_selector(".filter-modal .filter-text-input")
 
 
-def test_date_filter_offers_options_and_applies(page):
-    """Date is a plain multiselect: it lists days and filtering makes a chip."""
-    initial_rows = len(page.query_selector_all("#commentsTable tbody tr"))
-    _open_multiselect_filter(page, "Date")
-    options = page.query_selector_all(".filter-modal .filter-options .filter-option")
-    assert len(options) > 0, "Date filter listed no days"
-    _apply_first_option(page)
-    page.wait_for_timeout(300)
+def _open_daterange_filter(page, label):
+    """Open the picker and drill into a date-range dialog."""
+    _open_column_picker(page)
+    page.locator(".filter-modal .filter-option", has_text=label).first.click()
+    page.wait_for_selector(".filter-modal .dr-from")
+
+
+def _apply_range(page, label, frm="", to=""):
+    _open_daterange_filter(page, label)
+    if frm:
+        page.fill(".filter-modal .dr-from", frm)
+    if to:
+        page.fill(".filter-modal .dr-to", to)
+    page.click(".filter-modal .btn-apply")
+    page.wait_for_timeout(400)
+
+
+def test_date_filters_are_ranges_not_checkboxes(page):
+    """Both date filters open a from/to range, and no longer a day-per-checkbox list."""
+    for label in ("Submitted", "Posted"):
+        _open_daterange_filter(page, label)
+        assert page.query_selector(".filter-modal .dr-to") is not None, f"{label}: no To input"
+        assert page.query_selector(".filter-modal .filter-options input[type='checkbox']") is None, \
+            f"{label} still renders a checkbox list"
+        # Bounds come from the data, so the picker cannot offer an empty range.
+        assert page.query_selector(".filter-modal .dr-from").get_attribute("min")
+        _close_modal(page)
+
+
+def test_submitted_range_filters_and_round_trips_through_the_url(page):
+    """A submitted-date range narrows the table, labels its chip as a range, and
+    survives being copied as a link."""
+    bounds = page.evaluate(
+        "() => { const v = commentData.map(c => c.received_date).filter(Boolean).sort();"
+        "        return {min: v[0], max: v[v.length - 1]}; }")
+    initial = len(page.query_selector_all("#commentsTable tbody tr"))
+    _apply_range(page, "Submitted", frm=bounds["min"], to=bounds["min"])
     chips = page.query_selector_all(".filter-chip")
-    assert any("Date" in c.inner_text() for c in chips), "No Date chip created"
-    assert "date=" in page.url, f"Date filter not in URL: {page.url}"
-    assert len(page.query_selector_all("#commentsTable tbody tr")) <= initial_rows
+    assert any("Submitted" in c.inner_text() for c in chips), "No Submitted chip"
+    assert ".." not in " ".join(c.inner_text() for c in chips), \
+        "Chip leaked the '..' URL delimiter instead of reading as a range"
+    assert "received_date=" in page.url, f"Range not in URL: {page.url}"
+    assert len(page.query_selector_all("#commentsTable tbody tr")) <= initial
+
+    url = page.url
+    page.goto(url, wait_until="networkidle")
+    page.wait_for_selector("#commentsTable_wrapper")
+    page.wait_for_timeout(300)
+    assert any("Submitted" in c.inner_text() for c in page.query_selector_all(".filter-chip")), \
+        "Range filter did not survive the URL round-trip"
+
+
+def test_open_ended_range_keeps_every_later_row(page):
+    """A from-only range is open-ended — the point of ranges over checkboxes, since
+    it keeps covering days added after the link was shared."""
+    cutoff = page.evaluate(
+        "() => { const v = commentData.map(c => c.received_date).filter(Boolean).sort();"
+        "        return v[Math.floor(v.length / 2)]; }")
+    _apply_range(page, "Submitted", frm=cutoff)
+    shown = page.evaluate(
+        "(c) => commentData.filter(x => x.received_date && x.received_date >= c).length", cutoff)
+    info = page.query_selector("#commentsTable_info").inner_text()
+    assert f"{shown:,}" in info, f"Expected {shown:,} rows on/after {cutoff}, got: {info}"
+
+
+def test_backwards_range_is_swapped_not_silently_empty(page):
+    """From later than To would match nothing; the dialog swaps them instead."""
+    v = page.evaluate(
+        "() => { const s = commentData.map(c => c.received_date).filter(Boolean).sort();"
+        "        return {lo: s[0], hi: s[s.length - 1]}; }")
+    _apply_range(page, "Submitted", frm=v["hi"], to=v["lo"])
+    assert len(page.query_selector_all("#commentsTable tbody tr")) > 0, \
+        "Backwards range emptied the table instead of swapping the ends"
+
+
+def test_submitted_is_never_after_posted(page):
+    """Data integrity: a comment cannot be published before it was received. This is
+    what makes the two dates safe to present as distinct things."""
+    bad = page.evaluate(
+        "() => commentData.filter(c => c.received_date && c.date && c.received_date > c.date).length")
+    assert bad == 0, f"{bad} comments claim to have been posted before they were submitted"
+
+
+def test_date_column_is_labelled_submitted(page):
+    """The column says which date it is. It used to say just 'Date' while showing the
+    posted date, which on a closed docket runs weeks past the comment deadline."""
+    heads = [h.inner_text().strip() for h in page.query_selector_all("#commentsTable thead th")]
+    assert "Submitted" in heads, f"No 'Submitted' column: {heads}"
+    assert "Date" not in heads, f"Ambiguous 'Date' column still present: {heads}"
 
 
 def test_submitter_filter_matches_the_submitter_column(page):
