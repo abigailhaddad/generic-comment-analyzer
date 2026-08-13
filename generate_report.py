@@ -724,6 +724,17 @@ def load_report_config() -> Dict[str, Any]:
     return {}
 
 
+def config_declares_rule_text() -> bool:
+    """True when analyzer_config.yaml has a `rule_text:` block — i.e. this
+    regulation asserts it has a Read-the-Rule page."""
+    config_path = Path('analyzer_config.yaml')
+    if not config_path.exists():
+        return False
+    with open(config_path) as f:
+        config = yaml.safe_load(f) or {}
+    return bool(config.get('rule_text'))
+
+
 def load_changelog() -> List[Dict[str, Any]]:
     """Build the report's changelog: manual/methodology notes from
     analyzer_config.yaml (`changelog:`) merged with the auto-generated
@@ -1123,7 +1134,21 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
     row_chunk_count = write_row_chunks(rows, os.path.dirname(output_file) or '.')
 
     # Read-the-Rule page — only when the regulation has proposed-rule text prepared.
+    #
+    # A regulation that declares `rule_text:` is asserting it HAS a rule page, so a
+    # missing rule_sections.json there is a broken build, not a configuration choice.
+    # Treating the two cases alike is what quietly deleted this page for ten days:
+    # CI checkouts never had the file (gitignored, and not synced from R2), so every
+    # deploy dropped both the page and the link to it, and the report looked fine
+    # because nothing pointed at the hole. Say so instead.
     rule_sections = load_rule_sections()
+    if rule_sections is None and config_declares_rule_text():
+        raise SystemExit(
+            "analyzer_config.yaml declares `rule_text:`, so this regulation is "
+            "expected to have a Read-the-Rule page, but rule_sections.json is "
+            "missing or empty — the deploy would silently drop read-the-rule.html "
+            "and the link to it. Run fetch_rule_text.py to rebuild it, or remove "
+            "`rule_text:` from the config if the page is genuinely not wanted.")
     rule_page_url = 'read-the-rule.html' if rule_sections else None
     model_name = determine_model(comments, model_used)
     generated_time = datetime.now().strftime('%B %d, %Y at %I:%M %p')
