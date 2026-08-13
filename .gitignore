@@ -27,6 +27,12 @@ read-the-rule.html
 !regulation_metadata.json
 # The pipeline-maintained changelog history — small, not regenerable, keep it.
 !data_changelog.json
+# The parsed proposed-rule text behind read-the-rule.html (~140 KB, changes only
+# if the rule itself does). It was ignored and not synced from R2, so CI
+# checkouts never had it and every automated deploy silently dropped the page
+# AND the link to it. Committing it is what makes the rule page reproducible in
+# CI without a Federal Register fetch on every publish.
+!rule_sections.json
 
 # Test/report artifacts
 test_*.html
