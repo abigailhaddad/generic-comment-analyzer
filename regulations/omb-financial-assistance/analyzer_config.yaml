@@ -282,6 +282,9 @@ campaigns:
 # time; keep those out of here. Newest first. Omit the key to hide the section.
 # -------------------------------------------------------------------
 changelog:
+  - date: "2026-08-15"
+    note: "Corrected the position shown on 81 comments that were labeled “Support” but do not actually take a position on the rule. A reader pointed out that the Data Foundation's comment — which asks for more time to review rather than backing or objecting to the rule — was marked as supporting it. The cause was that “Unclear” had been reserved for comments that were off-topic or unreadable, so a comment that engaged with the subject but stated no position had nowhere to go and was read as support. “Unclear” now also covers comments that are procedural, that only describe the rule, or that argue for something the rule claims to address without endorsing the rule itself. Every comment previously marked Support was re-checked against its own stated reasoning; 134 disagreed and were re-run, of which 78 moved to no position, 3 to oppose, and 53 were confirmed as support. Overall totals barely move: support goes from 3.23% to 3.18%, oppose stays at 96.28%."
+
   - date: "2026-08-07"
     note: "Corrected the “Identified As” name shown on some comments. Comments with identical wording are analyzed once and the result shared across them, but that analysis also saw the submitter's name — so when several people submitted exactly the same text, one of their names could appear on the others' comments. A name (and any state inferred from it) is now kept only when it actually appears in that person's own submission. This corrected about 5,700 comments; positions, concerns, and campaign grouping were not affected."
 
@@ -393,9 +396,16 @@ second_pass:
         stronger oversight against waste/fraud/abuse, support for accountability of grant
         spending, or agreement that political leadership should set funding priorities. Take
         an explicit "I support this rule" at face value.
-      - "Unclear" — ONLY when the comment is truly off-topic (not about federal grants or the
-        rule), is a single ambiguous word, is incoherent, or is just docket metadata with no
-        substantive content. If there is ANY indication of opposition sentiment, classify as Oppose.
+      - "Unclear" — use this in EITHER of two cases:
+        (a) the comment is truly off-topic (not about federal grants or the rule), is a single
+        ambiguous word, is incoherent, or is just docket metadata with no substantive content; or
+        (b) the comment engages with the subject but states NO position on the rule itself —
+        it is procedural (asking to extend the comment period, asking a question about process),
+        it only describes or summarises the rule, or it argues for something adjacent (general
+        oversight, accountability, fraud prevention, staffing) without endorsing or objecting to
+        THIS rule. Wanting a goal the rule claims to serve is NOT the same as supporting the rule.
+        If there is ANY indication of opposition sentiment, classify as Oppose. Do NOT reach for
+        "Support" merely because the comment is not hostile — silence on the rule is "Unclear".
 
       SARCASM CHECK: before calling something "Support", make sure the praise is sincere. A
       comment that says the rule is "amazing"/"wonderful" or "I support this" but then describes
