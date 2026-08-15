@@ -312,6 +312,56 @@ stance_audit:
     describes the rule, is off-topic or incoherent, or in fact supports it.
 
 
+# -------------------------------------------------------------------
+# Evaluation set — build_eval_set.py / label_eval_set.py / score_stances.py.
+# Candidate labels are drafted by a STRONGER model than the pipeline uses and
+# then reviewed by hand; the reviewed `label` column is what the scorer trusts.
+# -------------------------------------------------------------------
+eval:
+  model: "gpt-5.4"
+  size: 200
+  strategy: balanced
+  # Extra guidance appended to the auto-built prompt. The position definitions
+  # themselves come from `stances:` and `stance_audit:` above — don't repeat them
+  # here, or the two will drift apart.
+  labeling_notes: >
+    This docket is overwhelmingly opposed, so do NOT let the base rate decide a
+    close call — judge each comment on its own text.
+    Watch the boundary that matters here: agreeing with a goal the rule claims to
+    serve (less waste, more oversight, punishing fraud) is NOT the same as
+    endorsing the rule, and defending peer review or scientific merit is opposition
+    rather than a neutral observation.
+    Quote the exact words you relied on. If the comment is a form letter, judge the
+    letter's text, not what you assume the campaign intended.
+
+
+# -------------------------------------------------------------------
+# Prompt history — shown on the accuracy page next to the pipeline stages.
+# The prompts published there are the CURRENT ones; this records that they
+# have not always been the current ones, and that not every comment was
+# re-run when they changed. Optional: omit the key and nothing is shown.
+# -------------------------------------------------------------------
+prompt_history:
+  - date: "2026-08-15"
+    stage: "First pass"
+    note: >
+      "Unclear" had been reserved for off-topic or unreadable comments, so a comment
+      that engaged the subject but took no position had nowhere to go. It was
+      rewritten to cover comments that are procedural, that only describe the rule,
+      or that argue for something adjacent without endorsing it.
+  - date: "2026-08-15"
+    stage: "Second pass"
+    note: >
+      "Support" had counted agreement with the rule's goals, so wanting less waste or
+      more oversight registered as support even when the comment never backed the
+      rule. It now requires endorsing the rule or one of its provisions.
+      Every comment labelled Support was then re-checked against its own text by a
+      separate audit — gpt-5.4-mini, on a different prompt written to disagree rather
+      than confirm — and the ones it disputed were re-run through this second pass, on
+      the prompt shown here. 161 changed.
+      Comments already labelled Oppose or Unclear were not re-run, so they still carry
+      whatever the prompt said when they were labelled.
+
 changelog:
   - date: "2026-08-15"
     note: "Corrected the position shown on 161 comments, and audited the rest. A reader pointed out that the Data Foundation's comment — which asks for more time to review the proposal rather than backing or objecting to it — was marked as supporting the rule. Two definitions caused it. “Unclear” had been reserved for comments that were off-topic or unreadable, so a comment that engaged with the subject but took no position had nowhere to go. And “Support” counted agreement with the rule's goals, so wanting less waste or more oversight registered as supporting the rule even when the comment never mentioned it. Both were rewritten: “Unclear” now covers comments that are procedural, that only describe the rule, or that argue for something the rule claims to address without endorsing it; “Support” now requires endorsing the rule or one of its provisions. Every comment labeled Support was then re-checked against its own text and re-run where the two disagreed, moving 161 comments — support falls from 3.23% to 3.11%, oppose is unchanged at 96.29%. A separate check of 2,500 comments labeled “Oppose” found about 1.2% that do not appear to oppose the rule, which would be roughly 1,900 comments across the docket. Those have NOT been corrected: with 161,000 comments carrying that label, re-running all of them to fix a 1.2% error was not worth the cost, and we could not find a cheap way to identify which ones to re-check. Keyword screens were tried — the best flagged 9% of comments to catch only 41% of the errors — because plenty of genuine opposition never uses words like “oppose” (for example, “Do not let political appointees determine what scientific research is funded”). So treat individual “Oppose” labels as roughly 99% reliable rather than exact. Method, figures, and the audit tool: METHOD-stance-audit.md in the repository."

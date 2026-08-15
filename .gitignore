@@ -16,9 +16,14 @@ __pycache__/
 # else in the dir is data or output and stays local.
 attachments/
 *.csv
+# The reviewed evaluation labels. Every other CSV here is regenerable; this one
+# holds hand-checked judgements that cannot be re-derived, and it is the source
+# the published accuracy figures are computed from.
+!**/eval/candidates.csv
 *.parquet
 index.html
 read-the-rule.html
+accuracy.html
 *.log
 
 # JSON is ignored by default; re-include the small shared/config JSON.
@@ -33,6 +38,13 @@ read-the-rule.html
 # AND the link to it. Committing it is what makes the rule page reproducible in
 # CI without a Federal Register fetch on every publish.
 !rule_sections.json
+# The evaluation scores behind accuracy.html — same reasoning as rule_sections
+# above. index.html only renders the "How accurate is this?" callout when this
+# file is present, so a CI checkout without it would quietly publish a report
+# with no accuracy page and no link to one.
+!**/eval/scores.json
+# Raw model drafts for the eval set are an API-response cache, not a record.
+**/eval/candidates_labeled.jsonl
 
 # Test/report artifacts
 test_*.html
