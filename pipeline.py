@@ -1105,8 +1105,13 @@ def save_results(analyzed_comments: List[Dict[str, Any]], output_file: str, forc
     df = pd.DataFrame(analyzed_comments)
 
     if os.path.exists(output_file) and not force:
+        # Row count from the parquet footer, NOT read_parquet(columns=[]) — that
+        # returns a frame with zero COLUMNS *and* zero rows, so `existing` was
+        # always 0 and this guard never once fired. Reading the footer is also
+        # free, where materialising a column of 167k rows is not.
         try:
-            existing = len(pd.read_parquet(output_file, columns=[]))
+            import pyarrow.parquet as pq
+            existing = pq.ParquetFile(output_file).metadata.num_rows
         except Exception:
             existing = 0
         if existing > 100 and len(df) < existing * 0.5:
