@@ -84,3 +84,6 @@ READ THIS CLAUDE CODE
 # (~30 MB, regenerated wholesale). comment_detail/ is already covered by *.json;
 # these sidecars are .js, so they need their own line.
 comment_rows/
+
+# local-only: describes deploy topology and CI secret names; repo is public
+CLAUDE.md
