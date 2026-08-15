@@ -18,7 +18,14 @@ stances:
     indicator: "Explicitly opposes, objects to, disagrees with, or urges withdrawal of the proposed rule"
 
   - name: "Position: Support the proposed rule"
-    indicator: "Explicitly supports, favors, endorses, or agrees with the proposed rule or its stated goals"
+    indicator: >
+      Endorses THIS RULE or a named provision of it ("I support this rule", "OMB should
+      finalize this", "we support the performance-measurement requirement"). NOT its goals:
+      wanting less waste, more oversight or accountability, or punishment of fraud is not
+      support unless the comment ties it to backing this rule. Complaining about misspent
+      grant money is a grievance, not an endorsement. Asking to revise or reconsider any
+      part of the rule is not support. If the comment would read the same way had this rule
+      never been proposed, select no position at all rather than this one.
 
   - name: "Concern: Politicization of grant decisions"
     indicator: "Political appointees or officials would control funding decisions; injecting politics/ideology into grants; political favoritism; centralized political control replacing career staff"
@@ -281,9 +288,33 @@ campaigns:
 # automatically by the pipeline to data_changelog.json and merged in at render
 # time; keep those out of here. Newest first. Omit the key to hide the section.
 # -------------------------------------------------------------------
+# -------------------------------------------------------------------
+# Definitions used by audit_stances.py to CHECK the classifier's work.
+# Deliberately stricter than the second-pass prompt so the audit can
+# disagree with it rather than agree by construction. See
+# METHOD-stance-audit.md.
+# -------------------------------------------------------------------
+stance_audit:
+  support: >
+    SUPPORT means the comment endorses THIS RULE or specific provisions of it —
+    "I support this rule", "OMB should finalize this", or endorsing a named provision.
+    It is NOT support when the comment merely wants less waste/fraud, more oversight or
+    accountability without tying that to backing this rule; complains about how grant
+    money has been misspent; asks OMB to revise, soften or reconsider any part of the
+    rule; defends peer review or scientific merit (the position this rule weakens); or
+    would read the same way had this rule never been proposed.
+  oppose: >
+    OPPOSE means the comment objects to this rule, read generously: objecting to any
+    provision, defending peer review or scientific independence, warning of harm to
+    research, public health or U.S. competitiveness from this proposal, criticising OMB
+    or the administration over it, or general outrage at the proposal.
+    It is NOT oppose when the comment states no position, is purely procedural, only
+    describes the rule, is off-topic or incoherent, or in fact supports it.
+
+
 changelog:
   - date: "2026-08-15"
-    note: "Corrected the position shown on 81 comments that were labeled “Support” but do not actually take a position on the rule. A reader pointed out that the Data Foundation's comment — which asks for more time to review rather than backing or objecting to the rule — was marked as supporting it. The cause was that “Unclear” had been reserved for comments that were off-topic or unreadable, so a comment that engaged with the subject but stated no position had nowhere to go and was read as support. “Unclear” now also covers comments that are procedural, that only describe the rule, or that argue for something the rule claims to address without endorsing the rule itself. Every comment previously marked Support was re-checked against its own stated reasoning; 134 disagreed and were re-run, of which 78 moved to no position, 3 to oppose, and 53 were confirmed as support. Overall totals barely move: support goes from 3.23% to 3.18%, oppose stays at 96.28%."
+    note: "Corrected the position shown on 161 comments, and audited the rest. A reader pointed out that the Data Foundation's comment — which asks for more time to review the proposal rather than backing or objecting to it — was marked as supporting the rule. Two definitions caused it. “Unclear” had been reserved for comments that were off-topic or unreadable, so a comment that engaged with the subject but took no position had nowhere to go. And “Support” counted agreement with the rule's goals, so wanting less waste or more oversight registered as supporting the rule even when the comment never mentioned it. Both were rewritten: “Unclear” now covers comments that are procedural, that only describe the rule, or that argue for something the rule claims to address without endorsing it; “Support” now requires endorsing the rule or one of its provisions. Every comment labeled Support was then re-checked against its own text and re-run where the two disagreed, moving 161 comments — support falls from 3.23% to 3.11%, oppose is unchanged at 96.29%. A separate check of 2,500 comments labeled “Oppose” found about 1.2% that do not appear to oppose the rule, which would be roughly 1,900 comments across the docket. Those have NOT been corrected: with 161,000 comments carrying that label, re-running all of them to fix a 1.2% error was not worth the cost, and we could not find a cheap way to identify which ones to re-check. Keyword screens were tried — the best flagged 9% of comments to catch only 41% of the errors — because plenty of genuine opposition never uses words like “oppose” (for example, “Do not let political appointees determine what scientific research is funded”). So treat individual “Oppose” labels as roughly 99% reliable rather than exact. Method, figures, and the audit tool: METHOD-stance-audit.md in the repository."
 
   - date: "2026-08-07"
     note: "Corrected the “Identified As” name shown on some comments. Comments with identical wording are analyzed once and the result shared across them, but that analysis also saw the submitter's name — so when several people submitted exactly the same text, one of their names could appear on the others' comments. A name (and any state inferred from it) is now kept only when it actually appears in that person's own submission. This corrected about 5,700 comments; positions, concerns, and campaign grouping were not affected."
@@ -392,10 +423,18 @@ second_pass:
         criticize OMB, Russ Vought, or the administration over this rule; or express general
         outrage at the proposal even without naming a specific section. Supporting the general
         idea of oversight or fiscal responsibility while objecting to THIS rule is still Oppose.
-      - "Support" — genuinely supports the rule or its approach. Look for endorsement of
-        stronger oversight against waste/fraud/abuse, support for accountability of grant
-        spending, or agreement that political leadership should set funding priorities. Take
-        an explicit "I support this rule" at face value.
+      - "Support" — the comment endorses THIS RULE, or specific provisions of it. Take an
+        explicit "I support this rule" / "OMB should finalize this" at face value. Endorsing
+        named provisions (e.g. "we support the performance-measurement requirement in
+        §200.301") is Support.
+        This requires an endorsement, not agreement with a goal. Wanting less waste, more
+        oversight, more accountability, punishment of fraud, or political priority-setting is
+        NOT Support unless the comment ties that to backing this rule. Complaining about how
+        grant money has been misspent is a grievance, not an endorsement. Asking OMB to revise,
+        soften, or reconsider any part of the rule is NOT Support. Defending peer review or
+        scientific merit is never Support — that is the position this rule is understood to
+        weaken. If the comment would read the same way had this rule never been proposed, it
+        is "Unclear", not "Support".
       - "Unclear" — use this in EITHER of two cases:
         (a) the comment is truly off-topic (not about federal grants or the rule), is a single
         ambiguous word, is incoherent, or is just docket metadata with no substantive content; or
