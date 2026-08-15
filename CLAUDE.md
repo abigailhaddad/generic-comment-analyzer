@@ -19,9 +19,12 @@ generic; each regulation is a self-contained directory under `regulations/<slug>
 ```
 generic-comment-analyzer/
 ├── pipeline.py, comment_analyzer.py, verify_stances.py, attachment_utils.py   # generic code
-├── generate_report.py               # renders index.html (+ read-the-rule.html)
+├── generate_report.py               # renders index.html (+ read-the-rule.html, accuracy.html)
 ├── fetch_rule_text.py               # fetches proposed-rule text from Federal Register
-├── report_template.html, rule_template.html   # Jinja templates (shared, code)
+├── build_eval_set.py                # stratified evaluation sample (any regulation)
+├── label_eval_set.py                # drafts candidate labels for that sample
+├── score_stances.py                 # precision/recall + the corrected split -> eval/scores.json
+├── report_template.html, rule_template.html, accuracy_template.html   # Jinja templates (shared, code)
 ├── column_mapping.json              # regulations.gov column schema (shared)
 └── regulations/
     └── <slug>/                      # one dir per regulation
@@ -31,11 +34,15 @@ generic-comment-analyzer/
         ├── attachments/                 # local only (gitignored) — cached extractions
         ├── full_run.parquet             # local only (gitignored); back up to R2
         ├── rule_sections.json           # local only (gitignored) — parsed rule text
+        ├── eval/                        # candidates.csv + scores.json are COMMITTED
+        │                                #   (candidates_labeled.jsonl is not)
         ├── index.html                   # local only (gitignored) — the report
-        └── read-the-rule.html           # local only (gitignored) — the rule page
+        ├── read-the-rule.html           # local only (gitignored) — the rule page
+        └── accuracy.html                # local only (gitignored) — the accuracy page
 ```
 
-Only `analyzer_config.yaml` + `regulation_metadata.json` are committed per regulation.
+Only `analyzer_config.yaml`, `regulation_metadata.json` and `eval/{candidates.csv,scores.json}`
+are committed per regulation.
 All large/regenerable data (CSV, attachments, parquet, `*.html`, `rule_sections.json`)
 is gitignored. A private/sensitive regulation's directory can be kept entirely local (never committed) via `.git/info/exclude`.
 
@@ -48,6 +55,11 @@ is gitignored. A private/sensitive regulation's directory can be kept entirely l
 - `attachment_utils.py` — download/extract attachment text (PyMuPDF for PDFs — preserves visual reading order, unlike PyPDF2 which garbles multi-column layouts; docx via python-docx; caches to `.extracted.txt`). Image OCR uses OpenAI vision via LiteLLM (opt-in `--use-gemini`, a legacy flag name). `reextract_attachment_text()` re-runs extraction for one comment's cached PDF, refreshing the cache — used to pick up extractor fixes without a full re-run.
 - `generate_report.py` — renders `index.html` from the parquet + config, and `read-the-rule.html` if `rule_sections.json` is present. Everything (columns, cards, filters, flag/section/campaign bars, colors) is derived from the config. `--export-csv <path>` instead writes a one-row-per-comment CSV: every original bulk-export column, then every derived covariate (analysis fields, one `<field>__<option>` TRUE/FALSE indicator per enum option, regex flags/values, dedup + campaign membership, attachment text). Columns come from the config and the data, never hardcoded. The join back to `source.csv` is by Document ID **narrowed by Tracking Number then exact comment text**, claiming each source row once — never a bare ID join (ids repeat; see below) — and raises rather than emitting an unmatched row.
 - `fetch_rule_text.py` — fetches the proposed rule's XML from the Federal Register (per the config `rule_text` block) and parses it into `rule_sections.json` (per-section text).
+- **"How accurate is this?" (`accuracy.html`).** `generate_report.py` renders it from `eval/scores.json` whenever that file exists — the same shape as `rule_sections.json` → `read-the-rule.html` — and `report_template.html` links it from a callout at the top of the report. The page shows the judgement calls, every pipeline stage with its **real** prompt (the first-pass one obtained by calling `CommentAnalyzer.get_system_prompt()`, never restated, so a published prompt cannot drift from the one that ran), which prompts changed and what was *not* re-run afterwards, the corrected split, per-class precision/recall, a click-to-filter confusion matrix, and every labelled comment. **`eval/scores.json` is committed and `accuracy.html` is in `deploy_report.sh`'s publish set** — both are load-bearing: a CI checkout without the JSON renders a report with no callout, and a deploy without the HTML publishes a prominent 404. `rule_sections.json` was ignored once and every automated deploy silently dropped the rule page and its link; this is the same trap.
+- **The accuracy harness — `build_eval_set.py` → `label_eval_set.py` → `score_stances.py`.** Measures how often the pipeline's position labels are right, and publishes it (see "How accurate is this?" below). All three are generic: the positions come from whatever `Position:` stances the config declares.
+  - `build_eval_set.py --regulation <slug>` samples into `regulations/<slug>/eval/candidates.csv`. Allocation is **balanced across positions, random within each**, with a `weight` column carrying the sampling rate. Both halves matter: proportional sampling on a 96%-oppose docket leaves ~6 Support rows, and stratifying *inside* a class breaks the weights (it once inflated the measured Oppose error rate ~17x). It **truncates nothing** and assembles text exactly as `pipeline.py`'s `full_text` does — always appending the attachment. An earlier version only fell back to the attachment for bodies under 60 chars, so a letterhead-plus-attached-letter comment was judged on the letterhead and the *classifier* was scored wrong for it.
+  - `label_eval_set.py --regulation <slug>` drafts candidate labels with `eval.model`, each carrying a verbatim quote, the case for, the runner-up, the case against, and what a reviewer should check — reviewable reasoning, not a confidence score. Resumable via `eval/candidates_labeled.jsonl`. `label` is the human's column, pre-filled with the draft; `reviewed` is how a human records that they actually checked a row (a label matching its draft proves nothing).
+  - `score_stances.py --regulation <slug>` writes `eval/scores.json`: per-class precision/recall (weighted and unweighted), the confusion matrix, and `prevalence()` — the classifier's counts inverted through the labelled sample to estimate the docket's **true** split with a confidence interval. The tool's own output is the thing being measured, so it cannot answer that about itself. `unclear_junk` folds into `no_position` before scoring, because the pipeline has one category for both.
 - `check_new.py` — compares regulations.gov comment counts to the local CSV for a docket.
 - `fetch_comments_api.py` — pulls comments not already in `source.csv` from the regulations.gov v4 API and appends them in the identical bulk-export CSV schema, so everything downstream (pipeline, report) is unchanged. **Never waits out a rate limit:** on 429 it retries briefly (in case of a burst limit), then stops, keeps everything already fetched, reports how many remain and exits 0 — the next scheduled run continues. Rows are appended **as they are fetched**, not accumulated and written at the end, so a run that stops mid-way loses nothing. **Listing is date-filtered by default:** it lists only comments posted since the newest row already in the CSV, because listing costs one call per 250 comments and walking a 61k-comment docket would burn ~245 of the key's ~500 calls/hour before fetching anything; filtered, it costs ~14. `--full-list` forces the whole walk (bootstrapping an empty CSV, or picking up comments backfilled with an older posted date). Replaces the manual bulk-download form, which cannot actually be submitted (its date-range instructions have no input field). Incremental (Document-ID-keyed against the existing CSV), append-only (a partial run is never destructive), and retries HTTP 429 with backoff. `--limit N` stops after N new comments — the API key is capped at roughly 500 "comment" calls/hour, so a large backlog is fetched over several runs; a capped run logs how many comments are still missing and exits 0 (not an error). `--dry-run` reports what's missing without fetching. See "Automated updates" below.
 - `sync_state.py` — `pull`/`push` a regulation's gitignored state (`source.csv`, `full_run.parquet`, `attachment_cache`) to/from Cloudflare R2, gzipped, under `state/<slug>/`. This is what lets a clean CI checkout (which starts with none of them) resume from the last run. Bucket comes from the regulation's `state.bucket` (or `report.full_export.bucket`) config, never hardcoded. Refuses to let a 0-byte/corrupt download clobber good local state, or an empty local file overwrite good remote state. **`attachment_cache`** is a tar of every non-empty `attachments/**/*.extracted.txt` (~8 MB gzipped at 65k comments) and never the downloaded PDFs/images themselves (~450 MB). `process_attachments` reads a cached extraction *before* downloading, so a run that starts with the cache skips download, extraction and vision OCR entirely. Syncing it is also a correctness fix, not just a speed one: OCR output varies between runs, and a comment whose attachment text changes gets a new text-key and is re-analysed for no reason — and when the API is down, a run with no cache publishes those comments with their attached letter silently missing (2026-08-07). On pull, a non-empty local extraction always wins over the remote copy, since local may have been re-run against a newer extractor; a missing remote cache is never fatal (it is an optimisation, and does not exist until the first push).
@@ -63,6 +75,9 @@ is gitignored. A private/sensitive regulation's directory can be kept entirely l
 - **`report:`** — display options: `full_export:` (`url` for the report's "Download everything" link, `bucket`/`key` for the R2 upload in `deploy_report.sh`), `netlify_site_id` (non-secret; lets `deploy_report.sh` deploy from CI where there's no local `.netlify/state.json`), `colors:` (full palette — `bg, surface, text, accent, oppose, support, unclear, mixed, highlight, border, …`; edit any color here, it flows everywhere), `show_state`, `show_political`.
 - **`state:`** — `bucket` for `sync_state.py`'s R2 state backup (falls back to `report.full_export.bucket` if omitted).
 - **`rule_text:`** — `federal_register_document` + `part` for `fetch_rule_text.py` / the Read-the-Rule page.
+- **`stance_audit:`** — per-position definitions written to be **stricter than the classifier's**, used by `audit_stances.py` and as the position definitions in the eval prompt. Treat these as frozen once an eval set has been labelled: editing them afterwards makes the accuracy page publish a prompt that never labelled anything.
+- **`eval:`** — `model` (deliberately stronger than the pipeline's), `size`, `strategy` (`balanced` | `sqrt`), `labeling_notes` (extra guidance appended to the auto-built prompt; never restate the position definitions here or the two drift apart).
+- **`prompt_history:`** — optional list of `{date, stage, note}` shown against the matching stage on the accuracy page. The prompts published there are the *current* ones; this is what records that they have not always been, and which comments were never re-run when they changed. Omit the key and nothing is shown.
 
 ## Running
 
@@ -80,6 +95,13 @@ python generate_report.py --parquet regulations/omb-financial-assistance/full_ru
 
 # Fetch the rule text (for the Read-the-Rule page):
 python fetch_rule_text.py --regulation omb-financial-assistance
+
+# Measure how accurate the positions are (builds the public accuracy page):
+python build_eval_set.py  --regulation omb-financial-assistance      # sample
+python label_eval_set.py  --regulation omb-financial-assistance      # draft labels
+#   ...then review the `label` column by hand, marking `reviewed` as you go...
+python score_stances.py   --regulation omb-financial-assistance      # -> eval/scores.json
+#   generate_report.py picks scores.json up automatically and renders accuracy.html
 
 # Export one row per comment for analysis in R/Stata/Excel (run from the reg dir):
 python ../../generate_report.py --parquet full_run.parquet --export-csv comments_export.csv
