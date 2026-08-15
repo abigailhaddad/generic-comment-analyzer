@@ -998,6 +998,21 @@ def compute_flag_sections(comments: List[Dict[str, Any]], flags_cfg: Dict[str, D
     return sections
 
 
+def load_eval_scores():
+    """Load eval/scores.json for the accuracy page, if score_stances.py has run.
+
+    Absent is a normal state — a regulation with no evaluation set simply has no
+    accuracy page and no link to one. Unlike rule_text there is nothing in the
+    config declaring it, so there is no broken-build case to guard against.
+    """
+    p = Path('eval') / 'scores.json'
+    if not p.exists():
+        return None
+    with open(p) as f:
+        scores = json.load(f)
+    return scores or None
+
+
 def load_rule_sections():
     """Load the proposed-rule sections (rule_sections.json) for the Read-the-Rule
     page, or None when the regulation has no rule text prepared."""
@@ -1150,6 +1165,8 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
             "and the link to it. Run fetch_rule_text.py to rebuild it, or remove "
             "`rule_text:` from the config if the page is genuinely not wanted.")
     rule_page_url = 'read-the-rule.html' if rule_sections else None
+    eval_scores = load_eval_scores()
+    accuracy_page_url = 'accuracy.html' if eval_scores else None
     model_name = determine_model(comments, model_used)
     generated_time = datetime.now().strftime('%B %d, %Y at %I:%M %p')
 
@@ -1176,6 +1193,8 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         generated_time=generated_time,
         model_used=model_name,
         changelog=load_changelog(),
+        accuracy_page_url=accuracy_page_url,
+        eval_scores=eval_scores,
     )
 
     with open(output_file, 'w', encoding='utf-8') as f:
@@ -1202,6 +1221,24 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         rule_output = os.path.join(os.path.dirname(output_file) or '.', 'read-the-rule.html')
         with open(rule_output, 'w', encoding='utf-8') as f:
             f.write(rule_html)
+
+    if eval_scores:
+        _render_accuracy_page(env, eval_scores, metadata, colors, output_file, generated_time)
+
+
+def _render_accuracy_page(env, scores, metadata, colors, output_file, generated_time):
+    """Render accuracy.html from eval/scores.json — same pattern as read-the-rule."""
+    tpl = env.get_template('accuracy_template.html')
+    html_out = tpl.render(
+        metadata=metadata,
+        scores=scores,
+        colors=colors,
+        report_url=os.path.basename(output_file),
+        generated_time=generated_time,
+    )
+    out = os.path.join(os.path.dirname(output_file) or '.', 'accuracy.html')
+    with open(out, 'w', encoding='utf-8') as f:
+        f.write(html_out)
 
 
 def _export_slug(s: str) -> str:

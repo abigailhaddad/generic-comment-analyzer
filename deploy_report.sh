@@ -4,7 +4,7 @@
 #
 # Publishes ONLY the runtime files the report actually serves:
 #   index.html, comment_rows/ + comment_detail/ (both sharded), and
-#   read-the-rule.html (if built).
+#   read-the-rule.html / accuracy.html (if built).
 # It never uploads source.csv, the parquet, the attachment cache, or any of
 # the other regenerable/private files that live in the regulation directory.
 #
@@ -112,6 +112,10 @@ cp -R "$REG/comment_detail" "$STAGE/comment_detail"
 # rendering an empty table - so a deploy that omits them is a broken deploy.
 cp -R "$REG/comment_rows" "$STAGE/comment_rows"
 [ -f "$REG/read-the-rule.html" ] && cp "$REG/read-the-rule.html" "$STAGE/"
+# The accuracy page. index.html links to it from a callout at the top whenever
+# eval/scores.json exists, so omitting it here publishes a prominent 404 -
+# exactly how read-the-rule broke on 2026-08-12.
+[ -f "$REG/accuracy.html" ] && cp "$REG/accuracy.html" "$STAGE/"
 
 # A real 404 page. Cloudflare Pages serves index.html for any unmatched path
 # when no 404.html is present, so a typo'd URL returned the entire report with

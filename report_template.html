@@ -85,6 +85,10 @@
         .rule-callout-body { display: flex; flex-direction: column; gap: 0.1rem; }
         .rule-callout-title { font-family: var(--font-heading); font-weight: 700; color: var(--color-accent); font-size: 0.98rem; }
         .rule-callout-text { color: var(--color-text-muted); font-size: 0.85rem; line-height: 1.4; }
+        /* The accuracy link leads — it is the caveat on every number below it. */
+        .accuracy-callout { border-color: var(--color-highlight); background: color-mix(in srgb, var(--color-highlight) 10%, var(--color-bg)); }
+        .accuracy-callout:hover { background: color-mix(in srgb, var(--color-highlight) 18%, var(--color-bg)); }
+        .accuracy-callout .rule-callout-title { color: var(--color-text); }
 
         /* Stat cards (KPI tiles) */
         .stats-row {
@@ -359,6 +363,15 @@
             <div class="subtitle">{{ metadata.brief_description }}</div>
             {% if metadata.docket_id %}
             <div><a href="https://www.regulations.gov/docket/{{ metadata.docket_id }}" target="_blank">{{ metadata.agency }} Docket: {{ metadata.docket_id }}</a></div>
+            {% endif %}
+            {% if accuracy_page_url %}
+            <a href="{{ accuracy_page_url }}" class="rule-callout accuracy-callout">
+                <span class="rule-callout-icon">🎯</span>
+                <span class="rule-callout-body">
+                    <span class="rule-callout-title">How accurate is this? &rarr;</span>
+                    <span class="rule-callout-text">A language model assigns every position on this page, and it is sometimes wrong. We labelled {{ eval_scores.n_labelled }} comments by hand to measure it — see the score, the corrected split, and every judgement we made.</span>
+                </span>
+            </a>
             {% endif %}
             {% if rule_page_url %}
             <a href="{{ rule_page_url }}" class="rule-callout">

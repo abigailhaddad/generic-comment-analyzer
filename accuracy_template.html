@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How accurate is this? — {{ metadata.regulation_name }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            /* Same config-driven palette tokens as the main report. */
+            --color-bg: {{ colors.bg }};
+            --color-surface: {{ colors.surface }};
+            --color-text: {{ colors.text }};
+            --color-text-muted: {{ colors.text_muted }};
+            --color-accent: {{ colors.accent }};
+            --color-accent-hover: {{ colors.accent_hover }};
+            --color-highlight: {{ colors.highlight }};
+            --color-border: {{ colors.border }};
+            --color-code-bg: {{ colors.code_bg }};
+            --color-error: {{ colors.error }};
+            --color-oppose: {{ colors.oppose }};
+            --color-support: {{ colors.support }};
+            --color-unclear: {{ colors.unclear }};
+            --color-mixed: {{ colors.mixed }};
+
+            --font-heading: 'DM Sans', sans-serif;
+            --font-body: 'Source Sans 3', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --shadow-sm: 0 1px 3px rgba(61,43,31,0.08);
+            --card-radius: 0.5rem;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        body { font-family: var(--font-body); background: var(--color-bg); color: var(--color-text); line-height: 1.7; font-size: 1.0625rem; margin: 0; }
+        h1, h2, h3 { font-family: var(--font-heading); color: var(--color-text); letter-spacing: -0.01em; }
+        h2 { margin: 2.75rem 0 0.5rem; font-size: 1.5rem; }
+        h2:first-of-type { margin-top: 2rem; }
+        a { color: var(--color-accent); text-decoration: underline; text-decoration-color: rgba(0,0,0,0.2); text-underline-offset: 2px; }
+        a:hover { text-decoration-color: var(--color-accent); }
+        .site-container { max-width: 1040px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+        .report-header { padding: 2.5rem 0 1.25rem; }
+        .report-header h1 { margin: 0 0 0.35rem; font-size: 2rem; }
+        .subtitle { color: var(--color-text-muted); font-size: 1.05rem; margin-bottom: 0.5rem; }
+        .nav-link { font-size: 0.95rem; }
+        .intro { max-width: 760px; }
+        .muted { color: var(--color-text-muted); }
+        .small { font-size: 0.9rem; }
+
+        table.t { border-collapse: collapse; width: 100%; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--card-radius); overflow: hidden; margin: 0.75rem 0 0; font-size: 0.95rem; }
+        table.t th, table.t td { padding: 0.6rem 0.85rem; text-align: left; border-bottom: 1px solid var(--color-border); }
+        table.t th { font-family: var(--font-heading); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); background: color-mix(in srgb, var(--color-text) 3%, var(--color-surface)); }
+        table.t tr:last-child td { border-bottom: none; }
+        table.t td.num, table.t th.num { text-align: right; font-variant-numeric: tabular-nums; }
+        .est { font-family: var(--font-heading); font-weight: 700; }
+        .ci { color: var(--color-text-muted); font-size: 0.88rem; font-variant-numeric: tabular-nums; }
+
+        .pill { display: inline-block; padding: 0.1rem 0.55rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; font-family: var(--font-heading); white-space: nowrap; }
+        .pill.oppose { background: color-mix(in srgb, var(--color-oppose) 16%, var(--color-bg)); color: var(--color-oppose); }
+        .pill.support { background: color-mix(in srgb, var(--color-support) 18%, var(--color-bg)); color: var(--color-support); }
+        .pill.no_position { background: color-mix(in srgb, var(--color-unclear) 20%, var(--color-bg)); color: var(--color-unclear); }
+        .outcome { font-weight: 600; font-size: 0.85rem; font-family: var(--font-heading); white-space: nowrap; }
+        .outcome.ok { color: var(--color-support); }
+        .outcome.bad { color: var(--color-error); }
+
+        /* Confusion matrix — every cell is a filter for the list below. */
+        table.cm td.cell { cursor: pointer; font-variant-numeric: tabular-nums; font-weight: 600; transition: box-shadow 0.12s, transform 0.12s; }
+        table.cm td.cell:hover { box-shadow: inset 0 0 0 2px var(--color-accent); }
+        table.cm td.cell.sel { box-shadow: inset 0 0 0 2px var(--color-accent); }
+        table.cm td.diag { background: color-mix(in srgb, var(--color-support) 12%, var(--color-surface)); }
+        table.cm td.off { background: color-mix(in srgb, var(--color-error) 12%, var(--color-surface)); }
+        table.cm td.zero { color: var(--color-text-muted); font-weight: 400; cursor: default; }
+        table.cm td.zero:hover { box-shadow: none; }
+        table.cm .corner { font-size: 0.78rem; line-height: 1.3; }
+
+        /* The labelled set */
+        .controls { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 1rem 0 0.25rem; }
+        .fbtn { font-family: var(--font-heading); font-size: 0.85rem; font-weight: 600; padding: 0.35rem 0.8rem; border-radius: 999px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-muted); cursor: pointer; transition: all 0.15s; }
+        .fbtn:hover { border-color: var(--color-highlight); color: var(--color-text); }
+        .fbtn.active { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-surface); }
+        .search { flex: 1; min-width: 200px; padding: 0.4rem 0.7rem; font-family: var(--font-body); font-size: 0.9rem; border: 1px solid var(--color-border); border-radius: 0.4rem; background: var(--color-surface); color: var(--color-text); }
+        .count { color: var(--color-text-muted); font-size: 0.9rem; }
+
+        .row { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--card-radius); margin-bottom: 0.6rem; overflow: hidden; }
+        .row.mismatch { border-left: 4px solid var(--color-error); }
+        .row.agree { border-left: 4px solid color-mix(in srgb, var(--color-support) 45%, var(--color-border)); }
+        .row-head { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 0.75rem; padding: 0.7rem 0.95rem; cursor: pointer; align-items: center; }
+        .row-head:hover { background: color-mix(in srgb, var(--color-accent) 4%, var(--color-surface)); }
+        .row-snippet { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.93rem; color: var(--color-text); }
+        .row-org { color: var(--color-text-muted); font-size: 0.85rem; }
+        .verdict { display: flex; align-items: center; gap: 0.5rem; flex: none; }
+        .verdict .arrow { color: var(--color-text-muted); font-size: 0.8rem; }
+        .row-body { display: none; padding: 0 0.95rem 0.95rem; border-top: 1px solid var(--color-border); }
+        .row.open .row-body { display: block; }
+        .row-body dt { font-family: var(--font-heading); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); margin-top: 0.85rem; }
+        .row-body dd { margin: 0.15rem 0 0; font-size: 0.95rem; }
+        .quote { border-left: 3px solid var(--color-highlight); padding-left: 0.75rem; font-style: italic; color: var(--color-text); }
+        .fulltext { max-height: 15rem; overflow-y: auto; font-size: 0.9rem; color: var(--color-text-muted); background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 0.4rem; padding: 0.6rem 0.75rem; white-space: pre-wrap; }
+        .callout { border: 1px solid var(--color-highlight); border-left-width: 4px; border-radius: var(--card-radius); background: color-mix(in srgb, var(--color-highlight) 9%, var(--color-bg)); padding: 0.9rem 1.15rem; margin: 1rem 0 0; max-width: 820px; }
+        .callout p { margin: 0; }
+        .callout p + p { margin-top: 0.6rem; }
+        .stages { display: grid; gap: 0.6rem; margin-top: 0.75rem; }
+        .stage { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--card-radius); padding: 0.85rem 1rem; }
+        .stage-head { display: flex; align-items: baseline; gap: 0.65rem; }
+        .stage-n { flex: none; width: 1.5rem; height: 1.5rem; border-radius: 999px; background: var(--color-accent); color: var(--color-surface); font-family: var(--font-heading); font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+        .stage-head b { font-family: var(--font-heading); }
+        .model { font-family: var(--font-mono); font-size: 0.8rem; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 0.3rem; padding: 0.05rem 0.35rem; margin-left: 0.35rem; }
+        .stage-when { color: var(--color-text-muted); font-size: 0.88rem; margin-left: 0.35rem; }
+        .stage-what { margin: 0.35rem 0 0 2.15rem; font-size: 0.93rem; color: var(--color-text-muted); }
+        .stage details.prompt { margin-left: 2.15rem; }
+        .changed { margin: 0.5rem 0 0 2.15rem; padding: 0.5rem 0.75rem; font-size: 0.9rem; color: var(--color-text-muted); border-left: 3px solid var(--color-highlight); background: color-mix(in srgb, var(--color-highlight) 7%, var(--color-bg)); border-radius: 0.3rem; }
+        .changed b { color: var(--color-text); font-family: var(--font-heading); }
+        details.prompt { margin-top: 0.9rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--card-radius); padding: 0.6rem 1rem; }
+        details.prompt summary { cursor: pointer; font-family: var(--font-heading); font-weight: 600; font-size: 0.92rem; }
+        details.prompt pre { white-space: pre-wrap; font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.55; color: var(--color-text-muted); background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 0.4rem; padding: 0.75rem 0.9rem; margin: 0.7rem 0 0; max-height: 26rem; overflow-y: auto; }
+        .method { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--card-radius); padding: 1.1rem 1.35rem; margin-top: 0.75rem; }
+        .method li { margin-bottom: 0.5rem; }
+        .footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--color-border); color: var(--color-text-muted); font-size: 0.88rem; }
+        @media (max-width: 768px) {
+            .report-header h1 { font-size: 1.6rem; }
+            .row-head { grid-template-columns: 1fr; }
+            .verdict { justify-content: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div class="site-container">
+        <div class="report-header">
+            <h1>How accurate is this?</h1>
+            <div class="subtitle">A model sorts every comment into support, oppose, or neither. We checked {{ scores.n_labelled }} of them.</div>
+            <div><a href="{{ report_url }}" class="nav-link"><i class="fas fa-arrow-left"></i> Back to the comment analysis</a></div>
+        </div>
+
+        <h2>The judgment calls we made</h2>
+        <p class="intro">Most of these comments are straightforward. For the ones that aren't, two
+        lines decide most of the labels. Other people might draw the lines somewhere else, and we
+        don't always hit them.</p>
+        <div class="callout">
+            <p><b>A comment has to actually engage this rule.</b> A lot of comments here are angry at
+            the administration, or care about what federal grants pay for, but are not specific in
+            terms of discussing the rule.
+            We count those as <b>no position</b>, however clear the commenter's overall
+            sympathies are.
+            <i>“Funding for science is essential for our country”</i> is not necessarily coded as
+            opposition to the rule.</p>
+            <p><b>Backing the goal is not backing the rule.</b> The rule says it is about waste and
+            fraud. Wanting less waste is not support unless the comment backs the rule itself.</p>
+            <p><b>Asking for a fix is not automatically opposition.</b> A lot of letters take up one
+            provision and ask OMB to change or clarify it. Whether that counts as opposing the rule
+            depends on the tone, and on how much of the letter is the ask versus approval of the rest.
+            I had a really difficult time making judgements about how the model should label some of
+            these as well, and I think even for some of these {{ scores.n_labelled }} that I helped
+            label, it could have gone a different way.</p>
+        </div>
+
+        <h2>How a comment gets labelled</h2>
+        <p class="intro">Two passes label the docket. The last two run only on the sample. They are
+        what we score the first two against.</p>
+        {% if scores.stages | selectattr('history') | list %}
+        <div class="callout">
+            <p><b>These are the current prompts, and we did not re-run them over everything.</b> They
+            changed part-way through, and only some comments were labelled again afterwards.</p>
+        </div>
+        {% endif %}
+        <div class="stages">
+            {% for st in scores.stages %}
+            <div class="stage">
+                <div class="stage-head">
+                    <span class="stage-n">{{ loop.index }}</span>
+                    <span>
+                        <b>{{ st.name }}</b>
+                        {% if st.model %}<code class="model">{{ st.model }}</code>{% endif %}
+                        <span class="stage-when">{{ st.when }}</span>
+                    </span>
+                </div>
+                <p class="stage-what">{{ st.what }}</p>
+                {% for h in st.history %}
+                <p class="changed"><b>Changed {{ h.date }}.</b> {{ h.note }}</p>
+                {% endfor %}
+                {% if st.prompt %}
+                <details class="prompt">
+                    <summary>Show the prompt</summary>
+                    <pre>{{ st.prompt }}</pre>
+                </details>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <h2>The overall split</h2>
+        <p class="intro">The front page counts what the tool said. This corrects for the errors we
+        found. A wide interval means we checked too few comments in a big category.</p>
+        <table class="t">
+            <tr>
+                <th>Position</th>
+                <th class="num">The tool says</th>
+                <th class="num">Best estimate</th>
+                <th class="num">95% interval</th>
+            </tr>
+            {% for p in scores.prevalence %}
+            <tr>
+                <td><span class="pill {{ p['class'] }}">{{ scores.pretty.get(p['class'], p['class']) }}</span></td>
+                <td class="num">{{ '%.2f' % p.tool_pct }}%</td>
+                <td class="num est">{{ '%.2f' % p.est_pct }}%</td>
+                <td class="num ci">{{ '%.2f' % p.ci_lo_pct }}–{{ '%.2f' % p.ci_hi_pct }}%</td>
+            </tr>
+            {% endfor %}
+        </table>
+
+
+        <h2>Accuracy by position</h2>
+        <p class="intro"><b>Precision</b>: when the tool says this, how often it's right.
+        <b>Recall</b>: how many of them it catches.</p>
+        <table class="t">
+            <tr><th>Position</th><th class="num">Precision</th><th class="num">Recall</th><th class="num">Labelled</th></tr>
+            {% for c in scores.classes %}
+            {% set m = scores.weighted.get(c) %}
+            {% if m %}
+            <tr>
+                <td><span class="pill {{ c }}">{{ scores.pretty.get(c, c) }}</span></td>
+                <td class="num">{{ '%.1f' % (m.precision * 100) if m.precision is not none else '—' }}%</td>
+                <td class="num">{{ '%.1f' % (m.recall * 100) if m.recall is not none else '—' }}%</td>
+                <td class="num">{{ m.n_labelled }}</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+        </table>
+
+        <h2>Where it goes wrong</h2>
+        <p class="intro">Rows are what the comment is. Columns are what the tool called it.
+        <b>Click a cell</b> to read those comments.</p>
+        <table class="t cm">
+            <tr>
+                <th class="corner">Really is ↓<br>Tool said →</th>
+                {% for c in scores.classes %}<th class="num">{{ scores.pretty.get(c, c) }}</th>{% endfor %}
+            </tr>
+            {% for t in scores.classes %}
+            <tr>
+                <td><span class="pill {{ t }}">{{ scores.pretty.get(t, t) }}</span></td>
+                {% for c in scores.classes %}
+                {% set v = scores.confusion.get(t, {}).get(c, 0) %}
+                <td class="num {{ 'zero' if not v else ('cell diag' if t == c else 'cell off') }}"
+                    {% if v %}data-cell="{{ t }}|{{ c }}" role="button" tabindex="0"
+                    title="{{ v }} comment{{ '' if v == 1 else 's' }} the tool called {{ scores.pretty.get(c, c) }}, really {{ scores.pretty.get(t, t) }}"{% endif %}>{{ v }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </table>
+
+        <h2>All {{ scores.n_labelled }} comments</h2>
+        <p class="intro">Click a row for the quote behind the label and the argument against it.</p>
+
+        <div class="controls">
+            <button class="fbtn active" data-filter="all" type="button">All</button>
+            <button class="fbtn" data-filter="mismatch" type="button">Disagreements only</button>
+            <button class="fbtn" data-filter="agree" type="button">Agreements</button>
+            <input class="search" id="q" type="search" placeholder="Search text, organisation, ID…" aria-label="Search the labelled set">
+        </div>
+        <div class="count" id="count"></div>
+
+        <div id="rows">
+        {% for r in scores.rows %}
+        <div class="row {{ 'mismatch' if not r.match else 'agree' }}"
+             data-match="{{ 'mismatch' if not r.match else 'agree' }}"
+             data-tool="{{ r.tool }}" data-eval="{{ r['eval'] }}"
+             data-q="{{ (r.text ~ ' ' ~ r.organization ~ ' ' ~ r.id) | lower | e }}">
+            <div class="row-head">
+                <div>
+                    <div class="row-snippet">{{ r.text[:180] or '(no text)' }}</div>
+                    {% if r.organization %}<div class="row-org">{{ r.organization }}</div>{% endif %}
+                </div>
+                <div class="verdict">
+                    <span class="pill {{ r.tool }}">{{ scores.pretty.get(r.tool, r.tool) }}</span>
+                    <span class="arrow"><i class="fas fa-arrow-right"></i></span>
+                    <span class="pill {{ r['eval'] }}">{{ scores.pretty.get(r['eval'], r['eval']) }}</span>
+                    <span class="outcome {{ 'ok' if r.match else 'bad' }}">{{ 'Agrees' if r.match else 'Tool wrong' }}</span>
+                </div>
+            </div>
+            <div class="row-body">
+                <dl>
+                    {% if r.evidence %}
+                    <dt>What the label rests on</dt>
+                    <dd class="quote">{{ r.evidence }}</dd>
+                    {% endif %}
+                    {% if r.case_for %}
+                    <dt>Why this label</dt><dd>{{ r.case_for }}</dd>
+                    {% endif %}
+                    {% if r.case_against %}
+                    <dt>The strongest case against it{% if r.runner_up %} (for “{{ scores.pretty.get(r.runner_up, r.runner_up) }}”){% endif %}</dt>
+                    <dd>{{ r.case_against }}</dd>
+                    {% endif %}
+                    {% if r.what_makes_it_hard %}
+                    <dt>What makes it hard</dt><dd>{{ r.what_makes_it_hard }}</dd>
+                    {% endif %}
+                    <dt>The comment</dt>
+                    <dd class="fulltext">{{ r.text }}</dd>
+                    <dt>Source</dt>
+                    <dd><a href="{{ r.url }}" target="_blank" rel="noopener">{{ r.id }} on regulations.gov <i class="fas fa-external-link-alt" style="font-size:0.75em"></i></a></dd>
+                </dl>
+            </div>
+        </div>
+        {% endfor %}
+        </div>
+
+        <h2>How we did it</h2>
+        <div class="method">
+        <ul>
+            <li>We took about the same number from each position, picked at random, then weighted them
+            back to the docket's real mix. {{ scores.n_labelled }} random comments would have been nearly
+            all opposition.</li>
+            <li>Every comment is read in full, attachments included, at all three stages.</li>
+            {% if scores.unreadable %}
+            <li>Some comments are just “see attached”, with nothing we can read. Usually nothing was
+            actually attached; sometimes the file is a format we do not handle, or a scan we could not
+            get text out of. Either way there is nothing to take a position on, so those land in
+            <b>no position</b>.</li>
+            {% endif %}
+            <li>The prompts above come straight from the config that runs the pipeline.
+            <a href="https://github.com/abigailhaddad/generic-comment-analyzer" target="_blank" rel="noopener">See the code</a>.</li>
+            <li>We score each position separately. This docket is 96% one way, so one overall number
+            would just tell you that.</li>
+        </ul>
+        </div>
+
+        <div class="footer">
+            Generated {{ generated_time }} · <a href="{{ report_url }}">back to the analysis</a>
+        </div>
+    </div>
+
+<script>
+(function () {
+    var rows = Array.prototype.slice.call(document.querySelectorAll('#rows .row'));
+    var count = document.getElementById('count');
+    var q = document.getElementById('q');
+    var active = 'all';
+    var PRETTY = {{ scores.pretty | tojson }};
+
+    rows.forEach(function (row) {
+        row.querySelector('.row-head').addEventListener('click', function () {
+            row.classList.toggle('open');
+        });
+    });
+
+    function apply() {
+        var term = (q.value || '').trim().toLowerCase();
+        var shown = 0;
+        rows.forEach(function (row) {
+            var ok = true;
+            if (active === 'mismatch' || active === 'agree') {
+                ok = row.dataset.match === active;
+            } else if (active.indexOf('cell:') === 0) {
+                var pair = active.slice(5).split('|');
+                ok = row.dataset.eval === pair[0] && row.dataset.tool === pair[1];
+            }
+            if (ok && term) ok = row.dataset.q.indexOf(term) !== -1;
+            row.style.display = ok ? '' : 'none';
+            if (ok) shown++;
+        });
+        var what = '';
+        if (active.indexOf('cell:') === 0) {
+            var pr = active.slice(5).split('|');
+            what = ' — the tool said ' + PRETTY[pr[1]] + ', really ' + PRETTY[pr[0]];
+        }
+        count.textContent = (shown === rows.length
+            ? 'Showing all ' + rows.length + ' comments'
+            : 'Showing ' + shown + ' of ' + rows.length + ' comments') + what;
+    }
+
+    function clearActive() {
+        document.querySelectorAll('.fbtn').forEach(function (x) { x.classList.remove('active'); });
+        document.querySelectorAll('td.cell').forEach(function (x) { x.classList.remove('sel'); });
+    }
+
+    document.querySelectorAll('.fbtn').forEach(function (b) {
+        b.addEventListener('click', function () {
+            clearActive();
+            b.classList.add('active');
+            active = b.dataset.filter;
+            apply();
+        });
+    });
+
+    document.querySelectorAll('td.cell').forEach(function (cell) {
+        function pick() {
+            var f = 'cell:' + cell.dataset.cell;
+            if (active === f) {                       // click the selected cell again to clear
+                clearActive();
+                document.querySelector('.fbtn[data-filter="all"]').classList.add('active');
+                active = 'all';
+            } else {
+                clearActive();
+                cell.classList.add('sel');
+                active = f;
+            }
+            apply();
+            document.getElementById('rows').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        cell.addEventListener('click', pick);
+        cell.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); }
+        });
+    });
+    q.addEventListener('input', apply);
+    apply();
+})();
+</script>
+</body>
+</html>
