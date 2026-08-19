@@ -1554,6 +1554,34 @@
             // Parse URL filters before the table's first draw.
             Report.decodeURL();
 
+            // Bound once, on markup that is never replaced, so there is no
+            // listener to clean up later.
+            document.getElementById('commentModal').addEventListener('hidden.bs.modal', function () {
+                openCommentId = null;
+                Report.encodeURL();
+            });
+
+            // ?comment=<document id> deep-links a single comment, so a link to
+            // one specific comment on this site can be shared directly. Ours is
+            // the only copy of a withdrawn comment, which regulations.gov no
+            // longer serves at all.
+            //
+            // Runs here, after decodeURL has parsed any filters (so encodeURL
+            // cannot drop them) but before the DataTable is built: constructing
+            // and drawing 167k rows takes seconds, and someone opening a shared
+            // link should see the comment immediately, not stare at the report
+            // while a table they did not ask for renders behind it.
+            const wanted = new URLSearchParams(window.location.search).get('comment');
+            if (wanted) {
+                const idx = commentIndexById[wanted];
+                if (idx === undefined) {
+                    console.error('No comment on this page has id ' + wanted);
+                    showAppToast('Comment ' + wanted + ' not found');
+                } else {
+                    showCommentModal(idx);
+                }
+            }
+
             // Build header + rows from the (config-filtered) column spec.
             $('#commentsTable thead tr').html(COLUMNS.map(function (col) {
                 return '<th>' + escapeHtml(col.title) + '</th>';
@@ -1611,27 +1639,6 @@
             Report.renderChips();
             Report.table.draw();
 
-            // Bound once, on markup that is never replaced, so there is no
-            // listener to clean up later.
-            document.getElementById('commentModal').addEventListener('hidden.bs.modal', function () {
-                openCommentId = null;
-                Report.encodeURL();
-            });
-
-            // ?comment=<document id> deep-links a single comment, so a link to
-            // one specific comment on this site can be shared directly. Ours is
-            // the only copy of a withdrawn comment, which regulations.gov no
-            // longer serves at all.
-            const wanted = new URLSearchParams(window.location.search).get('comment');
-            if (wanted) {
-                const idx = commentIndexById[wanted];
-                if (idx === undefined) {
-                    console.error('No comment on this page has id ' + wanted);
-                    showAppToast('Comment ' + wanted + ' not found');
-                } else {
-                    showCommentModal(idx);
-                }
-            }
         });
     </script>
 </body>
