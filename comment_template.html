@@ -1,0 +1,155 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comment — {{ metadata.regulation_name }}</title>
+<style>
+    :root {
+        --color-bg: {{ colors.bg }};
+        --color-surface: {{ colors.surface }};
+        --color-text: {{ colors.text }};
+        --color-text-muted: {{ colors.text_muted }};
+        --color-accent: {{ colors.accent }};
+        --color-border: {{ colors.border }};
+        --color-highlight: {{ colors.highlight }};
+        --color-oppose: {{ colors.oppose }};
+        --color-support: {{ colors.support }};
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0; padding: 2rem 1rem;
+        background: var(--color-bg); color: var(--color-text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+        line-height: 1.6;
+    }
+    .wrap { max-width: 760px; margin: 0 auto; }
+    a { color: var(--color-accent); }
+    .card {
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: 8px; padding: 1.5rem; margin-top: 1rem;
+    }
+    .meta { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; font-size: 0.92rem; }
+    .meta dt { color: var(--color-text-muted); }
+    .meta dd { margin: 0; }
+    .stance { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 999px; font-size: 0.8rem; margin: 0 0.3rem 0.3rem 0; border: 1px solid var(--color-border); }
+    .stance.pos-oppose { background: var(--color-oppose); color: #fff; border-color: transparent; }
+    .stance.pos-support { background: var(--color-support); color: #fff; border-color: transparent; }
+    .body-text { white-space: pre-wrap; margin-top: 0.5rem; }
+    .notice {
+        border-left: 4px solid var(--color-highlight);
+        background: var(--color-surface); padding: 0.75rem 1rem; margin-top: 1rem; border-radius: 4px;
+    }
+    .muted { color: var(--color-text-muted); font-size: 0.88rem; }
+    h1 { font-size: 1.25rem; margin: 0; }
+    h2 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); margin: 1.5rem 0 0.25rem; }
+</style>
+
+<div class="wrap">
+    <p class="muted"><a href="index.html">&larr; {{ metadata.regulation_name }}</a></p>
+    <h1 id="heading">Loading comment…</h1>
+    <div id="out"></div>
+</div>
+
+<script>
+    // A single comment, without the report around it. index.html is ~6 MB and
+    // builds a 167k-row table before it can show anything; a link sent to
+    // someone who wants to read ONE comment should not pay for that. This page
+    // fetches exactly one detail shard and renders it.
+    //
+    // The shard number rides in the url (&s=) because the shard follows from a
+    // comment's ROW INDEX, which lives only in the ~8 MB row files. The report
+    // knows the index when it builds the link, so it passes it along and this
+    // page never loads them.
+    const ID_LIST_FLAGS = {{ id_list_flags_json }};
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    const shard = params.get('s');
+    const out = document.getElementById('out');
+    const heading = document.getElementById('heading');
+
+    function esc(v) {
+        return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    // Anything we cannot render is said out loud, with a working way onward.
+    // A silent blank page would look like the comment never existed -- which,
+    // for a withdrawn comment, is exactly the wrong impression.
+    function fail(message) {
+        heading.textContent = 'Comment not shown';
+        out.innerHTML = '<div class="card"><p>' + esc(message) + '</p>'
+            + '<p class="muted">Open the full report and it can find any comment by id: '
+            + '<a href="index.html' + (id ? '?comment=' + encodeURIComponent(id) : '') + '">'
+            + esc('{{ metadata.regulation_name }}') + '</a></p></div>';
+    }
+
+    function render(rec) {
+        heading.textContent = id;
+        const flags = [];
+        for (const key in ID_LIST_FLAGS) {
+            if (ID_LIST_FLAGS[key].ids.indexOf(id) !== -1) flags.push(ID_LIST_FLAGS[key]);
+        }
+        let html = '';
+        flags.forEach(function (f) {
+            html += '<div class="notice"><strong>' + esc(f.label) + '</strong>'
+                + (f.description ? '<div class="muted">' + esc(f.description) + '</div>' : '') + '</div>';
+        });
+
+        html += '<div class="card"><dl class="meta">';
+        const pairs = [
+            ['Submitter', rec.submitter], ['Organization', rec.organization],
+            ['Entity type', rec.entity_type], ['Received', rec.received_date], ['Posted', rec.date],
+        ];
+        pairs.forEach(function (p) {
+            if (p[1]) html += '<dt>' + esc(p[0]) + '</dt><dd>' + esc(p[1]) + '</dd>';
+        });
+        html += '</dl>';
+
+        const stances = rec.stances_list || [];
+        if (stances.length) {
+            html += '<div style="margin-top:1rem;">';
+            stances.forEach(function (s) {
+                const label = typeof s === 'string' ? s : (s.label || s.name || '');
+                const low = label.toLowerCase();
+                const cls = low.indexOf('oppose') !== -1 ? ' pos-oppose' : (low.indexOf('support') !== -1 ? ' pos-support' : '');
+                html += '<span class="stance' + cls + '">' + esc(label) + '</span>';
+            });
+            html += '</div>';
+        }
+        html += '</div>';
+
+        html += '<h2>Comment</h2><div class="card"><div class="body-text">' + esc(rec.comment || '') + '</div></div>';
+        if (rec.rationale) {
+            html += '<h2>Why it was classified this way</h2><div class="card"><div class="muted">' + esc(rec.rationale) + '</div></div>';
+        }
+        html += '<p class="muted" style="margin-top:1.5rem;">'
+            + '<a href="index.html?comment=' + encodeURIComponent(id) + '">See this comment in the full report</a>'
+            + ' &middot; <a href="https://www.regulations.gov/comment/' + encodeURIComponent(id) + '" target="_blank" rel="noopener">View on regulations.gov</a>'
+            + '</p>';
+        out.innerHTML = html;
+        document.title = id + ' — {{ metadata.regulation_name }}';
+    }
+
+    if (!id) {
+        fail('This link is missing a comment id.');
+    } else if (shard === null || !/^\d+$/.test(shard)) {
+        fail('This link is missing the shard it lives in, so the comment cannot be located directly.');
+    } else {
+        fetch('comment_detail/' + Number(shard) + '.json')
+            .then(function (r) {
+                if (!r.ok) throw new Error('shard ' + shard + ' returned ' + r.status);
+                return r.json();
+            })
+            .then(function (data) {
+                const rec = data[id];
+                if (!rec) {
+                    fail('Comment ' + id + ' is not in the part of the data this link points at.');
+                    return;
+                }
+                render(rec);
+            })
+            .catch(function (e) {
+                fail('Could not load this comment: ' + e.message);
+            });
+    }
+</script>

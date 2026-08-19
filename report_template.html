@@ -607,7 +607,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="commentModalTitle"></h5>
-                    <button type="button" class="btn btn-sm btn-outline-secondary ms-auto me-2" onclick="Report.copyLink()" title="Copy a link to this comment">
+                    <button type="button" class="btn btn-sm btn-outline-secondary ms-auto me-2" onclick="Report.copyCommentLink()" title="Copy a shareable link to this comment">
                         <i class="fas fa-link"></i> Copy link
                     </button>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -1515,6 +1515,20 @@
             document.getElementById('commentsTable').scrollIntoView({ behavior: 'smooth' });
         };
         Report.filterToConcern = function (name) { Report.filterToValue('concern', name); };
+
+        // Hands out comment.html, not this page: the recipient wants one comment,
+        // and index.html costs ~6 MB and a 167k-row table build before it can
+        // show anything. The shard rides along because it follows from the row
+        // index, which only this page knows.
+        Report.copyCommentLink = function () {
+            if (!openCommentId) return;
+            const shard = Math.floor(commentIndexById[openCommentId] / DETAIL_SHARD_SIZE);
+            const url = window.location.origin + window.location.pathname.replace(/[^/]*$/, '')
+                + 'comment.html?id=' + encodeURIComponent(openCommentId) + '&s=' + shard;
+            navigator.clipboard.writeText(url).then(function () {
+                showAppToast('Link to this comment copied');
+            }).catch(function () { showAppToast('Failed to copy link'); });
+        };
 
         Report.copyLink = function () {
             navigator.clipboard.writeText(window.location.href).then(function () {

@@ -24,6 +24,9 @@ attachments/
 index.html
 read-the-rule.html
 accuracy.html
+# Generated per regulation, like the pages above. comment_template.html (the
+# source) is committed; this rendering of it is not.
+comment.html
 *.log
 
 # JSON is ignored by default; re-include the small shared/config JSON.

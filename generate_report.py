@@ -896,6 +896,17 @@ DETAIL_FIELDS = {
     'cosigner_names': 'cosigner_names',
     'state_quote': 'state_quote',
     'political_quote': 'political_affiliation_quote',
+    # Duplicated from the row data on purpose. The standalone comment page
+    # (comment.html) fetches one detail shard and nothing else -- the row files
+    # are ~8 MB each, so reading a submitter's name from them would cost more
+    # than the whole page. These few fields make a shard self-describing, at
+    # roughly +10% on a file the report already fetches one of.
+    'submitter': 'submitter',
+    'organization': 'organization',
+    'date': 'date',
+    'received_date': 'received_date',
+    'entity_type': 'entity_type',
+    'stances_list': 'stances_list',
 }
 
 
@@ -1315,6 +1326,46 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
 
     if eval_scores:
         _render_accuracy_page(env, eval_scores, metadata, colors, output_file, generated_time)
+
+    _render_comment_page(env, metadata, colors, flags_cfg, output_file)
+
+
+# Embedding an id list on the standalone page is only worth it while the list is
+# small; past this it would cost more than the comment it annotates.
+ID_LIST_EMBED_MAX = 5000
+
+
+def _render_comment_page(env, metadata, colors, flags_cfg, output_file):
+    """Render comment.html — one comment, without the report around it.
+
+    index.html is ~6 MB and builds a 167k-row table before it can show anything.
+    A link sent to someone who wants to read one comment should not pay for that,
+    so this page fetches a single detail shard and nothing else.
+    """
+    embedded = {}
+    for key, cfg in flags_cfg.items():
+        notes = cfg.get('_id_list_notes') if isinstance(cfg, dict) else None
+        if not notes:
+            continue
+        if len(notes) > ID_LIST_EMBED_MAX:
+            print(f"  {key}: {len(notes):,} ids, too many to embed in comment.html — skipping")
+            continue
+        embedded[key] = {
+            'label': cfg.get('label', key),
+            'description': cfg.get('description', ''),
+            'ids': sorted(notes.keys()),
+        }
+
+    tpl = env.get_template('comment_template.html')
+    html_out = tpl.render(
+        metadata=metadata,
+        colors=colors,
+        id_list_flags_json=json.dumps(embedded),
+    )
+    out = os.path.join(os.path.dirname(output_file) or '.', 'comment.html')
+    with open(out, 'w', encoding='utf-8') as f:
+        f.write(html_out)
+    print(f"Standalone comment page: {out} ({os.path.getsize(out) / 1024:.0f} KB)")
 
 
 def _render_accuracy_page(env, scores, metadata, colors, output_file, generated_time):
