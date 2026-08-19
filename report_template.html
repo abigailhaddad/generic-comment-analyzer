@@ -607,6 +607,9 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="commentModalTitle"></h5>
+                    <button type="button" class="btn btn-sm btn-outline-secondary ms-auto me-2" onclick="Report.copyLink()" title="Copy a link to this comment">
+                        <i class="fas fa-link"></i> Copy link
+                    </button>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body" id="commentModalBody"></div>
@@ -901,6 +904,8 @@
 
         function showCommentModal(idx) {
             renderCommentModalBody(idx);
+            openCommentId = commentData[idx].id;
+            Report.encodeURL();
             new bootstrap.Modal(document.getElementById('commentModal')).show();
             // Detail fields (full text, key quote, rationale, cosigner names,
             // quotes) are fetched when the comment is opened; re-render once
@@ -1250,8 +1255,14 @@
         };
 
         // ── URL sync (human-readable: key=a,b,c for multiselect; q=text) ──
+        // The id of the comment whose modal is open, or null. Owned here and read
+        // by encodeURL, so the query string has exactly one writer -- a second
+        // function poking at window.location would drift from the filter state.
+        let openCommentId = null;
+
         Report.encodeURL = function () {
             const p = new URLSearchParams();
+            if (openCommentId) p.set('comment', openCommentId);
             for (const key in Report.activeFilters) {
                 const def = DEF_BY_KEY[key];
                 if (def.type === 'text') {
@@ -1599,6 +1610,28 @@
             // Restore chips/state parsed from the URL
             Report.renderChips();
             Report.table.draw();
+
+            // Bound once, on markup that is never replaced, so there is no
+            // listener to clean up later.
+            document.getElementById('commentModal').addEventListener('hidden.bs.modal', function () {
+                openCommentId = null;
+                Report.encodeURL();
+            });
+
+            // ?comment=<document id> deep-links a single comment, so a link to
+            // one specific comment on this site can be shared directly. Ours is
+            // the only copy of a withdrawn comment, which regulations.gov no
+            // longer serves at all.
+            const wanted = new URLSearchParams(window.location.search).get('comment');
+            if (wanted) {
+                const idx = commentIndexById[wanted];
+                if (idx === undefined) {
+                    console.error('No comment on this page has id ' + wanted);
+                    showAppToast('Comment ' + wanted + ' not found');
+                } else {
+                    showCommentModal(idx);
+                }
+            }
         });
     </script>
 </body>
