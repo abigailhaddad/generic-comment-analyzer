@@ -96,3 +96,6 @@ comment_rows/
 
 # local-only: describes deploy topology and CI secret names; repo is public
 CLAUDE.md
+
+# Playwright MCP scratch output from browser-testing the report.
+.playwright-mcp/
