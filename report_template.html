@@ -794,15 +794,23 @@
             if (fs.description) {
                 html += '<p style="color:var(--color-text-muted); font-size:0.85rem; margin-bottom:0.5rem;">' + escapeHtml(fs.description) + '</p>';
             }
-            html += '<p style="margin-bottom:1rem;"><a href="#" onclick="event.preventDefault(); showRegexPatterns(\'' + fs.key + '\');" style="font-size:0.85rem;"><i class="fas fa-info-circle"></i> View search patterns used</a></p>';
+            if (fs.patterns && fs.patterns.length) {
+                html += '<p style="margin-bottom:1rem;"><a href="#" onclick="event.preventDefault(); showRegexPatterns(\'' + fs.key + '\');" style="font-size:0.85rem;"><i class="fas fa-info-circle"></i> View search patterns used</a></p>';
+            }
             if (!fs.comments.length) {
                 html += '<p class="text-muted">None</p>';
             } else {
                 html += '<table class="table table-sm table-hover"><thead><tr><th>Submitter</th><th>Match</th><th>Comment</th></tr></thead><tbody>';
                 fs.comments.forEach(function(e) {
-                    html += '<tr><td>' + escapeHtml(e.name) + '</td>';
+                    // Open our own copy rather than relying on regulations.gov:
+                    // a withdrawn comment is gone from there, and ours is the
+                    // only remaining record of what it said.
+                    var idx = commentIndexById[e.id];
+                    var clickable = idx !== undefined;
+                    html += '<tr' + (clickable ? ' class="clickable-row" style="cursor:pointer;" onclick="openCommentFromEntity(' + idx + ')" title="Click to see the full comment"' : '') + '>';
+                    html += '<td>' + escapeHtml(e.name) + '</td>';
                     html += '<td style="font-size:0.82rem; max-width:400px;"><em>' + escapeHtml(e.sentence || '-') + '</em></td>';
-                    html += '<td><a href="https://www.regulations.gov/comment/' + e.id + '" target="_blank">' + e.id.split('-').pop() + '</a></td></tr>';
+                    html += '<td><a href="https://www.regulations.gov/comment/' + e.id + '" target="_blank" onclick="event.stopPropagation();">' + e.id.split('-').pop() + '</a></td></tr>';
                 });
                 html += '</tbody></table>';
             }

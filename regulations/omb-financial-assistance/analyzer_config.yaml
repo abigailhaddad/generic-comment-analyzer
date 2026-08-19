@@ -388,7 +388,12 @@ id_list_flags:
     description: "OMB removed this comment after publication (Reason Withdrawn: \"Removed per policy.\"). The text shown is our copy from before the removal."
     file: withdrawn_comments.json
     # Which field of each entry to show against the comment in the flag modal.
-    note_field: reason_withdrawn
+    # NOT reason_withdrawn: OMB gives the same string ("Removed per policy.") for
+    # every withdrawal, so 42 identical rows tell a reader nothing. The removed
+    # text is the information that actually differs -- and it is the thing the
+    # export destroys, so showing it is the point of keeping the record.
+    note_field: original_comment
+    note_max_chars: 300
 
 regex_flags:
   mentions_peer_review:

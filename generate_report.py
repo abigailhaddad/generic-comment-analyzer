@@ -1195,9 +1195,15 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         # sentence this flag has no patterns to produce -- e.g. why the agency
         # withdrew that particular comment.
         note_field = icfg.get('note_field', '')
+        note_max = int(icfg.get('note_max_chars', 0) or 0)
         notes = {}
         if note_field:
-            notes = {i: str(e.get(note_field, '') or '') for i, e in entries.items()}
+            notes = {}
+            for i, e in entries.items():
+                v = ' '.join(str(e.get(note_field, '') or '').split())
+                if note_max and len(v) > note_max:
+                    v = v[:note_max].rsplit(' ', 1)[0] + '…'
+                notes[i] = v
         flags_cfg[key] = {
             'label': icfg.get('label', key),
             'description': icfg.get('description', ''),
