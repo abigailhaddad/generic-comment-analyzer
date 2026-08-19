@@ -375,6 +375,21 @@ changelog:
 # -------------------------------------------------------------------
 # Regex Flags — pattern-based boolean columns applied before LLM analysis.
 # -------------------------------------------------------------------
+# -------------------------------------------------------------------
+# Flags whose membership comes from a file of document ids rather than the
+# comment text. `withdrawn_comments.json` is maintained by
+# fetch_comments_api.py: when the agency withdraws a comment we already hold,
+# the bulk export blanks every field of it, so we keep our copy of the text and
+# record the withdrawal here instead of losing what was removed.
+# -------------------------------------------------------------------
+id_list_flags:
+  withdrawn:
+    label: "Withdrawn by OMB"
+    description: "OMB removed this comment after publication (Reason Withdrawn: \"Removed per policy.\"). The text shown is our copy from before the removal."
+    file: withdrawn_comments.json
+    # Which field of each entry to show against the comment in the flag modal.
+    note_field: reason_withdrawn
+
 regex_flags:
   mentions_peer_review:
     label: "Peer Review"

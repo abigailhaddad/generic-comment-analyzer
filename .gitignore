@@ -43,6 +43,15 @@ accuracy.html
 # file is present, so a CI checkout without it would quietly publish a report
 # with no accuracy page and no link to one.
 !**/eval/scores.json
+# The record of comments the agency withdrew after publication, and the cursor
+# that finds them. A withdrawn comment is blanked in the bulk export — body,
+# name, city, tracking number all gone — so this file holds the only remaining
+# copy of what was removed and cannot be regenerated from any source. It is also
+# load-bearing the same way rule_sections.json is: generate_report.py raises when
+# a file named by id_list_flags is missing, so a CI checkout without it fails the
+# publish outright rather than quietly dropping the flag.
+!withdrawn_comments.json
+!withdrawn_check_state.json
 # Raw model drafts for the eval set are an API-response cache, not a record.
 **/eval/candidates_labeled.jsonl
 

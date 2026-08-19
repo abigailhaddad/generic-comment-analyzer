@@ -195,6 +195,98 @@ def row_for(docid, key):
     return row
 
 
+WITHDRAWN_FILE = 'withdrawn_comments.json'
+WITHDRAWN_STATE = 'withdrawn_check_state.json'
+
+
+def _load_withdrawn():
+    """Existing withdrawal record, as (payload, set of ids already recorded)."""
+    if os.path.exists(WITHDRAWN_FILE):
+        with open(WITHDRAWN_FILE, encoding='utf-8') as f:
+            data = json.load(f)
+        return data, {c['document_id'] for c in data.get('comments', [])}
+    return {'comments': []}, set()
+
+
+def check_withdrawn(listed, known, key, csv_path):
+    """Record comments the agency withdrew after we already had them.
+
+    The bulk export blanks every field of a withdrawn comment -- body, name,
+    city, tracking number -- so once it lands there is no way to tell what was
+    removed. We keep our copy of the text and note the withdrawal beside it.
+
+    Cheap because it never re-checks the whole docket: the listing is already
+    filtered by lastModifiedDate, and a withdrawal bumps that, so the candidates
+    are only ids we already hold whose lastModifiedDate moved since the last
+    successful check. Newly fetched comments are excluded by the high-water mark
+    so they are not detail-fetched twice.
+
+    Returns the number of newly recorded withdrawals.
+    """
+    mark = ''
+    if os.path.exists(WITHDRAWN_STATE):
+        with open(WITHDRAWN_STATE, encoding='utf-8') as f:
+            mark = json.load(f).get('last_checked', '')
+
+    candidates = [i for i, modified in listed.items()
+                  if i in known and (modified or '') > mark]
+    high_water = max([m for m in listed.values() if m] or [''])
+
+    if not candidates:
+        if high_water > mark:
+            with open(WITHDRAWN_STATE, 'w', encoding='utf-8') as f:
+                json.dump({'last_checked': high_water}, f, indent=2)
+        return 0
+
+    print(f'checking {len(candidates):,} already-held comment(s) whose record changed')
+    record, already = _load_withdrawn()
+    found = 0
+    for doc_id in candidates:
+        if doc_id in already:
+            continue
+        try:
+            row = row_for(doc_id, key)
+        except RateLimited:
+            # Keep what we found and leave the mark alone, so the next run
+            # re-checks this window rather than skipping past it.
+            print('Rate limited during the withdrawal check — will resume next run.')
+            break
+        if (row.get('Is Withdrawn?') or '').lower() != 'true':
+            continue
+        original = {}
+        if os.path.exists(csv_path):
+            with open(csv_path, newline='', encoding='utf-8') as f:
+                for r in csv.DictReader(f):
+                    if r['Document ID'] == doc_id:
+                        original = r
+                        break
+        record.setdefault('comments', []).append({
+            'document_id': doc_id,
+            'reason_withdrawn': row.get('Reason Withdrawn', ''),
+            'detected': dt.date.today().isoformat(),
+            'posted_date': row.get('Posted Date', ''),
+            'original_tracking_number': original.get('Tracking Number', ''),
+            'original_received_date': original.get('Received Date', ''),
+            'original_submitter': ' '.join(
+                f"{original.get('First Name', '')} {original.get('Last Name', '')}".split()),
+            'original_organization': original.get('Organization Name', ''),
+            'original_comment': original.get('Comment', ''),
+        })
+        found += 1
+    else:
+        # Only advance the mark when the whole candidate set was checked.
+        if high_water > mark:
+            with open(WITHDRAWN_STATE, 'w', encoding='utf-8') as f:
+                json.dump({'last_checked': high_water}, f, indent=2)
+
+    if found:
+        record['comments'].sort(key=lambda c: c['document_id'])
+        with open(WITHDRAWN_FILE, 'w', encoding='utf-8') as f:
+            json.dump(record, f, indent=2, ensure_ascii=False)
+        print(f'recorded {found} newly withdrawn comment(s) in {WITHDRAWN_FILE}')
+    return found
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--regulation', required=True)
@@ -257,6 +349,12 @@ def main():
         return
     missing = [i for i in ids if i not in known]
     print(f'listing returned {len(ids):,}; {len(missing):,} not in the CSV')
+
+    # Withdrawals change a comment we already hold, so they never show up as
+    # "missing". Check before the early return: a day with no new comments can
+    # still have withdrawals.
+    if not args.dry_run:
+        check_withdrawn(ids, known, key, args.csv)
     if args.dry_run or not missing:
         for m in missing[:20]:
             print('   ', m)

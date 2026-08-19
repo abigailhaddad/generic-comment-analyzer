@@ -413,11 +413,11 @@
                 <div class="stat-label">Oppose ({{ "{:,}".format(briefing.oppose_count) }})</div>
             </div>
             <div class="stat-card clickable" onclick="showStanceModal('support')">
-                <div class="stat-number support">{{ briefing.support_pct | round(1) }}%</div>
+                <div class="stat-number support">{{ briefing.support_pct }}%</div>
                 <div class="stat-label">Support ({{ "{:,}".format(briefing.support_count) }})</div>
             </div>
             <div class="stat-card clickable" onclick="showStanceModal('unclear')" title="No clear position or off-topic.">
-                <div class="stat-number unclear">{{ briefing.unclear_pct | round(1) }}%</div>
+                <div class="stat-number unclear">{{ briefing.unclear_pct }}%</div>
                 <div class="stat-label">Unclear ({{ "{:,}".format(briefing.unclear_count) }})</div>
             </div>
         </div>

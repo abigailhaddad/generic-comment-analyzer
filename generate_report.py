@@ -25,6 +25,23 @@ from jinja2 import Environment, FileSystemLoader
 _SMALL_WORDS = {'the', 'of', 'a', 'an', 'and', 'or', 'to', 'in', 'on', 'for'}
 
 
+def display_pct(count, total, decimals: int = 1) -> float:
+    """Percentage for display, keeping at least one significant digit.
+
+    Rounding to a fixed decimal turns a small-but-real share into 0.0, so a card
+    showing a non-zero count alongside "0.0%" reads as a bug rather than as a
+    rare category. Escalate precision until the first significant digit appears:
+    42 of 167,864 renders as 0.03%, not 0.0%. Large shares are unaffected.
+    """
+    if not total or not count:
+        return 0.0
+    pct = count / total * 100
+    d = decimals
+    while round(pct, d) == 0 and d < 12:
+        d += 1
+    return round(pct, d)
+
+
 def humanize_flag_label(key: str, flag_cfg: Dict[str, Any]) -> str:
     """Derive a display label for a regex flag.
 
@@ -235,7 +252,7 @@ def compute_briefing(comments: List[Dict[str, Any]]) -> Dict[str, Any]:
     sorted_concerns = sorted(concern_counts.items(), key=lambda x: x[1], reverse=True)
     concern_list = []
     for name, count in sorted_concerns:
-        pct = round(count / total * 100, 1) if total else 0
+        pct = display_pct(count, total)
         cs = concern_stance.get(name, {})
         oppose = cs.get('Oppose', 0)
         support = cs.get('Support', 0)
@@ -325,11 +342,11 @@ def compute_briefing(comments: List[Dict[str, Any]]) -> Dict[str, Any]:
     return {
         'total_comments': total,
         'oppose_count': oppose_count,
-        'oppose_pct': round(oppose_count / total * 100, 1) if total else 0,
+        'oppose_pct': display_pct(oppose_count, total),
         'support_count': support_count,
-        'support_pct': round(support_count / total * 100, 1) if total else 0,
+        'support_pct': display_pct(support_count, total),
         'unclear_count': unclear_count,
-        'unclear_pct': round(unclear_count / total * 100, 1) if total else 0,
+        'unclear_pct': display_pct(unclear_count, total),
         'support_comments': support_comments,
         'unclear_comments': unclear_comments,
         'with_attachments': with_attachments,
@@ -940,6 +957,47 @@ def load_derived_flags() -> Dict[str, Dict[str, Any]]:
     return {}
 
 
+def load_id_list_flags() -> Dict[str, Dict[str, Any]]:
+    """Load id_list_flags config: boolean flags whose membership comes from a
+    JSON file of document ids rather than the comment text. Same card/filter
+    machinery as regex_flags.
+
+    Used for facts the comment body cannot carry -- e.g. that the agency
+    withdrew a comment after publication, which is recorded in the bulk export's
+    metadata and vanishes from it once the row is blanked."""
+    config_path = Path('analyzer_config.yaml')
+    if config_path.exists():
+        with open(config_path) as f:
+            config = yaml.safe_load(f)
+        cfg = config.get('id_list_flags', {}) or {}
+        return {name: c for name, c in cfg.items() if isinstance(c, dict)}
+    return {}
+
+
+def load_id_list(path: str) -> set:
+    """Read an id-list file as {document_id: entry}.
+
+    Accepts either a bare list of ids or {"comments": [{"document_id": ...}]}.
+    Fails loudly on a missing file: a flag configured but silently empty would
+    publish a report that quietly under-reports whatever it tracks."""
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(
+            f"id_list_flags references {path}, which does not exist. "
+            f"Remove the flag from analyzer_config.yaml or restore the file."
+        )
+    with open(p) as f:
+        data = json.load(f)
+    if isinstance(data, dict):
+        data = data.get('comments', [])
+    entries = {}
+    for item in data:
+        doc_id = item.get('document_id') if isinstance(item, dict) else item
+        if doc_id:
+            entries[str(doc_id)] = item if isinstance(item, dict) else {}
+    return entries
+
+
 def compute_flag_sections(comments: List[Dict[str, Any]], flags_cfg: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Build one generic section per configured regex flag.
 
@@ -972,8 +1030,13 @@ def compute_flag_sections(comments: List[Dict[str, Any]], flags_cfg: Dict[str, D
                         sentence = f"Cosigned by {n:,} organizations" + (f" — {_snippet(ename, 80)}" if ename else "")
                         sort_n = n
                     else:
-                        ct = c.get('comment_text', '') or ''
-                        sentence = extract_matching_sentence(ct, patterns)
+                        notes = cfg.get('_id_list_notes') if isinstance(cfg, dict) else None
+                        if notes:
+                            cid = str(c.get('id', ''))
+                            sentence = notes.get(cid) or notes.get(cid.split('#', 1)[0], '')
+                        else:
+                            ct = c.get('comment_text', '') or ''
+                            sentence = extract_matching_sentence(ct, patterns)
                         sort_n = 0
                     matched.append({
                         'name': 'Anonymous' if (c.get('submitter', '') or '').strip() in ('Anonymous Anonymous', '') else c.get('submitter', '').strip(),
@@ -991,7 +1054,7 @@ def compute_flag_sections(comments: List[Dict[str, Any]], flags_cfg: Dict[str, D
             'label': label,
             'description': description,
             'count': count,
-            'pct': round(count / total * 100, 1) if total else 0,
+            'pct': display_pct(count, total),
             'patterns': patterns,
             'comments': matched,
         })
@@ -1118,6 +1181,28 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
             'description': dcfg.get('description', ''),
             'patterns': [],
             '_derived': {'from': src, 'min': minimum},
+        }
+    # Id-list flags: membership comes from a JSON file of document ids rather
+    # than the comment text. Ids in the parquet may be disambiguated as
+    # "<id>#<tracking>" when the export reuses a Document ID, so match on the
+    # bare id too.
+    for key, icfg in load_id_list_flags().items():
+        entries = load_id_list(icfg.get('file', ''))
+        for c in comments:
+            cid = str(c.get('id', ''))
+            c[key] = cid in entries or cid.split('#', 1)[0] in entries
+        # Show a per-comment note in the flag modal instead of the regex-matched
+        # sentence this flag has no patterns to produce -- e.g. why the agency
+        # withdrew that particular comment.
+        note_field = icfg.get('note_field', '')
+        notes = {}
+        if note_field:
+            notes = {i: str(e.get(note_field, '') or '') for i, e in entries.items()}
+        flags_cfg[key] = {
+            'label': icfg.get('label', key),
+            'description': icfg.get('description', ''),
+            'patterns': [],
+            '_id_list_notes': notes,
         }
     flag_keys = list(flags_cfg.keys())
     report_config = load_report_config()

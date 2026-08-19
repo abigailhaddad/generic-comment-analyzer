@@ -186,15 +186,28 @@ jobs:
       # true only on the first publish after new comments landed). Rebases and
       # retries once if origin moved under us; the concurrency group above
       # should make that rare.
-      - name: Commit and push data_changelog.json
-        if: ${{ env.IS_PUBLISH == 'true' && steps.pub.outputs.changed == 'true' }}
+      # Not gated on steps.pub.outputs.changed (i.e. "the corpus grew"): a day
+      # with no new comments can still have withdrawals, which is exactly how
+      # the first 42 were found. Gate on the files themselves instead.
+      - name: Commit and push data_changelog.json and the withdrawal record
+        if: ${{ env.IS_PUBLISH == 'true' }}
         run: |
-          if git diff --quiet -- "regulations/$REGULATION/data_changelog.json"; then
-            echo "data_changelog.json unchanged — nothing to commit."
+          TRACKED="regulations/$REGULATION/data_changelog.json \
+                   regulations/$REGULATION/withdrawn_comments.json \
+                   regulations/$REGULATION/withdrawn_check_state.json"
+          # The files may not all exist yet on a regulation that has never seen a
+          # withdrawal. Use `git status --porcelain`, not `git diff HEAD`: the
+          # first withdrawal creates an UNTRACKED file, which git diff does not
+          # report, so the record would be silently dropped on exactly the run
+          # that first found something.
+          EXISTING=""
+          for f in $TRACKED; do [ -f "$f" ] && EXISTING="$EXISTING $f"; done
+          if [ -z "$EXISTING" ] || [ -z "$(git status --porcelain -- $EXISTING)" ]; then
+            echo "changelog and withdrawal record unchanged — nothing to commit."
           else
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add "regulations/$REGULATION/data_changelog.json"
+            git add $EXISTING
             git commit -m "Record $REGULATION data update ($(date -u +%F))"
             if ! git push origin "HEAD:${{ github.ref_name }}"; then
               echo "Push rejected — rebasing once and retrying."
