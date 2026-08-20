@@ -1199,19 +1199,47 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
     # bare id too.
     for key, icfg in load_id_list_flags().items():
         entries = load_id_list(icfg.get('file', ''))
+        # Optionally drop entries whose <exclude_field> matches any of these
+        # regexes. Deliberately an EXCLUDE list rather than an include list: an
+        # unrecognised reason then still gets flagged. An include list would
+        # silently drop a category nobody had thought of yet, which is the one
+        # failure this flag exists to prevent.
+        ex_field = icfg.get('exclude_field', '')
+        ex_pats = icfg.get('exclude_matching', []) or []
+        if ex_field and ex_pats:
+            rx = [re.compile(p, re.I) for p in ex_pats]
+            kept = {}
+            for i, e in entries.items():
+                val = str(e.get(ex_field, '') or '')
+                if any(r.search(val) for r in rx):
+                    continue
+                kept[i] = e
+            dropped = len(entries) - len(kept)
+            if dropped:
+                print(f"  {key}: excluded {dropped} entr{'y' if dropped == 1 else 'ies'} "
+                      f"matching {ex_field}")
+            entries = kept
         for c in comments:
             cid = str(c.get('id', ''))
             c[key] = cid in entries or cid.split('#', 1)[0] in entries
         # Show a per-comment note in the flag modal instead of the regex-matched
         # sentence this flag has no patterns to produce -- e.g. why the agency
         # withdrew that particular comment.
+        # note_field may be a list: the first field with a value wins. Needed
+        # because the most informative field is not always present -- a comment
+        # withdrawn before we ever downloaded it has no text to show, so it
+        # falls back to saying why it was withdrawn.
         note_field = icfg.get('note_field', '')
+        fields = note_field if isinstance(note_field, list) else ([note_field] if note_field else [])
         note_max = int(icfg.get('note_max_chars', 0) or 0)
         notes = {}
-        if note_field:
-            notes = {}
+        if fields:
             for i, e in entries.items():
-                v = ' '.join(str(e.get(note_field, '') or '').split())
+                v = ''
+                for fld in fields:
+                    v = ' '.join(str(e.get(fld, '') or '').split())
+                    if v:
+                        break
                 if note_max and len(v) > note_max:
                     v = v[:note_max].rsplit(' ', 1)[0] + '…'
                 notes[i] = v

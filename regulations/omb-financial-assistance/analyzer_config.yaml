@@ -384,15 +384,20 @@ changelog:
 # -------------------------------------------------------------------
 id_list_flags:
   withdrawn:
-    label: "Withdrawn by OMB"
-    description: "OMB removed this comment after publication (Reason Withdrawn: \"Removed per policy.\"). The text shown is our copy from before the removal."
+    label: "Removed by OMB"
+    description: "OMB removed these 42 comments on 18 August, after they had been published for up to eleven weeks, giving the reason \"Removed per policy.\" The text is our copy from before the removal — the official record now shows them blank. Four further comments were removed in June under the reason \"Policy\"; they are not among the 42 and cannot be shown, because they were already blank when this docket was first downloaded and no copy of them exists anywhere. Comments withdrawn at their own author's request are excluded from this count."
     file: withdrawn_comments.json
     # Which field of each entry to show against the comment in the flag modal.
     # NOT reason_withdrawn: OMB gives the same string ("Removed per policy.") for
     # every withdrawal, so 42 identical rows tell a reader nothing. The removed
     # text is the information that actually differs -- and it is the thing the
     # export destroys, so showing it is the point of keeping the record.
-    note_field: original_comment
+    note_field: [original_comment, reason_withdrawn]
+    # A comment its own author asked to have taken down is not an agency
+    # removal; counting it here would overstate what OMB did.
+    exclude_field: reason_withdrawn
+    exclude_matching:
+      - "request of (the )?(commenter|submitter)"
     note_max_chars: 300
 
 regex_flags:

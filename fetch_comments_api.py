@@ -223,6 +223,37 @@ def check_withdrawn(listed, known, key, csv_path):
 
     Returns the number of newly recorded withdrawals.
     """
+    record, already = _load_withdrawn()
+
+    # Comments the agency withdrew BEFORE we first downloaded the docket arrive
+    # already blank, so they never appear as a change and a diff against our own
+    # copy cannot see them -- our first record missed 8 of them this way. They
+    # are visible in the csv we already hold, which costs no API call to read.
+    # Their text is gone for good; record that they exist and say so.
+    backfilled = 0
+    if os.path.exists(csv_path):
+        with open(csv_path, newline='', encoding='utf-8') as f:
+            for r in csv.DictReader(f):
+                doc_id = r['Document ID']
+                if (r.get('Is Withdrawn?') or '').lower() != 'true' or doc_id in already:
+                    continue
+                record.setdefault('comments', []).append({
+                    'document_id': doc_id,
+                    'reason_withdrawn': r.get('Reason Withdrawn', ''),
+                    'detected': dt.date.today().isoformat(),
+                    'posted_date': r.get('Posted Date', ''),
+                    'text_available': False,
+                    'note': 'Withdrawn before this docket was first downloaded; '
+                            'the export had already blanked it, so no copy of the text exists.',
+                })
+                already.add(doc_id)
+                backfilled += 1
+    if backfilled:
+        record['comments'].sort(key=lambda c: c['document_id'])
+        with open(WITHDRAWN_FILE, 'w', encoding='utf-8') as f:
+            json.dump(record, f, indent=2, ensure_ascii=False)
+        print(f'recorded {backfilled} already-withdrawn comment(s) found in {csv_path}')
+
     mark = ''
     if os.path.exists(WITHDRAWN_STATE):
         with open(WITHDRAWN_STATE, encoding='utf-8') as f:
@@ -236,10 +267,9 @@ def check_withdrawn(listed, known, key, csv_path):
         if high_water > mark:
             with open(WITHDRAWN_STATE, 'w', encoding='utf-8') as f:
                 json.dump({'last_checked': high_water}, f, indent=2)
-        return 0
+        return backfilled
 
     print(f'checking {len(candidates):,} already-held comment(s) whose record changed')
-    record, already = _load_withdrawn()
     found = 0
     for doc_id in candidates:
         if doc_id in already:
@@ -284,7 +314,7 @@ def check_withdrawn(listed, known, key, csv_path):
         with open(WITHDRAWN_FILE, 'w', encoding='utf-8') as f:
             json.dump(record, f, indent=2, ensure_ascii=False)
         print(f'recorded {found} newly withdrawn comment(s) in {WITHDRAWN_FILE}')
-    return found
+    return found + backfilled
 
 
 def main():
