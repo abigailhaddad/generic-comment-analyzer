@@ -427,7 +427,7 @@
         <div class="stat-group-label">Topics</div>
         <div class="stats-row">
             {% for fs in briefing.flag_sections %}
-            <div class="stat-card clickable flag-card" data-flag="{{ fs.key }}" onclick="showFlagModal('{{ fs.key }}')">
+            <div class="stat-card clickable flag-card" data-flag="{{ fs.key }}" onclick="showFlagModal('{{ fs.key }}')" title="{{ fs.description or 'Click to see matching comments' }}">
                 <div class="stat-number">{{ "{:,}".format(fs.count) }}</div>
                 <div class="stat-label">{{ fs.label }} <i class="fas fa-info-circle" style="font-size:0.7rem; opacity:0.5;" title="Click to see matching comments"></i></div>
             </div>

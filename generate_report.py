@@ -1243,9 +1243,25 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                 if note_max and len(v) > note_max:
                     v = v[:note_max].rsplit(' ', 1)[0] + '…'
                 notes[i] = v
+        # State the coverage rather than leaving the count to speak for itself.
+        # An id can be recorded and still have no comment to attach to -- a
+        # comment removed before this dataset was first collected arrives blank,
+        # is never analysed, and so cannot appear on the card. Computed from the
+        # data, not written into the config, so it cannot drift from the truth.
+        matched = sum(1 for c in comments if c.get(key))
+        missing = len(entries) - matched
+        description = icfg.get('description', '')
+        if missing > 0:
+            description = (
+                f"{description} Coverage: {len(entries):,} are on record and "
+                f"{matched:,} appear here. The other {missing:,} cannot be shown — "
+                f"they were already blank when this data was first collected, so no "
+                f"copy of them exists."
+            ).strip()
+
         flags_cfg[key] = {
             'label': icfg.get('label', key),
-            'description': icfg.get('description', ''),
+            'description': description,
             'patterns': [],
             '_id_list_notes': notes,
         }
