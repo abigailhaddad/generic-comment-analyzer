@@ -171,12 +171,33 @@ jobs:
         id: pub
         if: ${{ env.IS_PUBLISH == 'true' }}
         run: |
-          if git diff --quiet -- "regulations/$REGULATION/data_changelog.json"; then
+          # An explicit manual run with deploy=true is a human saying "publish
+          # now" — honour it without asking whether anything changed. That is
+          # the only way to re-render after a change to the report itself (a
+          # config blurb, a template) rather than to the data.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Manual run — publishing regardless of what changed."
+            exit 0
+          fi
+          # Two independent reasons the live report can be out of date: the
+          # corpus grew (dirty changelog), or OMB removed something (dirty
+          # withdrawal record). A docket that has stopped growing still gets
+          # withdrawals, and gating on the changelog alone meant those were
+          # committed to git but never rendered or deployed.
+          # `git status --porcelain`, not `git diff`: on the first withdrawal
+          # the record is UNTRACKED, which git diff does not report.
+          WATCH=""
+          for f in "regulations/$REGULATION/data_changelog.json" \
+                   "regulations/$REGULATION/withdrawn_comments.json"; do
+            [ -f "$f" ] && WATCH="$WATCH $f"
+          done
+          if [ -z "$WATCH" ] || [ -z "$(git status --porcelain -- $WATCH)" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "Changelog unchanged — the published report is already current, skipping deploy."
+            echo "Changelog and withdrawal record unchanged — the published report is already current, skipping deploy."
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
-            git --no-pager diff --stat -- "regulations/$REGULATION/data_changelog.json"
+            git status --porcelain -- $WATCH
           fi
 
       # data_changelog.json is a committed file (small, not regenerable), so
