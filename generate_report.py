@@ -1303,15 +1303,24 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         orphans = []
         for i in absent:
             e = entries[i]
-            d = _long_date(str(e.get(prefix_field, '') or '')) if prefix_field else ''
+            # Everything the record still holds. Losing the text does not mean
+            # losing the comment: who filed it, when it went up and when it came
+            # down all survive, and that is most of what a reader wants.
+            bits = []
+            posted = _long_date(str(e.get('posted_date', '') or ''))
+            if posted:
+                bits.append(f'Posted {posted}')
+            removed = _long_date(str(e.get(prefix_field, '') or '')) if prefix_field else ''
+            if removed:
+                bits.append(f'{prefix_label}{removed}'.strip())
             reason = ' '.join(str(e.get('reason_withdrawn', '') or '').split())
-            bits = [f'{prefix_label}{d}'.strip() if d else '']
-            bits.append(f'reason “{reason}”' if reason else '')
-            bits = [b for b in bits if b]
+            if reason:
+                bits.append(f'reason “{reason}”')
+            sentence = ' · '.join(bits)
             orphans.append({
                 'name': (e.get('original_submitter') or '').strip() or 'Not recorded',
                 'id': i,
-                'sentence': (' — '.join(bits) + '. No copy of the text exists.').lstrip(' —'),
+                'sentence': (sentence + '. No copy of the text exists.').lstrip('. '),
                 '_sort_n': 0,
             })
         if absent:

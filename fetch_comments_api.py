@@ -23,6 +23,7 @@ import csv
 import datetime as dt
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -244,11 +245,19 @@ def check_withdrawn(listed, known, key, csv_path):
                 doc_id = r['Document ID']
                 if (r.get('Is Withdrawn?') or '').lower() != 'true' or doc_id in already:
                     continue
+                # First/Last Name are blanked with everything else, but Title
+                # survives as "Comment from <name>" -- the only place the
+                # submitter is still recorded once the text is gone.
+                title = (r.get('Title') or '').strip()
+                m = re.match(r'(?i)^comment from\s+(.*)$', title)
+                who = m.group(1).strip() if m and m.group(1).strip() else ''
                 record.setdefault('comments', []).append({
                     'document_id': doc_id,
                     'reason_withdrawn': r.get('Reason Withdrawn', ''),
                     'detected': dt.date.today().isoformat(),
                     'posted_date': r.get('Posted Date', ''),
+                    'original_submitter': who,
+                    'submitter_source': 'title' if who else '',
                     'text_available': False,
                     'note': 'Withdrawn before this docket was first downloaded; '
                             'the export had already blanked it, so no copy of the text exists.',

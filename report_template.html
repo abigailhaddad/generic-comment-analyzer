@@ -810,7 +810,16 @@
                     // only remaining record of what it said.
                     var idx = commentIndexById[e.id];
                     var clickable = idx !== undefined;
-                    html += '<tr' + (clickable ? ' class="clickable-row" style="cursor:pointer;" onclick="openCommentFromEntity(' + idx + ')" title="Click to see the full comment"' : '') + '>';
+                    // No local copy is not the same as nothing to open: a
+                    // withdrawn comment we never got the text for still has an
+                    // official record, and that blank record is worth seeing.
+                    var action = clickable
+                        ? 'openCommentFromEntity(' + idx + ')'
+                        : "window.open('https://www.regulations.gov/comment/" + encodeURIComponent(e.id) + "', '_blank')";
+                    var hint = clickable
+                        ? 'Click to see the full comment'
+                        : 'No copy of the text exists — open the official record on regulations.gov';
+                    html += '<tr class="clickable-row" style="cursor:pointer;" onclick="' + action + '" title="' + hint + '">';
                     html += '<td>' + escapeHtml(e.name) + '</td>';
                     html += '<td style="font-size:0.82rem; max-width:400px;"><em>' + escapeHtml(e.sentence || '-') + '</em></td>';
                     html += '<td><a href="https://www.regulations.gov/comment/' + e.id + '" target="_blank" onclick="event.stopPropagation();">' + e.id.split('-').pop() + '</a></td></tr>';
