@@ -1071,6 +1071,15 @@ def compute_flag_sections(comments: List[Dict[str, Any]], flags_cfg: Dict[str, D
                         'sentence': sentence,
                         '_sort_n': sort_n,
                     })
+        # Ids on the list with no comment behind them. Counted, so the badge is
+        # the number of removals rather than the number we happen to hold text
+        # for, and appended to the table so every one of them is visible. The
+        # modal already renders a row whose id is not in the comment index as
+        # unclickable, which is exactly right: there is nothing to open.
+        orphans = cfg.get('_id_list_orphans') if isinstance(cfg, dict) else None
+        if orphans:
+            count += len(orphans)
+            matched.extend(orphans)
         if derived and max_val > 1:
             description = (description + f" Largest: {max_val:,} cosigners.").strip()
         # Show the biggest coalitions first in the flag modal.
@@ -1286,21 +1295,31 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                 joined = (pretty[0] if len(pretty) == 1
                           else ', '.join(pretty[:-1]) + f' and {pretty[-1]}')
                 description = f'{description} Removals happened on {joined}.'.strip()
+        # Entries with no comment row to hang off: the agency blanked the text
+        # before this dataset was first collected, so they were never analysed
+        # and cannot be found by scanning `comments`. List them anyway. The
+        # removal is the fact worth publishing; the missing text is a property
+        # of that fact, not a reason to leave the comment out of the count.
+        orphans = []
+        for i in absent:
+            e = entries[i]
+            d = _long_date(str(e.get(prefix_field, '') or '')) if prefix_field else ''
+            reason = ' '.join(str(e.get('reason_withdrawn', '') or '').split())
+            bits = [f'{prefix_label}{d}'.strip() if d else '']
+            bits.append(f'reason “{reason}”' if reason else '')
+            bits = [b for b in bits if b]
+            orphans.append({
+                'name': (e.get('original_submitter') or '').strip() or 'Not recorded',
+                'id': i,
+                'sentence': (' — '.join(bits) + '. No copy of the text exists.').lstrip(' —'),
+                '_sort_n': 0,
+            })
         if absent:
-            # Name them, rather than reporting a bare count. These are specific
-            # comments: the agency blanked the text before this dataset existed,
-            # but the id and the removal date survived, and listing them is the
-            # difference between "4 others exist" and a reader being able to look
-            # each one up on regulations.gov.
-            def _cite(i):
-                d = _long_date(str(entries[i].get(prefix_field, '') or '')) if prefix_field else ''
-                return f'{i} (removed {d})' if d else i
             description = (
-                f"{description} Coverage: {len(entries):,} are on record and "
-                f"{len(entries) - len(absent):,} appear here with their text. The "
-                f"other {len(absent):,} were already blank when this data was first "
-                f"collected, so no copy of what they said exists — but the removals "
-                f"are on the record: {'; '.join(_cite(i) for i in absent)}."
+                f"{description} All {len(entries):,} are listed here. For "
+                f"{len(absent):,} of them the text is gone — they were already blank "
+                f"when this data was first collected — so only the removal itself is "
+                f"on the record."
             ).strip()
 
         flags_cfg[key] = {
@@ -1308,6 +1327,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
             'description': description,
             'patterns': [],
             '_id_list_notes': notes,
+            '_id_list_orphans': orphans,
         }
     flag_keys = list(flags_cfg.keys())
     report_config = load_report_config()
