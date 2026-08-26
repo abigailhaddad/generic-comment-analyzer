@@ -395,6 +395,12 @@ id_list_flags:
     # text is the information that actually differs -- and it is the thing the
     # export destroys, so showing it is the point of keeping the record.
     note_field: [original_comment, reason_withdrawn]
+    # Lead every note with the day OMB removed that comment. Not `detected`,
+    # which is the day this pipeline happened to look and drifts with the
+    # schedule; withdrawn_date comes from the API's modifyDate, the last change
+    # to an already-withdrawn record.
+    note_prefix_field: withdrawn_date
+    note_prefix_label: "Removed "
     # A comment its own author asked to have taken down is not an agency
     # removal; counting it here would overstate what OMB did.
     exclude_field: reason_withdrawn

@@ -158,10 +158,17 @@ def list_comment_ids(docket, key, since=None):
     return seen
 
 
-def row_for(docid, key):
-    """One CSV row from the detail endpoint, attachments included."""
+def row_for(docid, key, attrs_out=None):
+    """One CSV row from the detail endpoint, attachments included.
+
+    `attrs_out`, if given, is updated with the raw API attributes. The bulk
+    export has no column for modifyDate -- the timestamp of the withdrawal
+    itself -- so a caller that wants it has no way to read it back off the row.
+    """
     d = get(f'comments/{docid}', {'include': 'attachments'}, key)
     a = d['data']['attributes']
+    if attrs_out is not None:
+        attrs_out.update(a)
     row = {c: '' for c in COLUMNS}
     row['Document ID'] = docid
     for src, dst in FIELD_MAP.items():
@@ -274,8 +281,9 @@ def check_withdrawn(listed, known, key, csv_path):
     for doc_id in candidates:
         if doc_id in already:
             continue
+        attrs = {}
         try:
-            row = row_for(doc_id, key)
+            row = row_for(doc_id, key, attrs_out=attrs)
         except RateLimited:
             # Keep what we found and leave the mark alone, so the next run
             # re-checks this window rather than skipping past it.
@@ -290,8 +298,15 @@ def check_withdrawn(listed, known, key, csv_path):
                     if r['Document ID'] == doc_id:
                         original = r
                         break
+        # When the agency withdrew it, not when we noticed: `detected` is a fact
+        # about this pipeline's schedule and drifts by however long the docket
+        # went unchecked. modifyDate is the last change to an already-withdrawn
+        # record, which is the withdrawal itself.
+        modified = attrs.get('modifyDate') or attrs.get('lastModifiedDate') or ''
         record.setdefault('comments', []).append({
             'document_id': doc_id,
+            'withdrawn_date': modified[:10],
+            'withdrawn_timestamp': modified,
             'reason_withdrawn': row.get('Reason Withdrawn', ''),
             'detected': dt.date.today().isoformat(),
             'posted_date': row.get('Posted Date', ''),

@@ -423,6 +423,22 @@ def get_filter_values(comments: List[Dict[str, Any]]) -> Dict[str, list]:
     }
 
 
+def _long_date(value: str) -> str:
+    """'2026-08-18' or an ISO timestamp -> 'August 18, 2026'.
+
+    Returns the input unchanged if it does not parse, and '' for empty: a date
+    we cannot read is better shown raw than silently dropped.
+    """
+    value = (value or '').strip()
+    if not value:
+        return ''
+    try:
+        d = datetime.fromisoformat(value.replace('Z', '+00:00'))
+    except ValueError:
+        return value
+    return f"{d.strftime('%B')} {d.day}, {d.year}"
+
+
 def _safe_int(val):
     """Convert to int, returning None for None/NaN."""
     if val is None:
@@ -1232,8 +1248,13 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         note_field = icfg.get('note_field', '')
         fields = note_field if isinstance(note_field, list) else ([note_field] if note_field else [])
         note_max = int(icfg.get('note_max_chars', 0) or 0)
+        # Lead the note with a date off the entry -- for withdrawals, the day the
+        # agency actually removed it. Prefixed after truncation so note_max_chars
+        # budgets the text and cannot eat the date.
+        prefix_field = icfg.get('note_prefix_field', '')
+        prefix_label = icfg.get('note_prefix_label', '')
         notes = {}
-        if fields:
+        if fields or prefix_field:
             for i, e in entries.items():
                 v = ''
                 for fld in fields:
@@ -1242,21 +1263,44 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
                         break
                 if note_max and len(v) > note_max:
                     v = v[:note_max].rsplit(' ', 1)[0] + '…'
+                pre = _long_date(str(e.get(prefix_field, '') or '')) if prefix_field else ''
+                if pre:
+                    v = f'{prefix_label}{pre}' + (f' — {v}' if v else '')
                 notes[i] = v
         # State the coverage rather than leaving the count to speak for itself.
         # An id can be recorded and still have no comment to attach to -- a
         # comment removed before this dataset was first collected arrives blank,
         # is never analysed, and so cannot appear on the card. Computed from the
         # data, not written into the config, so it cannot drift from the truth.
-        matched = sum(1 for c in comments if c.get(key))
-        missing = len(entries) - matched
+        shown = {str(c.get('id', '')).split('#', 1)[0] for c in comments if c.get(key)}
+        absent = sorted(i for i in entries if i not in shown)
         description = icfg.get('description', '')
-        if missing > 0:
+        # Spell out every date on which something on this list was removed,
+        # straight from the data. It is the fact the description used to state
+        # by hand, which went wrong the moment a new batch landed.
+        if prefix_field:
+            days = sorted({str(e.get(prefix_field, '') or '')[:10]
+                           for e in entries.values() if e.get(prefix_field)})
+            if days:
+                pretty = [_long_date(d) for d in days]
+                joined = (pretty[0] if len(pretty) == 1
+                          else ', '.join(pretty[:-1]) + f' and {pretty[-1]}')
+                description = f'{description} Removals happened on {joined}.'.strip()
+        if absent:
+            # Name them, rather than reporting a bare count. These are specific
+            # comments: the agency blanked the text before this dataset existed,
+            # but the id and the removal date survived, and listing them is the
+            # difference between "4 others exist" and a reader being able to look
+            # each one up on regulations.gov.
+            def _cite(i):
+                d = _long_date(str(entries[i].get(prefix_field, '') or '')) if prefix_field else ''
+                return f'{i} (removed {d})' if d else i
             description = (
                 f"{description} Coverage: {len(entries):,} are on record and "
-                f"{matched:,} appear here. The other {missing:,} cannot be shown — "
-                f"they were already blank when this data was first collected, so no "
-                f"copy of them exists."
+                f"{len(entries) - len(absent):,} appear here with their text. The "
+                f"other {len(absent):,} were already blank when this data was first "
+                f"collected, so no copy of what they said exists — but the removals "
+                f"are on the record: {'; '.join(_cite(i) for i in absent)}."
             ).strip()
 
         flags_cfg[key] = {
