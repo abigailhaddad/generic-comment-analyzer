@@ -1,0 +1,532 @@
+# Analyzer Configuration — Census Bureau Decennial Census Rule
+# Docket: USBC-2026-0628 | RIN: 0607-AA75 | 15 CFR Parts 60 and 70
+
+regulation_name: "Decennial Census Residence Criteria and Demographic Question Restrictions"
+regulation_description: >
+  Proposed Department of Commerce / Census Bureau rule establishing 15 CFR Part 60 (Residence
+  Criteria for the Decennial Census of the American Population) and 15 CFR Part 70 (Restrictions
+  on the Inclusion of Certain Demographic Questions in the Decennial Census Operation). Part 60
+  sets who is counted where — including excluding undocumented immigrants from the enumeration and
+  defining usual residence by a Jan 3–Apr 1 residency window — and Part 70 restricts which
+  demographic questions may appear on the census, removing race and ethnicity questions and
+  limiting demographic questions to biological sex.
+
+# -------------------------------------------------------------------
+# Positions & Concerns — the model tags each comment with ALL that apply.
+# Each stance's `indicator` is injected verbatim into the analysis prompt, so
+# write them as decision rules, not labels.
+# -------------------------------------------------------------------
+stances:
+  - name: "Position: Oppose the proposed rule"
+    indicator: "Explicitly opposes, objects to, disagrees with, or urges withdrawal of the proposed rule (Part 60, Part 70, or both)"
+
+  - name: "Position: Support the proposed rule"
+    indicator: >
+      Endorses THIS RULE or a named provision of it ("I support this rule", "Commerce should
+      finalize Part 60", "the Bureau should adopt the citizenship-based residence criteria"). NOT
+      its abstract goals: generic complaints about immigration, crime, election integrity, or
+      government spending are not support unless the comment explicitly backs adopting 15 CFR
+      Part 60 or Part 70 or explicitly states that the rule should be adopted. 
+      Asking to revise, narrow, or reconsider any part of the rule is not
+      support. If the comment would read the same way had this rule never been proposed, select no
+      position at all rather than this one.
+
+  - name: "Concern: Part 60 excludes undocumented immigrants"
+    indicator: "Argues the enumeration must count the whole number of persons regardless of legal status; invokes Article I, Section 2 or the Fourteenth Amendment; warns of undercounts of immigrant communities"
+
+  - name: "Concern: Apportionment and redistricting effects"
+    indicator: "Warns that changing who is counted shifts House seats, Electoral College votes, or the population base used to draw legislative and congressional districts"
+
+  - name: "Concern: Administrative or tax-records linkage"
+    indicator: "Objects to (or endorses) using IRS, DHS/USCIS, SSA, state, or commercial administrative data to assess legal status or residence; data-quality, coverage, or privacy problems with record linkage"
+
+  - name: "Concern: Jan 3 to Apr 1 enumeration window"
+    indicator: "Objects to defining usual residence by an ~88-day residency window; argues it miscounts students, seasonal residents, people experiencing homelessness, or those who move"
+
+  - name: "Concern: Part 70 removes race and ethnicity questions"
+    indicator: "Objects to removing race and ethnicity questions; argues the data are essential for enforcing the Voting Rights Act, civil-rights compliance, or public-health and research uses"
+
+  - name: "Concern: Restrictions on sexual orientation / gender identity data"
+    indicator: "Objects to (or endorses) prohibiting sexual-orientation or gender-identity questions, or limiting demographic questions to biological sex only"
+
+  - name: "Concern: Disclosure avoidance and differential privacy"
+    indicator: "Discusses restrictions on noise infusion, differential privacy, disclosure-avoidance methods, or Title 13 §9 confidentiality obligations"
+
+  - name: "Concern: Statutory authority / rulemaking process"
+    indicator: "Argues the rule exceeds the Bureau's or Secretary's statutory authority, conflicts with Title 13, the Census Act, or the Constitution, or that the rulemaking is procedurally improper (e.g. inadequate comment period)"
+
+  - name: "Concern: Data quality, undercount, and cost"
+    indicator: "Warns the changes will reduce accuracy, depress self-response, raise nonresponse-followup costs, or otherwise damage the quality or usability of the decennial count"
+
+# -------------------------------------------------------------------
+# Entity Types — the model classifies each commenter into exactly one.
+# -------------------------------------------------------------------
+entity_types:
+  - "Individual/Other"
+  - "Demographer / Statistician"
+  - "State or Local Government"
+  - "Tribal Government / Native Organization"
+  - "Civil Rights / Advocacy Organization"
+  - "University / Research Institution"
+  - "Scientific / Professional Association"
+  - "Elected Official"
+  - "Industry / Business"
+
+entity_classification_rules: >
+  Default to Individual/Other UNLESS the commenter explicitly self-identifies IN THE COMMENT TEXT.
+  The submitter name or organization field alone is NOT sufficient evidence.
+
+  Demographer / Statistician: the commenter states their own role as a demographer, statistician,
+  survey methodologist, data scientist, or census/population researcher ("as a demographer", "I am
+  a survey statistician"). This is one combined bucket — do not split the specific title.
+
+  State or Local Government: submitted BY a state, county, municipal, or regional government body
+  or agency as an entity (e.g. a state demographic office, a city planning department, a council
+  of governments), not by an individual who happens to work in government.
+
+  Tribal Government / Native Organization: submitted BY a federally recognized tribe, tribal
+  government, or Native/Indigenous organization as an entity.
+
+  Civil Rights / Advocacy Organization: submitted BY a civil-rights, immigrant-rights, voting-
+  rights, or other advocacy nonprofit as an entity.
+
+  University / Research Institution: the comment is submitted BY the institution as an entity (an
+  official comment from a university, population research center, or national lab), not by an
+  individual who happens to work there.
+
+  Scientific / Professional Association: submitted BY a society, association, or professional
+  membership organization as an entity (e.g. a statistical or demographic association).
+
+  Elected Official: the commenter explicitly identifies as a current or former elected official.
+
+  Industry / Business: submitted BY or on behalf of a company or trade group.
+
+  Talking ABOUT the census, redistricting, or data users does NOT make the commenter a demographer
+  — require explicit self-identification. Individuals affiliated with an organization are classified
+  by their personal role (usually Demographer / Statistician or Individual/Other); reserve the
+  organizational categories for comments submitted AS the organization.
+
+  RECOGNIZING ORGANIZATIONAL SUBMISSIONS (don't miss these — they are high-value): treat a comment
+  as submitted AS the organization when an Organization Name names a real government body, tribe,
+  society, association, company, or nonprofit AND the text speaks on its behalf — first-person
+  plural ("we", "our members", "our coalition"), "on behalf of", "the undersigned organizations",
+  or the organization is presented as the author. Use the matching organizational category even
+  when a named individual signs it. A short comment like "See attached" or a request to extend the
+  comment period, paired with an organizational Organization Name, is an organizational submission.
+  Do NOT be fooled the other way: an individual who merely lists an employer in the Organization
+  Name but writes in the first person singular ("I am concerned…") is NOT the organization —
+  classify by their personal role.
+
+# -------------------------------------------------------------------
+# Additional Fields Extracted — legacy prompt block. When `fields:` is present
+# (below) it is the single source of truth for the schema and prompt, so this
+# block is retained only for parity with the example and is not read on the
+# fields-driven path.
+# -------------------------------------------------------------------
+additional_fields:
+  entity_name: >
+    Extract a VERBATIM quote from the text that justifies the entity type classification. Must be
+    an exact substring from anywhere in the text including submitter name or organization. Leave
+    empty if no identifying information.
+  state: >
+    If the submitter's US state can be identified from any clue in the text (city/state, government
+    or institution location, etc.), provide the two-letter abbreviation (e.g. CA, TX). Also extract
+    a verbatim quote justifying this. Leave both empty if no state can be determined.
+  political_affiliation: >
+    ONLY if the submitter explicitly self-identifies their political party (e.g. "as a Republican",
+    "registered Democrat"). Do NOT infer from policy positions. Leave empty if no explicit
+    self-identification.
+  key_quote: >
+    The most important verbatim quote (max 100 words) capturing the essence of the comment.
+  rationale: >
+    Brief explanation (1-2 sentences) of the classification selections.
+
+# -------------------------------------------------------------------
+# Fields — the single source of truth for the analysis schema, the LLM prompt,
+# and the report columns/filters/cards. `name` matches the analysis dict key.
+# `show` targets: cards | column | filter | modal | section (empty = extracted
+# but not surfaced). `options_from` references the shared stances/entity_types
+# lists above. State & political are extracted but shown nowhere here.
+# Field types: multi_enum, single_enum, enum_or_empty, text, quote, short_text,
+# and `source: regex` (multi_value, computed at report time — no LLM call).
+# -------------------------------------------------------------------
+fields:
+  - name: stances
+    type: multi_enum
+    options_from: stances
+    label: "Position & Concerns"
+    prompt: "Select ALL positions and concerns that apply from the list below (0 or more; exact matches only)."
+    show: [cards, column, filter]
+
+  - name: entity_type
+    type: single_enum
+    options_from: entity_types
+    label: "Entity Type"
+    prompt: "What type of entity is submitting this comment? Choose exactly one from the list below."
+    show: [cards, column, filter]
+
+  - name: entity_name
+    type: quote
+    justifies: entity_type
+    label: "Identified As"
+    prompt: >
+      Extract a VERBATIM quote from the text that justifies the entity type classification. Must be
+      an exact substring from anywhere in the text including submitter name or organization. Leave
+      empty if no identifying information.
+    show: [modal]
+
+  - name: state_identified
+    type: text
+    label: "State"
+    prompt: >
+      If the submitter's US state can be identified from any clue in the text (city/state,
+      government or institution location, etc.), provide the two-letter abbreviation (e.g. CA, TX).
+      Leave empty if no state can be determined.
+    show: []
+
+  - name: state_quote
+    type: quote
+    justifies: state_identified
+    label: "State Quote"
+    prompt: "Verbatim quote from the text justifying the state identification. Leave empty if no state identified."
+    show: []
+
+  - name: political_affiliation
+    type: enum_or_empty
+    options: ["Republican", "Democrat", "Independent", "Libertarian"]
+    label: "Political"
+    prompt: >
+      ONLY if the submitter explicitly self-identifies their political party (e.g. "as a
+      Republican", "registered Democrat"). Do NOT infer from policy positions. Leave empty if no
+      explicit self-identification.
+    show: []
+
+  - name: political_affiliation_quote
+    type: quote
+    justifies: political_affiliation
+    label: "Political Quote"
+    prompt: "Verbatim quote where the submitter self-identifies their political affiliation. Leave empty if none."
+    show: []
+
+  - name: key_quote
+    type: text
+    label: "Key Quote"
+    prompt: "The most important verbatim quote (max 100 words) capturing the essence of the comment."
+    show: [modal]
+
+  - name: rationale
+    type: text
+    label: "Rationale"
+    prompt: "Brief explanation (1-2 sentences) of the classification selections."
+    show: [modal]
+
+  # Report-time (no LLM): extract CFR section citations from the comment text.
+  # This docket spans TWO parts, so the pattern captures both §60.NNN and §70.NNN
+  # (e.g. 60.1, 70.10). \b keeps it from matching digits inside a longer number
+  # (so "1960.5" is not treated as "60.5").
+  - name: sections_referenced
+    source: regex
+    type: multi_value
+    pattern: '\b(?:60|70)\.\d{1,2}\b'
+    label: "CFR Section"
+    show: [section, filter]
+
+# -------------------------------------------------------------------
+# General Instructions to the Model — appended to the prompt as a bulleted list.
+# -------------------------------------------------------------------
+instructions:
+  - "A comment may express multiple concerns or no clear position."
+  - "Only select items clearly expressed in the comment."
+  - "Be objective and avoid inserting personal opinions."
+  - "For entity type, prioritize explicit self-identification in the comment text over the submitter name."
+  - "This rule has two independent parts (Part 60 on who is counted, Part 70 on which questions are asked); a comment may address only one, and opposing one part is still Oppose."
+  - "Agreeing with a general goal the rule invokes (e.g. immigration enforcement, or protecting privacy) is not the same as endorsing this rule."
+
+# -------------------------------------------------------------------
+# Report display. `colors:` accepts any of the palette tokens — bg, surface,
+# text, text_muted, accent, accent_hover, highlight, border, code_bg, error,
+# oppose, support, unclear, mixed — and any omitted key inherits the house
+# default. `full_export` and `pages_project` are used ONLY by deploy_report.sh;
+# they are optional and safe to remove if you are not publishing.
+# -------------------------------------------------------------------
+report:
+  source_url: "https://github.com/abigailhaddad/generic-comment-analyzer"
+  colors:
+    accent: "#1B3A5C"    # navy — neutral accent (counts, links, buttons, chips)
+    support: "#2D6A4F"   # green — Support
+    oppose: "#C0392B"    # red — Oppose
+    # unclear / mixed / highlight / bg / surface / border / … inherit house defaults
+
+#Commenting-out all the cloudflare and bitbucket/etc 
+  # Full-dataset export to Cloudflare R2 (deploy_report.sh). Reuses the shared
+  # "regulations-comments" bucket; the key follows the <slug>/… convention. The
+  # `url` MUST be YOUR account's R2 public hostname — replace the placeholder
+  # below with the real pub-<id>.r2.dev URL, or delete this block to disable the
+  # report's "Download everything" link (the pipeline runs fine without it).
+  # 
+  #full_export:
+  #  url: "https://pub-REPLACE_WITH_YOUR_R2_PUBLIC_ID.r2.dev/census-residence-demographic/comments_export.csv.gz"
+  #  bucket: "regulations-comments"
+  #  key: "census-residence-demographic/comments_export.csv.gz"
+
+  # Cloudflare Pages project that serves this report. Must already exist in your
+  # account; deploying also needs CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID.
+  # Remove this key if you are not deploying to Pages.
+  #  pages_project: "census-residence-demographic-comments"
+
+# -------------------------------------------------------------------
+# Remote state backup (sync_state.py) — lets a scheduled CI run resume from the
+# last run's source.csv + full_run.parquet even though both are gitignored.
+# Reuses the same R2 bucket as report.full_export.bucket.
+# -------------------------------------------------------------------
+state:
+  bucket: "regulations-comments"
+
+# -------------------------------------------------------------------
+# Form-letter campaign detection (MinHash near-duplicate clustering).
+# min_chars is the minimum normalized text length (body + attachments) for a
+# comment to be eligible to join a campaign; short generic one-liners are written
+# independently by many people and are not a coordinated campaign.
+# -------------------------------------------------------------------
+campaigns:
+  min_chars: 100
+
+# -------------------------------------------------------------------
+# Definitions used by audit_stances.py to CHECK the classifier's work.
+# Deliberately stricter than the second-pass prompt so the audit can disagree
+# with it rather than agree by construction. See METHOD-stance-audit.md.
+# -------------------------------------------------------------------
+stance_audit:
+  support: >
+    SUPPORT means the comment endorses THIS RULE or specific provisions of it — "I support this
+    rule", "Commerce should finalize Part 60/70", or endorsing a named provision (the
+    citizenship-based residence criteria, removing the race/ethnicity questions, etc.). It is NOT
+    support when the comment merely wants tougher immigration enforcement, lower spending, or more
+    privacy without tying that to backing this rule; asks the Bureau to revise, narrow, or
+    reconsider any part of the rule; or would read the same way had this rule never been proposed.
+  oppose: >
+    OPPOSE means the comment objects to this rule, read generously: objecting to either part or any
+    provision, arguing the count must include everyone regardless of status, defending the race/
+    ethnicity or SOGI questions, warning of undercounts, apportionment/redistricting harm, or data-
+    quality damage, or general outrage at the proposal. It is NOT oppose when the comment states no
+    position, is purely procedural, only describes the rule, is off-topic or incoherent, or in fact
+    supports it.
+
+# -------------------------------------------------------------------
+# Evaluation set — build_eval_set.py / label_eval_set.py / score_stances.py.
+# Candidate labels are drafted by a STRONGER model than the pipeline uses and
+# then reviewed by hand. `model` is OpenAI-via-LiteLLM (matches the example);
+# `strategy` is "balanced" or "sqrt".
+# -------------------------------------------------------------------
+eval:
+  model: "gpt-5.4"
+  size: 200
+  strategy: balanced
+  # Extra guidance appended to the auto-built labeling prompt. The position
+  # definitions themselves come from `stances:` and `stance_audit:` above — don't
+  # repeat them here, or the two will drift apart.
+  labeling_notes: >
+    Two independent parts are in play: judge the position on the rule (either part), not on
+    immigration or privacy as topics. Wanting a goal the rule invokes — stricter immigration
+    enforcement, or protecting confidentiality — is NOT the same as endorsing the rule, and
+    defending the whole-number count or the race/ethnicity questions is opposition rather than a
+    neutral observation. Quote the exact words you relied on. If the comment is a form letter,
+    judge the letter's text, not what you assume the campaign intended.
+
+# -------------------------------------------------------------------
+# Derived flags — boolean stat cards + table filters computed from an analysis
+# field (not regex). Each renders like a regex_flag (clickable card + Yes/No
+# filter); a comment matches when <from> >= <min>. `cosigner_count` is produced
+# by the second_pass cosigner_span check below, so keep the two together.
+# -------------------------------------------------------------------
+derived_flags:
+  coalition_letter:
+    label: "Joint / Coalition Letter"
+    description: "Comments cosigned by more than one organization (multi-signatory / coalition sign-on letters)."
+    from: cosigner_count
+    min: 2
+
+# -------------------------------------------------------------------
+# Regex Flags — pattern-based boolean columns (stat cards + filters) applied to
+# the comment text before LLM analysis.
+# -------------------------------------------------------------------
+regex_flags:
+  mentions_apportionment:
+    label: "Apportionment"
+    description: "References apportionment, Article I, or the 14th Amendment"
+    patterns:
+      - 'apportionment'
+      - 'Article\s+I\b'
+      - '14th\s+Amendment'
+      - 'Fourteenth\s+Amendment'
+
+  mentions_vra:
+    label: "Voting Rights Act"
+    description: "References the Voting Rights Act or redistricting"
+    patterns:
+      - 'Voting\s+Rights\s+Act'
+      - '\bVRA\b'
+      - 'redistricting'
+
+  mentions_privacy:
+    label: "Differential Privacy"
+    description: "References differential privacy, disclosure avoidance, noise infusion, or Title 13 confidentiality"
+    patterns:
+      - 'differential\s+privacy'
+      - 'disclosure\s+avoidance'
+      - 'Title\s+13'
+      - 'noise\s+infusion'
+      - 'confidentiality'
+
+  mentions_trust:
+    label: "Census Trust"
+    description: "References the Census Bureau being less trustworthy if rule adopted"
+    patterns:
+      - 'Census\s+Bureau\s+trust'
+      - 'trustworthy'
+      - 'trust'
+# -------------------------------------------------------------------
+# id_list_flags — flags whose membership comes from a file of document ids rather
+# than the comment text (e.g. tracking comments the agency withdraws after
+# publication). LEFT COMMENTED OUT: load_id_list() fails loudly if the referenced
+# file is missing, and withdrawn_comments.json is created by fetch_comments_api.py
+# only once a withdrawal is actually detected. Uncomment once that file exists.
+# -------------------------------------------------------------------
+# id_list_flags:
+#   withdrawn:
+#     label: "Removed by Census Bureau"
+#     description: "Comments the Bureau removed after publishing them. The text here is our copy from before the removal."
+#     file: withdrawn_comments.json
+#     note_field: [original_comment, reason_withdrawn]
+#     note_prefix_field: withdrawn_date
+#     note_prefix_label: "Removed "
+#     exclude_field: reason_withdrawn
+#     exclude_matching:
+#       - "request of (the )?(commenter|submitter)"
+#     note_max_chars: 300
+
+# -------------------------------------------------------------------
+# Second-Pass Verification — comments matching these criteria get re-analyzed by
+# a second LLM pass. `model` is OpenAI-via-LiteLLM (was gemini/gemini-3.6-flash
+# in the draft; changed to match the repository's example and the rest of the
+# pipeline). prompts.stance and prompts.entity are REQUIRED.
+# -------------------------------------------------------------------
+second_pass:
+  model: "gpt-5.4-mini"
+  max_workers: 8
+
+  stance:
+    trigger_stances:
+      - "Support"
+      - "Unclear"
+    also_verify_short_oppose: false
+    short_threshold_chars: 200
+
+  entity_type:
+    trigger_types:
+      - "State or Local Government"
+      - "Tribal Government / Native Organization"
+      - "Civil Rights / Advocacy Organization"
+      - "University / Research Institution"
+      - "Scientific / Professional Association"
+      - "Industry / Business"
+      - "Elected Official"
+    verify_attorney_on_quote_mismatch: true
+
+  # State and political affiliation are not surfaced for this rule — skip verification.
+  state:
+    verify_all: false
+
+  political_affiliation:
+    verify_all: false
+
+  # Detect joint / coalition sign-on letters (e.g. many civil-rights or tribal
+  # organizations, or several elected officials, co-signing one comment) so they
+  # surface as more than "1 entity". Produces cosigner_count, used by the
+  # coalition_letter derived flag above.
+  cosigner_span:
+    trigger_patterns:
+      - "undersigned"
+      - "co-?signed"
+      - "joint letter"
+      - "on behalf of the following"
+      - "the following organizations"
+      - "\\d+\\s+(organizations|signator(y|ies)|individuals|co-?signers)"
+
+  # Regulation-specific verification prompts (required for stance + entity).
+  prompts:
+    stance: >
+      You are reviewing a public comment about a proposed Census Bureau rule establishing 15 CFR
+      Part 60 (residence criteria for the decennial census, including excluding undocumented
+      immigrants and defining usual residence by a Jan 3–Apr 1 window) and 15 CFR Part 70
+      (restrictions on demographic questions, removing race and ethnicity questions and limiting
+      demographic questions to biological sex).
+
+      Classify the comment's overall position as exactly one of: "Oppose", "Support", or "Unclear".
+
+      - "Oppose" — opposes the rule (either part). This includes comments that: argue the count
+        must include the whole number of persons regardless of legal status; invoke Article I or
+        the Fourteenth Amendment; defend the race/ethnicity or sexual-orientation/gender-identity
+        questions; warn of undercounts, apportionment or redistricting harm, or damage to data
+        quality; or express general outrage at the proposal even without naming a section.
+        Agreeing with a general goal the rule invokes (immigration enforcement, privacy) while
+        objecting to THIS rule is still Oppose.
+      - "Support" — the comment endorses THIS RULE, or specific provisions of it. Take an explicit
+        "I support this rule" / "Commerce should finalize this" at face value, and endorsing a
+        named provision (the citizenship-based residence criteria, removing the race/ethnicity
+        questions) is Support. This requires an endorsement, not agreement with a goal. Wanting
+        tougher immigration enforcement, less spending, or more privacy is NOT Support unless the
+        comment ties that to backing this rule. Asking the Bureau to revise, narrow, or reconsider
+        any part is NOT Support. If the comment would read the same way had this rule never been
+        proposed, it is "Unclear", not "Support".
+      - "Unclear" — use this in EITHER of two cases: (a) the comment is truly off-topic, a single
+        ambiguous word, incoherent, or just docket metadata; or (b) it engages with the subject
+        but states NO position on the rule itself — it is procedural (asking to extend the comment
+        period, asking a process question), only describes or summarises the rule, or argues for
+        something adjacent (immigration policy, privacy in general) without endorsing or objecting
+        to THIS rule. If there is ANY indication of opposition sentiment, classify as Oppose. Do
+        NOT reach for "Support" merely because the comment is not hostile — silence on the rule is
+        "Unclear".
+
+      SARCASM CHECK: before calling something "Support", make sure the praise is sincere. A comment
+      that calls the rule "great" but then describes it causing undercounts, disenfranchisement, or
+      unconstitutional exclusion is sarcastic and is OPPOSE.
+
+    entity: >
+      You are reviewing the entity type classification of a public comment submitter on a proposed
+      Census Bureau rule about who is counted and which demographic questions are asked.
+
+      The initial classification was: {entity_type}
+      The evidence cited was: "{entity_name}"
+
+      Because the rule is ABOUT the census, redistricting, and data users, nearly every comment
+      discusses demographers, governments, and civil-rights uses — that does NOT by itself make
+      the submitter one of those.
+
+      Require EXPLICIT SELF-IDENTIFICATION in the comment text. Allowed values:
+      - Demographer / Statistician: the commenter states their own role as a demographer,
+        statistician, survey methodologist, or census/population researcher.
+      - State or Local Government, Tribal Government / Native Organization, Civil Rights / Advocacy
+        Organization, University / Research Institution, Scientific / Professional Association,
+        Industry / Business: ONLY when the comment is submitted BY that organization or body as an
+        entity, not by an individual affiliated with it.
+      - Elected Official: explicitly identifies as a current or former elected official.
+      - If you cannot point to a specific phrase where they identify their role, classify as
+        Individual/Other.
+
+      Writing knowledgeably about the census, citing Title 13 or CFR sections, or having an
+      institutional-sounding submitter name is NOT sufficient — you need explicit
+      self-identification.
+
+# -------------------------------------------------------------------
+# Proposed-rule text source for the "Read the Rule" page (fetch_rule_text.py).
+# NOTE: `part` filters the parsed Federal Register document to sections beginning
+# "<part>.", so the Read-the-Rule page shows ONE CFR part at a time. This docket
+# has two (60 and 70); with part "60" only the Part 60 sections appear on that
+# page. Set part to "70" to view those instead, or leave `part` blank/omit it to
+# keep every section in the FR document. (Comments citing either part are still
+# captured by the sections_referenced field above regardless of this setting.)
+# -------------------------------------------------------------------
+rule_text:
+  federal_register_document: "2026-18481"
+  part: "60"
