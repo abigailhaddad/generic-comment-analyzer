@@ -819,6 +819,20 @@ def analyze_comments_parallel(comments: List[Dict[str, Any]], model: str = "gemi
                             "already analyzed is checkpointed and will be reused.",
                             len(analyzed_comments) + len(batch_results))
                         raise
+                    except KeyboardInterrupt:
+                        # Cancel whatever hasn't started yet so we don't wait on the
+                        # full batch; in-flight API calls are left to finish rather
+                        # than killed mid-request. Checkpoint what completed so the
+                        # next run resumes from here instead of redoing it.
+                        for f in future_to_comment:
+                            f.cancel()
+                        if batch_results:
+                            _append_checkpoint(batch_results)
+                        logger.warning(
+                            "Interrupted (Ctrl-C). Checkpointed %d comment(s) analyzed "
+                            "this run (%d total so far); re-run to resume from here.",
+                            len(batch_results), len(analyzed_comments) + len(batch_results))
+                        raise
                     batch_results.append(result)
                     overall_pbar.update(1)  # Update overall progress bar
 
@@ -1628,6 +1642,13 @@ def main():
 if __name__ == "__main__":
     try:
         main()
+    except KeyboardInterrupt:
+        # Ctrl-C anywhere in the pipeline lands here instead of a raw traceback.
+        # Whatever analysis had completed is already checkpointed (see the
+        # KeyboardInterrupt handler in analyze_comments_parallel), so re-running
+        # picks up where this left off rather than redoing the work.
+        logger.warning("Interrupted by user (Ctrl-C). Any completed analysis was checkpointed; rerun to resume.")
+        raise SystemExit(130)
     except LLMCredentialsError as e:
         # Exit non-zero so a scheduled run goes red and someone is told. Unlike a
         # regulations.gov rate limit — which resolves itself within the hour and
