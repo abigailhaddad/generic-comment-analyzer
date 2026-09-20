@@ -72,10 +72,14 @@ echo "OPENAI_API_KEY=sk-..." > .env
 ```bash
 # analyze
 python pipeline.py --regulation <slug> --workers 24
+
 # (optional) fetch the proposed-rule text for the Read-the-Rule page
 python fetch_rule_text.py --regulation <slug>
+
+# (optional) test your model on just a few comments and compile a full report
+python pipeline.py --regulation <slug> --sample 10
+python generate_report.py --parquet regulations/<slug>/sample_10.parquet --output regulations/<slug>/index-10.html
 ```
 
-The report is a large single-file HTML (~120 MB at ~47k comments), so deploy it to a static
-host like Netlify rather than GitHub Pages. See `CLAUDE.md` for the full config schema and the
-"add a new regulation" walkthrough.
+The report is a large single-file HTML (~120 MB at ~47k comments), so deploy it locally or to a static
+host like Netlify rather than GitHub Pages.
