@@ -1,0 +1,79 @@
+[
+ {
+  "number": "60.1",
+  "sectno": "\u00a7 60.1",
+  "heading": "Purpose.",
+  "amendment": "",
+  "text": "This part sets forth the criteria used by the Census Bureau to determine each individual's place of \u201cusual residence,\u201d as needed to determine whether and where to count each individual as part of the decennial census for purposes of apportionment."
+ },
+ {
+  "number": "60.2",
+  "sectno": "\u00a7 60.2",
+  "heading": "General definition of \u201cusual residence\u201d for conducting the Decennial Census.",
+  "amendment": "",
+  "text": "(a) A person's \u201cusual residence\u201d is the residence at which they have lawfully spent the greatest number of days during the census enumeration period. A person's \u201cusual residence\u201d should be consistent with, and evidenced by, their tax records ( e.g., tax returns, W-2 forms).\n\n(b) A person is considered to have spent a day at a residence if he or she spent at least one hour physically and lawfully present there that day. A person may spend a certain day at more than one residence.\n\n(c) The census enumeration period runs from January 3 to April 1 during decennial census years. April 1 is referred to as \u201cCensus Day.\u201d"
+ },
+ {
+  "number": "60.3",
+  "sectno": "\u00a7 60.3",
+  "heading": "Dependents.",
+  "amendment": "",
+  "text": "(a) Dependents who have a consistent usual residence separate from their provider(s) for the census enumeration period. Counted at that separate usual residence.\n\n(b) All other dependents. Counted at the usual residence of their provider(s) at which they spend the most amount of days during the census enumeration period."
+ },
+ {
+  "number": "60.4",
+  "sectno": "\u00a7 60.4",
+  "heading": "Foreign citizens in the United States.",
+  "amendment": "",
+  "text": "(a) Citizens of foreign countries who are also either citizens or lawful permanent residents of the United States as of April 1 of a decennial census year. Counted at their usual residence in accordance with \u00a7 60.2.\n\n(b) All other citizens of foreign countries as of April 1 of a decennial census year. Not counted for apportionment."
+ },
+ {
+  "number": "60.5",
+  "sectno": "\u00a7 60.5",
+  "heading": "Persons living outside the United States (including certain federal personnel).",
+  "amendment": "",
+  "text": "(a) Persons living outside the United States on Census Day who are not military or civilian employees of the U.S. government and are not dependents living with military or civilian employees of the U.S. government. Not counted in the stateside census.\n\n(b) Persons deployed outside the United States on Census Day (while stationed or assigned in the United States) who are military or civilian employees of the U.S. government. Counted at their usual residence in the United States in accordance with \u00a7 60.2, using tax records and the administrative data provided by federal agencies.\n\n(c) U.S. military personnel assigned to U.S. military vessels with a U.S. homeport on Census Day. Counted at their onshore usual residence in the United States in accordance with \u00a7 60.2, using tax records and the administrative data provided by the Department of War and other federal agencies.\n\n(d) U.S. military personnel assigned to U.S. military vessels with a homeport outside the United States on Census Day. Counted as part of the U.S. federally affiliated overseas population, using administrative data provided by the Department of War.\n\n(e) Persons stationed or assigned outside the United States on Census Day who are military or civilian employees of the U.S. government, as well as their dependents living with them outside the United States. Counted as part of the U.S. federally affiliated overseas population, using administrative data provided by the Department of War and other federal agencies."
+ },
+ {
+  "number": "60.6",
+  "sectno": "\u00a7 60.6",
+  "heading": "U.S. Military personnel inside the United States.",
+  "amendment": "",
+  "text": "(a) U.S. military personnel in the United States and not in military disciplinary barracks or jails on Census Day. Counted at their usual residence in accordance with \u00a7 60.2, using tax records and the administrative data provided by the Department of War and other federal agencies.\n\n(b) U.S. military personnel in military disciplinary barracks and jails in the United States on Census Day. Counted at the facility."
+ },
+ {
+  "number": "60.7",
+  "sectno": "\u00a7 60.7",
+  "heading": "Merchant Marine Personnel on U.S. Flag Maritime/Merchant Vessels.",
+  "amendment": "",
+  "text": "(a) Crews of U.S. flag maritime/merchant vessels docked in a U.S. port, sailing from one U.S. port to another U.S. port, sailing from a U.S. port to a foreign port, sailing from a foreign port to a U.S. port on Census Day, or engaged in U.S. inland waterway transportation on Census Day. Counted at their onshore usual residence in the United States in accordance with \u00a7 60.2, using tax records and the administrative data provided by federal agencies.\n\n(b) Crews of U.S. flag maritime/merchant vessels docked in a foreign port or sailing from one foreign port to another foreign port on Census Day. Counted at their onshore usual residence in the United States in accordance with \u00a7 60.2, using tax records and the administrative data provided by federal agencies."
+ },
+ {
+  "number": "60.8",
+  "sectno": "\u00a7 60.8",
+  "heading": "Persons who are born or who die around Census Day.",
+  "amendment": "",
+  "text": "(a) Babies born on or before Census Day. Counted at their parent(s) or guardian(s)' usual residence at which they will spend the most amount of days during the census enumeration period, even if they are still in a hospital on Census Day.\n\n(b) Babies born after Census Day. Not counted in the census.\n\n(c) Persons who die before Census Day. Not counted in the census.\n\n(d) Persons who die on or after Census Day. Counted at their usual residence as of Census Day."
+ },
+ {
+  "number": "60.9",
+  "sectno": "\u00a7 60.9",
+  "heading": "Persons confined at correctional or detention facilities.",
+  "amendment": "",
+  "text": "Persons confined at correctional or detention facilities, including juvenile facilities. Counted at the facility."
+ },
+ {
+  "number": "60.10",
+  "sectno": "\u00a7 60.10",
+  "heading": "Persons in transitory locations.",
+  "amendment": "",
+  "text": "Persons at transitory locations, such as recreational vehicle (RV) parks, campgrounds, marinas, hotels, and motels. Counted at their usual residence in accordance with \u00a7 60.2. If they do not have any usual residence, they are counted at the transitory location."
+ },
+ {
+  "number": "60.11",
+  "sectno": "\u00a7 60.11",
+  "heading": "Severability.",
+  "amendment": "",
+  "text": "If any criterion or provision of this part is stayed or determined to be invalid or unenforceable as applied to any person or circumstance in any jurisdiction, such stay or determination shall not affect the remainder of this part or the application of the criterion or provision at issue to other persons or circumstances and/or in other jurisdictions. In the event of such a stay or determination, the remaining criteria and provisions of this part shall continue in effect to the maximum extent possible."
+ }
+]
