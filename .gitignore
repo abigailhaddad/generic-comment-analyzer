@@ -103,3 +103,8 @@ CLAUDE.md
 
 # Playwright MCP scratch output from browser-testing the report.
 .playwright-mcp/
+
+# Local scratch/discovery work, not part of the pipeline or the report.
+/discover_concerns.py
+regulations/*/discovery/
+regulations/*/old_yaml/
