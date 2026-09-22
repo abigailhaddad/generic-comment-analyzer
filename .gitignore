@@ -24,6 +24,7 @@ attachments/
 index.html
 read-the-rule.html
 accuracy.html
+campaign-audit.html
 # Generated per regulation, like the pages above. comment_template.html (the
 # source) is committed; this rendering of it is not.
 comment.html
@@ -55,12 +56,6 @@ comment.html
 # publish outright rather than quietly dropping the flag.
 !withdrawn_comments.json
 !withdrawn_check_state.json
-# A curated roster of known campaigns (e.g. from an advocacy org's own count
-# of its mailer), referenced by named_campaigns.file. Same reasoning as
-# withdrawn_comments.json: it's not derived from anything else in the repo,
-# so it can't be regenerated, and generate_report.py raises rather than
-# quietly dropping it when named_campaigns is configured but this is missing.
-!known_campaigns.json
 # Raw model drafts for the eval set are an API-response cache, not a record.
 **/eval/candidates_labeled.jsonl
 

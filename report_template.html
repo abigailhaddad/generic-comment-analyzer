@@ -529,6 +529,9 @@
                 </div>
             </div>
             {% endfor %}
+            {% if campaign_audit_url %}
+            <p style="margin-top:0.75rem;"><a href="{{ campaign_audit_url }}" style="font-size:0.8rem; color: var(--color-text-muted);">How were these rosters checked?</a></p>
+            {% endif %}
         </div>
         {% endif %}
 

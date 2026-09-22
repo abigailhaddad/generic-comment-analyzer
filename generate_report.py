@@ -1025,42 +1025,30 @@ def load_id_list(path: str) -> set:
     return entries
 
 
-def load_named_campaigns_config() -> Dict[str, Any]:
-    """Load the `named_campaigns:` config block (just a `file:` path). Optional
-    -- a regulation with no known campaigns to track omits the key entirely,
-    same convention as id_list_flags."""
+def load_named_campaigns_roster() -> Dict[str, List[str]]:
+    """Load the `named_campaigns:` config block: a list of {name, ids}, kept
+    inline in analyzer_config.yaml (not a separate file) so a roster is just
+    part of the config someone can read and diff normally. Optional -- a
+    regulation with no known campaigns to track omits the key entirely.
+    Returns {campaign name: [Document ID, ...]}."""
     config_path = Path('analyzer_config.yaml')
-    if config_path.exists():
-        with open(config_path) as f:
-            config = yaml.safe_load(f)
-        cfg = config.get('named_campaigns') or {}
-        return cfg if isinstance(cfg, dict) else {}
-    return {}
+    if not config_path.exists():
+        return {}
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+    entries = config.get('named_campaigns') or []
+    if not isinstance(entries, list):
+        return {}
+    roster = {}
+    for entry in entries:
+        if not isinstance(entry, dict) or not entry.get('name'):
+            continue
+        ids = entry.get('ids') or []
+        roster[entry['name']] = [str(i) for i in ids]
+    return roster
 
 
-def load_named_campaign_roster(path: str) -> Dict[str, List[str]]:
-    """Read a named-campaigns roster: {campaign name: [Document IDs]}.
-
-    This is a curated list from outside the pipeline (e.g. an advocacy org's
-    own count of its mailer) -- unlike the organic MinHash campaigns above,
-    nothing here can be recomputed from the comment text. Fails loudly on a
-    missing file, same reasoning as load_id_list: a named_campaigns block
-    configured but silently empty would publish a report that quietly drops a
-    known campaign instead of erroring."""
-    p = Path(path)
-    if not p.exists():
-        raise FileNotFoundError(
-            f"named_campaigns references {path}, which does not exist. "
-            f"Remove named_campaigns from analyzer_config.yaml or restore the file."
-        )
-    with open(p) as f:
-        data = json.load(f)
-    if not isinstance(data, dict):
-        raise ValueError(f"{path} must be a JSON object of {{campaign name: [document ids]}}")
-    return {name: [str(i) for i in ids] for name, ids in data.items()}
-
-
-def compute_named_campaigns(comments: List[Dict[str, Any]], named_campaigns_cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
+def compute_named_campaigns(comments: List[Dict[str, Any]], roster: Dict[str, List[str]]) -> List[Dict[str, Any]]:
     """Build the "Known Campaigns" list: comments matched against a roster of
     campaigns known ahead of time (e.g. an advocacy org's own count of its
     mailer), alongside -- not instead of -- the organic MinHash-detected
@@ -1068,10 +1056,8 @@ def compute_named_campaigns(comments: List[Dict[str, Any]], named_campaigns_cfg:
     canonical, sample_ids, stance, oppose_pct/support_pct) so the template can
     render both with the same markup. Returns [] when the regulation has no
     named_campaigns config."""
-    file_path = named_campaigns_cfg.get('file')
-    if not file_path:
+    if not roster:
         return []
-    roster = load_named_campaign_roster(file_path)
     by_id = {c.get('id'): c for c in comments}
 
     result = []
@@ -1210,6 +1196,20 @@ def load_rule_sections():
         return data if isinstance(data, list) and data else None
     except Exception:
         return None
+
+
+def load_campaign_audit():
+    """Load campaign_audit.json (written by audit_named_campaigns.py) for the
+    discrete Campaign Audit page, or None when it hasn't been run -- same
+    "absent is a normal state" reasoning as load_eval_scores. Regenerate it
+    with `python audit_named_campaigns.py --regulation <slug>` whenever the
+    roster or the corpus changes; this file is not kept in sync automatically."""
+    p = Path('campaign_audit.json')
+    if not p.exists():
+        return None
+    with open(p) as f:
+        data = json.load(f)
+    return data or None
 
 
 def compute_rule_page(comments, rule_sections, patterns, sample_n=8):
@@ -1437,7 +1437,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
     value_sections, regex_value_patterns = compute_value_sections(comments, fields)
     briefing = compute_briefing(comments)
     briefing['flag_sections'] = compute_flag_sections(comments, flags_cfg)
-    briefing['named_campaigns_list'] = compute_named_campaigns(comments, load_named_campaigns_config())
+    briefing['named_campaigns_list'] = compute_named_campaigns(comments, load_named_campaigns_roster())
     flag_meta = [{'key': s['key'], 'label': s['label']} for s in briefing['flag_sections']]
     filter_values = get_filter_values(comments)
     rows = prepare_rows(
@@ -1473,6 +1473,8 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
     rule_page_url = 'read-the-rule.html' if rule_sections else None
     eval_scores = load_eval_scores()
     accuracy_page_url = 'accuracy.html' if eval_scores else None
+    campaign_audit = load_campaign_audit()
+    campaign_audit_url = 'campaign-audit.html' if campaign_audit else None
     model_name = determine_model(comments, model_used)
     generated_time = datetime.now().strftime('%B %d, %Y at %I:%M %p')
 
@@ -1501,6 +1503,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         changelog=load_changelog(),
         accuracy_page_url=accuracy_page_url,
         eval_scores=eval_scores,
+        campaign_audit_url=campaign_audit_url,
     )
 
     with open(output_file, 'w', encoding='utf-8') as f:
@@ -1530,6 +1533,9 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
 
     if eval_scores:
         _render_accuracy_page(env, eval_scores, metadata, colors, output_file, generated_time)
+
+    if campaign_audit:
+        _render_campaign_audit_page(env, campaign_audit, metadata, colors, output_file, generated_time)
 
     _render_comment_page(env, metadata, colors, flags_cfg, output_file)
 
@@ -1583,6 +1589,23 @@ def _render_accuracy_page(env, scores, metadata, colors, output_file, generated_
         generated_time=generated_time,
     )
     out = os.path.join(os.path.dirname(output_file) or '.', 'accuracy.html')
+    with open(out, 'w', encoding='utf-8') as f:
+        f.write(html_out)
+
+
+def _render_campaign_audit_page(env, audits, metadata, colors, output_file, generated_time):
+    """Render campaign-audit.html from campaign_audit.json — same pattern as
+    the accuracy page and read-the-rule. Discrete: not linked from the top of
+    the report, only from a small note in the Known Campaigns section."""
+    tpl = env.get_template('campaign_audit_template.html')
+    html_out = tpl.render(
+        metadata=metadata,
+        audits=audits,
+        colors=colors,
+        report_url=os.path.basename(output_file),
+        generated_time=generated_time,
+    )
+    out = os.path.join(os.path.dirname(output_file) or '.', 'campaign-audit.html')
     with open(out, 'w', encoding='utf-8') as f:
         f.write(html_out)
 
