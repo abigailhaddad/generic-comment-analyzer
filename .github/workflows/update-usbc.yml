@@ -67,6 +67,10 @@ on:
         description: 'Publish: update changelog, render report, deploy to Cloudflare Pages + R2'
         type: boolean
         default: true
+      preview:
+        description: 'Team preview only: render the report and sync it to a PRIVATE preview/ prefix in the state S3 bucket. No changelog commit, no Cloudflare deploy.'
+        type: boolean
+        default: false
 
 # Only one run per regulation at a time — an overlapping catch-up and publish
 # run pulling/pushing the same S3 state (and the same git branch, for the
@@ -147,7 +151,7 @@ jobs:
         run: echo "No new comments on the docket (or none fetched) — nothing to do this run."
 
       - name: Install full dependencies
-        if: ${{ steps.fetch.outputs.added != '0' || env.IS_PUBLISH == 'true' }}
+        if: ${{ steps.fetch.outputs.added != '0' || env.IS_PUBLISH == 'true' || github.event.inputs.preview == 'true' }}
         run: pip install -r requirements.txt
 
       # The attachment cache comes down with the parquet: it is what lets this run
@@ -155,8 +159,10 @@ jobs:
       # re-downloading and re-OCRing them. Without it, OCR output varies run to
       # run, which changes a comment's text and re-triggers analysis of comments
       # nothing about which changed — and an API outage drops attachments silently.
+      # A preview-only run (no new comments) still needs this: it renders
+      # whatever the last analysis produced, it doesn't redo the analysis.
       - name: Pull full_run.parquet + attachment cache from S3 (now that there's real work to do)
-        if: ${{ steps.fetch.outputs.added != '0' || env.IS_PUBLISH == 'true' }}
+        if: ${{ steps.fetch.outputs.added != '0' || env.IS_PUBLISH == 'true' || github.event.inputs.preview == 'true' }}
         run: python sync_state.py pull --regulation "$REGULATION" --files full_run.parquet attachment_cache --allow-missing
 
       - name: Run analysis pipeline (incremental)
@@ -253,9 +259,36 @@ jobs:
           fi
 
       - name: Generate report
-        if: ${{ env.IS_PUBLISH == 'true' && steps.pub.outputs.changed == 'true' }}
+        if: ${{ (env.IS_PUBLISH == 'true' && steps.pub.outputs.changed == 'true') || github.event.inputs.preview == 'true' }}
         run: python ../../generate_report.py --parquet full_run.parquet --output index.html
         working-directory: regulations/${{ env.REGULATION }}
+
+      # Team preview only — manual dispatch, gated separately from IS_PUBLISH.
+      # Syncs the same runtime files deploy_report.sh would ship to Cloudflare
+      # Pages, but to a PRIVATE prefix in the regulation's own state S3 bucket
+      # (state.bucket in analyzer_config.yaml — the "handsoffourcensus" bucket,
+      # not public) instead of a public site. No changelog commit, no Cloudflare
+      # deploy, no 404 page, nothing publicly reachable. Teammates with AWS
+      # credentials for this bucket pull the prefix down (or a presigned URL)
+      # instead of running the pipeline themselves.
+      - name: Sync preview report to S3 (private — not public)
+        if: ${{ github.event.inputs.preview == 'true' }}
+        run: |
+          # Reuses sync_state.py's own bucket_for(), the same lookup the state
+          # push/pull steps above already rely on, instead of re-parsing
+          # analyzer_config.yaml here.
+          BUCKET="$(python -c "import sync_state as s; print(s.bucket_for(s.reg_dir_for('$REGULATION')))")"
+          PREFIX="preview/$REGULATION"
+          echo "Syncing preview report to s3://$BUCKET/$PREFIX/ (private)"
+          aws s3 sync "regulations/$REGULATION" "s3://$BUCKET/$PREFIX/" \
+            --exclude '*' \
+            --include 'index.html' \
+            --include 'comment_detail/*' \
+            --include 'comment_rows/*' \
+            --include 'read-the-rule.html' \
+            --include 'accuracy.html' \
+            --include 'comment.html' \
+            --delete
 
       # wrangler is invoked through npx inside deploy_report.sh, so there is no
       # separate install step — npx fetches it on first use.
