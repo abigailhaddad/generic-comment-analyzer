@@ -119,7 +119,7 @@ jobs:
         run: pip install "pyyaml==6.0.3"
 
       - name: Pull source.csv from S3 (cheap - enough to know what's missing)
-        run: python sync_state.py pull --regulation "$REGULATION" --files source.csv
+        run: python sync_state.py pull --regulation "$REGULATION" --files source.csv --allow-missing
 
       # Doubles as the cheap check: on a drained docket this returns almost
       # immediately (one listing pass, nothing to fetch) without ever having
@@ -157,7 +157,7 @@ jobs:
       # nothing about which changed — and an API outage drops attachments silently.
       - name: Pull full_run.parquet + attachment cache from S3 (now that there's real work to do)
         if: ${{ steps.fetch.outputs.added != '0' || env.IS_PUBLISH == 'true' }}
-        run: python sync_state.py pull --regulation "$REGULATION" --files full_run.parquet attachment_cache
+        run: python sync_state.py pull --regulation "$REGULATION" --files full_run.parquet attachment_cache --allow-missing
 
       - name: Run analysis pipeline (incremental)
         if: ${{ steps.fetch.outputs.added != '0' || env.IS_PUBLISH == 'true' }}
