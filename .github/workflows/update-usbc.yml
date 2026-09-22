@@ -1,0 +1,264 @@
+name: Update USBC-2026-0628 from regulations.gov
+
+# Same generic workflow as update-regulation.yml, just defaulted to
+# USBC-2026-0628 for its scheduled runs (a scheduled trigger can't pass
+# workflow_dispatch inputs, so the fallback default is what actually runs).
+# A second file rather than a second schedule block in the shared one so
+# each regulation's Actions history and concurrency group stay separate.
+#
+# This regulation's state lives in ITS OWN S3 bucket, not the shared R2
+# bucket update-regulation.yml uses for omb-financial-assistance --
+# analyzer_config.yaml sets `state.provider: s3`, so sync_state.py picks
+# plain S3 automatically. That's why this file's secrets are
+# AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY/AWS_DEFAULT_REGION instead of the
+# CF_R2_* ones -- add those three as repo secrets here (same S3 credentials
+# already in regulations/USBC-2026-0628/.env locally) before this can run.
+#
+# Replaces the manual "download the bulk CSV, run the pipeline, deploy" loop with
+# scheduled runs against the regulations.gov v4 API. State (source.csv,
+# full_run.parquet) is gitignored and lives in S3 instead — see sync_state.py
+# and the "Automated updates" section of CLAUDE.md.
+#
+# Two schedules, gated by which one fired (github.event.schedule):
+#   - Catch-up ingest, every couple of hours during the day: pull state, fetch
+#     new comments, run the pipeline, push state. No report, no deploy, no
+#     git commit. Its only job is to keep chipping away at the backlog.
+#   - Daily publish, once in the evening after that day's posting is done:
+#     everything ingest does, then updates the changelog, renders the report,
+#     and deploys (Cloudflare Pages + the full export to R2).
+#
+# The regulations.gov API key is capped at ~500 "comment" calls/hour, so a big
+# backlog can't always be caught up in one run — fetch_comments_api.py backs
+# off on 429 and keeps going, so a single run can legitimately sit through
+# more than one hourly window (see timeout-minutes below). Either way the job
+# succeeds; a run that stops early because comments are still missing just
+# logs how many, for the next scheduled run to pick up.
+#
+# A CATCH-UP day with nothing new to fetch is designed to be nearly free: the
+# fetch step runs before any heavy dependency install or the (larger) parquet
+# download, and if it finds nothing missing, everything else is skipped.
+#
+# The PUBLISH run is deliberately NOT gated that way. Catch-up runs fetch ahead
+# of it, so by the evening there is usually nothing left to fetch — and gating
+# publish on "did this run fetch something" meant the site was never updated
+# precisely when the catch-up runs had done their job. Publish instead asks
+# whether anything is UNPUBLISHED: pipeline.py rewrites data_changelog.json only
+# when the comment total has grown past the last published entry, so a dirty
+# changelog is the signal, and a clean one means the live report is current.
+
+on:
+  schedule:
+    # Catch-up ingest — 9am/11am/1pm/3pm/5pm US Eastern (UTC-4). Ingest only.
+    - cron: '23 13-21/2 * * *'
+    # Daily publish — 7pm US Eastern, after that day's OMB posting is done.
+    # Ingest + report + deploy. Nothing scheduled overnight (8pm-8am ET).
+    - cron: '23 23 * * *'
+  workflow_dispatch:
+    inputs:
+      regulation:
+        description: 'Regulation slug under regulations/<slug>/'
+        default: 'USBC-2026-0628'
+        required: true
+      max_new:
+        description: 'Cap on new comments fetched this run (high enough that the rate limit/timeout binds first, not this)'
+        default: '5000'
+        required: true
+      deploy:
+        description: 'Publish: update changelog, render report, deploy to Cloudflare Pages + R2'
+        type: boolean
+        default: true
+
+# Only one run per regulation at a time — an overlapping catch-up and publish
+# run pulling/pushing the same S3 state (and the same git branch, for the
+# changelog commit) would race.
+concurrency:
+  group: update-regulation-${{ github.event.inputs.regulation || 'USBC-2026-0628' }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    # A run never waits out the hourly rate limit — fetch_comments_api.py stops
+    # as soon as the budget is spent, keeping everything it fetched, and the
+    # next scheduled run continues. So a run is bounded by one budget's worth of
+    # comments (~485 after the ~14 listing calls) plus analysis, not by hours of
+    # sleeping. A drained run exits in well under a minute.
+    timeout-minutes: 60
+    permissions:
+      contents: write  # to commit data_changelog.json on the publish run
+    env:
+      REGULATIONS_API_KEY: ${{ secrets.REGULATIONS_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      REGULATION: ${{ github.event.inputs.regulation || 'USBC-2026-0628' }}
+      MAX_NEW: ${{ github.event.inputs.max_new || '5000' }}
+      # True on the daily-publish schedule, or on a manual run with deploy left
+      # at its default-true. False on the catch-up schedule (unless dispatched
+      # by hand with deploy explicitly enabled — same input either way).
+      IS_PUBLISH: ${{ (github.event_name == 'workflow_dispatch' && (github.event.inputs.deploy || 'true') == 'true') || (github.event_name == 'schedule' && github.event.schedule == '23 23 * * *') }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history, needed to rebase the changelog commit if origin moved
+
+      - uses: actions/setup-python@v5
+        with:
+          # 3.13, not 3.14: litellm==1.91.0 declares Requires-Python <3.14, so
+          # pip finds no candidate on 3.14 and the install fails outright.
+          python-version: '3.13'
+
+      # Just enough to run the cheap check below — sync_state.py needs PyYAML
+      # to read the state bucket out of analyzer_config.yaml; fetch_comments_api.py
+      # itself is stdlib-only. The full requirements.txt (PyMuPDF, litellm, etc.)
+      # is only installed further down, once we know there's real work to do.
+      - name: Install minimal dependencies for the drained-run check
+        run: pip install "pyyaml==6.0.3"
+
+      - name: Pull source.csv from S3 (cheap - enough to know what's missing)
+        run: python sync_state.py pull --regulation "$REGULATION" --files source.csv
+
+      # Doubles as the cheap check: on a drained docket this returns almost
+      # immediately (one listing pass, nothing to fetch) without ever having
+      # installed the heavy dependencies or downloaded full_run.parquet.
+      - name: Fetch new comments from regulations.gov (capped)
+        id: fetch
+        run: |
+          # pipefail matters: the default shell is `bash -e`, so without it a
+          # crashed fetch would exit 0 (tee's status), `added` would come out
+          # empty, every later step would skip, and the run would go green
+          # having silently done nothing.
+          set -o pipefail
+          python fetch_comments_api.py --regulation "$REGULATION" --limit "$MAX_NEW" | tee fetch.log
+          # No "appended" line at all means nothing was fetched — the docket was
+          # already drained, or listing was rate limited. Both are a real 0, and
+          # both are fine. The `|| true` is load-bearing: grep exits 1 when it
+          # matches nothing, and under `set -e` that alone failed the whole step
+          # on the single most common path, a run with nothing new to do.
+          added=$(grep -oE 'appended [0-9,]+ rows' fetch.log | grep -oE '[0-9,]+' | tr -d ',' || true)
+          echo "added=${added:-0}" >> "$GITHUB_OUTPUT"
+          echo "fetched ${added:-0} new comment(s) this run"
+
+      - name: Nothing new — done
+        if: steps.fetch.outputs.added == '0'
+        run: echo "No new comments on the docket (or none fetched) — nothing to do this run."
+
+      - name: Install full dependencies
+        if: ${{ steps.fetch.outputs.added != '0' || env.IS_PUBLISH == 'true' }}
+        run: pip install -r requirements.txt
+
+      # The attachment cache comes down with the parquet: it is what lets this run
+      # reuse the text already extracted from PDFs and scans instead of
+      # re-downloading and re-OCRing them. Without it, OCR output varies run to
+      # run, which changes a comment's text and re-triggers analysis of comments
+      # nothing about which changed — and an API outage drops attachments silently.
+      - name: Pull full_run.parquet + attachment cache from S3 (now that there's real work to do)
+        if: ${{ steps.fetch.outputs.added != '0' || env.IS_PUBLISH == 'true' }}
+        run: python sync_state.py pull --regulation "$REGULATION" --files full_run.parquet attachment_cache
+
+      - name: Run analysis pipeline (incremental)
+        if: ${{ steps.fetch.outputs.added != '0' || env.IS_PUBLISH == 'true' }}
+        run: python pipeline.py --regulation "$REGULATION" --workers 8
+
+      # Runs whenever the fetch step completed AND added anything, even if the
+      # pipeline above failed partway — a successful fetch is never lost,
+      # regardless of how analysis went. (The extra "!= ''" excludes the case
+      # where the fetch step itself failed outright and never set the output —
+      # always() alone would otherwise still try to run this.) Pushes both
+      # files back together so they stay paired.
+      - name: Push state to S3 (source.csv, full_run.parquet, attachment cache)
+        if: ${{ always() && steps.fetch.outputs.added != '' && steps.fetch.outputs.added != '0' }}
+        run: python sync_state.py push --regulation "$REGULATION"
+
+      # The catch-up runs deliberately fetch ahead of the publish run, so by
+      # the evening there is usually nothing left to fetch — and gating publish
+      # on "did THIS run fetch something" therefore skipped publishing exactly
+      # when the catch-up runs had done their job. Gate on whether there is
+      # anything UNPUBLISHED instead: pipeline.py rewrites data_changelog.json
+      # only when the comment total has grown since the last published entry,
+      # so a dirty changelog is precisely the "there is something new to show"
+      # signal, and an unchanged one means the live report is already current.
+      - name: Is there anything unpublished?
+        id: pub
+        if: ${{ env.IS_PUBLISH == 'true' }}
+        run: |
+          # An explicit manual run with deploy=true is a human saying "publish
+          # now" — honour it without asking whether anything changed. That is
+          # the only way to re-render after a change to the report itself (a
+          # config blurb, a template) rather than to the data.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Manual run — publishing regardless of what changed."
+            exit 0
+          fi
+          # Two independent reasons the live report can be out of date: the
+          # corpus grew (dirty changelog), or OMB removed something (dirty
+          # withdrawal record). A docket that has stopped growing still gets
+          # withdrawals, and gating on the changelog alone meant those were
+          # committed to git but never rendered or deployed.
+          # `git status --porcelain`, not `git diff`: on the first withdrawal
+          # the record is UNTRACKED, which git diff does not report.
+          WATCH=""
+          for f in "regulations/$REGULATION/data_changelog.json" \
+                   "regulations/$REGULATION/withdrawn_comments.json"; do
+            [ -f "$f" ] && WATCH="$WATCH $f"
+          done
+          if [ -z "$WATCH" ] || [ -z "$(git status --porcelain -- $WATCH)" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Changelog and withdrawal record unchanged — the published report is already current, skipping deploy."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git status --porcelain -- $WATCH
+          fi
+
+      # data_changelog.json is a committed file (small, not regenerable), so
+      # publishing means committing pipeline.py's changelog update and pushing
+      # it back to this branch. Only actually pushes when the file changed
+      # (pipeline.py's own no-op-if-unchanged logic already usually makes this
+      # true only on the first publish after new comments landed). Rebases and
+      # retries once if origin moved under us; the concurrency group above
+      # should make that rare.
+      # Not gated on steps.pub.outputs.changed (i.e. "the corpus grew"): a day
+      # with no new comments can still have withdrawals, which is exactly how
+      # the first 42 were found. Gate on the files themselves instead.
+      - name: Commit and push data_changelog.json and the withdrawal record
+        if: ${{ env.IS_PUBLISH == 'true' }}
+        run: |
+          TRACKED="regulations/$REGULATION/data_changelog.json \
+                   regulations/$REGULATION/withdrawn_comments.json \
+                   regulations/$REGULATION/withdrawn_check_state.json"
+          # The files may not all exist yet on a regulation that has never seen a
+          # withdrawal. Use `git status --porcelain`, not `git diff HEAD`: the
+          # first withdrawal creates an UNTRACKED file, which git diff does not
+          # report, so the record would be silently dropped on exactly the run
+          # that first found something.
+          EXISTING=""
+          for f in $TRACKED; do [ -f "$f" ] && EXISTING="$EXISTING $f"; done
+          if [ -z "$EXISTING" ] || [ -z "$(git status --porcelain -- $EXISTING)" ]; then
+            echo "changelog and withdrawal record unchanged — nothing to commit."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add $EXISTING
+            git commit -m "Record $REGULATION data update ($(date -u +%F))"
+            if ! git push origin "HEAD:${{ github.ref_name }}"; then
+              echo "Push rejected — rebasing once and retrying."
+              git fetch origin "${{ github.ref_name }}"
+              git rebase "origin/${{ github.ref_name }}"
+              git push origin "HEAD:${{ github.ref_name }}"
+            fi
+          fi
+
+      - name: Generate report
+        if: ${{ env.IS_PUBLISH == 'true' && steps.pub.outputs.changed == 'true' }}
+        run: python ../../generate_report.py --parquet full_run.parquet --output index.html
+        working-directory: regulations/${{ env.REGULATION }}
+
+      # wrangler is invoked through npx inside deploy_report.sh, so there is no
+      # separate install step — npx fetches it on first use.
+      - name: Deploy report + full export
+        if: ${{ env.IS_PUBLISH == 'true' && steps.pub.outputs.changed == 'true' }}
+        run: ./deploy_report.sh "$REGULATION"
