@@ -258,21 +258,27 @@ jobs:
             fi
           fi
 
+      # Also regenerates on any catch-up run that fetched+classified new
+      # comments (steps.fetch.outputs.added != '0'), so the preview sync below
+      # stays current through the day, not just at the evening publish or an
+      # explicit manual preview dispatch.
       - name: Generate report
-        if: ${{ (env.IS_PUBLISH == 'true' && steps.pub.outputs.changed == 'true') || github.event.inputs.preview == 'true' }}
+        if: ${{ steps.fetch.outputs.added != '0' || (env.IS_PUBLISH == 'true' && steps.pub.outputs.changed == 'true') || github.event.inputs.preview == 'true' }}
         run: python ../../generate_report.py --parquet full_run.parquet --output index.html
         working-directory: regulations/${{ env.REGULATION }}
 
-      # Team preview only — manual dispatch, gated separately from IS_PUBLISH.
-      # Syncs the same runtime files deploy_report.sh would ship to Cloudflare
-      # Pages, but to a PRIVATE prefix in the regulation's own state S3 bucket
-      # (state.bucket in analyzer_config.yaml — the "handsoffourcensus" bucket,
-      # not public) instead of a public site. No changelog commit, no Cloudflare
-      # deploy, no 404 page, nothing publicly reachable. Teammates with AWS
-      # credentials for this bucket pull the prefix down (or a presigned URL)
-      # instead of running the pipeline themselves.
+      # Team preview — auto-refreshes after any run that classified new
+      # comments, plus an explicit manual dispatch (preview: true) for an
+      # on-demand refresh. Syncs the same runtime files deploy_report.sh would
+      # ship to Cloudflare Pages, but to a PRIVATE prefix in the regulation's
+      # own state S3 bucket (state.bucket in analyzer_config.yaml — the
+      # "handsoffourcensus" bucket, not public) instead of a public site. No
+      # changelog commit, no Cloudflare deploy, no 404 page, nothing publicly
+      # reachable. Teammates with AWS credentials for this bucket pull the
+      # prefix down (or a presigned URL) instead of running the pipeline
+      # themselves.
       - name: Sync preview report to S3 (private — not public)
-        if: ${{ github.event.inputs.preview == 'true' }}
+        if: ${{ steps.fetch.outputs.added != '0' || (env.IS_PUBLISH == 'true' && steps.pub.outputs.changed == 'true') || github.event.inputs.preview == 'true' }}
         run: |
           # Reuses sync_state.py's own bucket_for(), the same lookup the state
           # push/pull steps above already rely on, instead of re-parsing
