@@ -2,12 +2,17 @@
   "last_total": 2508,
   "entries": [
     {
+<<<<<<< HEAD
       "date": "2026-09-21",
       "note": "Updated to 2,508 comments (+2,498 new)."
     },
     {
       "date": "2026-09-20",
       "note": "Published analysis of 10 public comments."
+=======
+      "date": "2026-09-22",
+      "note": "Published analysis of 2,508 public comments."
+>>>>>>> c4ee8316b0e79c8bed94316cc54ce58a8d3a0150
     }
   ],
   "last_shares": {
