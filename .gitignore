@@ -108,3 +108,5 @@ CLAUDE.md
 /discover_concerns.py
 regulations/*/discovery/
 regulations/*/old_yaml/
+regulations/*/preview/
+regulations/*/old_data/
