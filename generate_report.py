@@ -1025,6 +1025,92 @@ def load_id_list(path: str) -> set:
     return entries
 
 
+def load_named_campaigns_config() -> Dict[str, Any]:
+    """Load the `named_campaigns:` config block (just a `file:` path). Optional
+    -- a regulation with no known campaigns to track omits the key entirely,
+    same convention as id_list_flags."""
+    config_path = Path('analyzer_config.yaml')
+    if config_path.exists():
+        with open(config_path) as f:
+            config = yaml.safe_load(f)
+        cfg = config.get('named_campaigns') or {}
+        return cfg if isinstance(cfg, dict) else {}
+    return {}
+
+
+def load_named_campaign_roster(path: str) -> Dict[str, List[str]]:
+    """Read a named-campaigns roster: {campaign name: [Document IDs]}.
+
+    This is a curated list from outside the pipeline (e.g. an advocacy org's
+    own count of its mailer) -- unlike the organic MinHash campaigns above,
+    nothing here can be recomputed from the comment text. Fails loudly on a
+    missing file, same reasoning as load_id_list: a named_campaigns block
+    configured but silently empty would publish a report that quietly drops a
+    known campaign instead of erroring."""
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(
+            f"named_campaigns references {path}, which does not exist. "
+            f"Remove named_campaigns from analyzer_config.yaml or restore the file."
+        )
+    with open(p) as f:
+        data = json.load(f)
+    if not isinstance(data, dict):
+        raise ValueError(f"{path} must be a JSON object of {{campaign name: [document ids]}}")
+    return {name: [str(i) for i in ids] for name, ids in data.items()}
+
+
+def compute_named_campaigns(comments: List[Dict[str, Any]], named_campaigns_cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Build the "Known Campaigns" list: comments matched against a roster of
+    campaigns known ahead of time (e.g. an advocacy org's own count of its
+    mailer), alongside -- not instead of -- the organic MinHash-detected
+    campaigns above. Same per-entry shape as campaigns_list (size, snippet,
+    canonical, sample_ids, stance, oppose_pct/support_pct) so the template can
+    render both with the same markup. Returns [] when the regulation has no
+    named_campaigns config."""
+    file_path = named_campaigns_cfg.get('file')
+    if not file_path:
+        return []
+    roster = load_named_campaign_roster(file_path)
+    by_id = {c.get('id'): c for c in comments}
+
+    result = []
+    for name, ids in roster.items():
+        matched = [by_id[i] for i in ids if i in by_id]
+        missing = [i for i in ids if i not in by_id]
+        if missing:
+            print(f"  WARNING: named campaign {name!r} lists {len(missing)} id(s) "
+                  f"not found in this corpus (e.g. {missing[0]!r}) -- roster may be stale")
+        if not matched:
+            continue
+        positions = [comment_position(c) for c in matched]
+        pc = Counter(positions)
+        support_n, oppose_n, unclear_n = pc.get('Support', 0), pc.get('Oppose', 0), pc.get('Unclear', 0)
+        mx = max(support_n, oppose_n, unclear_n)
+        winners = [k for k, v in (('Support', support_n), ('Oppose', oppose_n), ('Unclear', unclear_n)) if v == mx]
+        stance = winners[0] if len(winners) == 1 and winners[0] in ('Support', 'Oppose') else 'Mixed'
+        c_denom = oppose_n + support_n
+        c_oppose_pct = round(oppose_n / c_denom * 100) if c_denom else 100
+        c_support_pct = 100 - c_oppose_pct if c_denom else 0
+        # A representative snippet: the most common exact text among matched
+        # members -- same idea as the organic campaign's canonical text.
+        text_counts = Counter((c.get('comment_text') or '').strip() for c in matched)
+        canonical = text_counts.most_common(1)[0][0] if text_counts else ''
+        result.append({
+            'name': name,
+            'size': len(matched),
+            'missing': len(missing),
+            'snippet': _snippet(canonical, 70),
+            'canonical': canonical,
+            'sample_ids': [c.get('id', '') for c in matched[:10]],
+            'stance': stance,
+            'support': support_n, 'oppose': oppose_n, 'unclear': unclear_n,
+            'oppose_pct': c_oppose_pct, 'support_pct': c_support_pct,
+        })
+    result.sort(key=lambda g: -g['size'])
+    return result
+
+
 def compute_flag_sections(comments: List[Dict[str, Any]], flags_cfg: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Build one generic section per configured regex flag.
 
@@ -1351,6 +1437,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
     value_sections, regex_value_patterns = compute_value_sections(comments, fields)
     briefing = compute_briefing(comments)
     briefing['flag_sections'] = compute_flag_sections(comments, flags_cfg)
+    briefing['named_campaigns_list'] = compute_named_campaigns(comments, load_named_campaigns_config())
     flag_meta = [{'key': s['key'], 'label': s['label']} for s in briefing['flag_sections']]
     filter_values = get_filter_values(comments)
     rows = prepare_rows(
