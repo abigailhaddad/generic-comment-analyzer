@@ -58,6 +58,27 @@ stances:
   - name: "Concern: Data quality, undercount, and cost"
     indicator: "Warns the changes will reduce accuracy, depress self-response, raise nonresponse-followup costs, or otherwise damage the quality or usability of the decennial count"
 
+  - name: "Concern: Requests extension of comment period"
+    indicator: "Explicitly asks the agency to extend, lengthen, or reopen the public comment period, or states that the current comment window is too short to allow adequate review"
+
+  - name: "Concern: Executive Order 12866 meeting request denied"
+    indicator: "States that the commenter (or their organization) requested a meeting under Executive Order 12866 with OMB/OIRA or the agency and that the request was denied, refused, or ignored"
+
+  - name: "Concern: Insufficient regulatory impact analysis"
+    indicator: "Argues the rule's regulatory impact analysis, cost-benefit analysis, or economic analysis is inadequate, missing, incomplete, or does not satisfy Executive Order 12866 / 13563 analytical requirements"
+
+  - name: "Concern: Constitutional and case law concerns"
+    indicator: "Raises constitutional objections (e.g. Enumeration Clause, Fourteenth Amendment, separation of powers, equal protection) or cites case law/precedent as a legal basis for challenging the rule"
+
+  - name: "Concern: 30-day comment period too short"
+    indicator: "States specifically that the comment period was only 30 days and that this is too short, inadequate, or insufficient for meaningful public participation"
+
+  - name: "Concern: Rule determined to be significant"
+    indicator: "References the rule's designation as a 'significant regulatory action' under Executive Order 12866 (or similar significance determination) and raises this designation as an issue or highlights it as otherwise important"
+    
+  - name: "Concern: Enumeration period"
+    indicator: "Comment raises concerns about the enumeration period including noting ambiguity in the regulatory text the period"
+    
 # -------------------------------------------------------------------
 # Entity Types — the model classifies each commenter into exactly one.
 # -------------------------------------------------------------------
@@ -71,6 +92,13 @@ entity_types:
   - "Scientific / Professional Association"
   - "Elected Official"
   - "Industry / Business"
+  - "Nonprofit / Funder / Philanthropic Institution"
+  - "Civil Society Organization"
+  - "Union / Labor Organization"
+  - "Immigrant Rights Organization"
+  - "Law Firm / Legal Advocacy Organization"
+  - "Think Tank (Conservative)"
+  - "Think Tank (Liberal)"
 
 entity_classification_rules: >
   Default to Individual/Other UNLESS the commenter explicitly self-identifies IN THE COMMENT TEXT.
@@ -100,6 +128,30 @@ entity_classification_rules: >
   Elected Official: the commenter explicitly identifies as a current or former elected official.
 
   Industry / Business: submitted BY or on behalf of a company or trade group.
+
+  Nonprofit / Funder / Philanthropic Institution: submitted BY a private foundation, grantmaking
+  body, or philanthropic institution as an entity (e.g. a foundation funding census outreach or
+  research), not by an individual grant recipient.
+
+  Civil Society Organization: submitted BY a community-based, faith-based, or general civil-society
+  nonprofit as an entity that is not better captured by a more specific organizational category
+  (civil rights, immigrant rights, union, legal, think tank, etc.).
+
+  Union / Labor Organization: submitted BY a labor union, trade union, or worker association as an
+  entity.
+
+  Immigrant Rights Organization: submitted BY an organization whose stated mission centers on
+  immigrant, refugee, or migrant rights, services, or advocacy, as an entity.
+
+  Law Firm / Legal Advocacy Organization: submitted BY a law firm, public-interest legal
+  organization, or legal advocacy nonprofit as an entity (e.g. filing comments as counsel or as a
+  legal advocacy group), not by an individual attorney writing in a personal capacity.
+
+  Think Tank (Conservative): submitted BY a policy research organization or think tank as an entity
+  that self-identifies as, or is widely recognized as, conservative-leaning.
+
+  Think Tank (Liberal): submitted BY a policy research organization or think tank as an entity that
+  self-identifies as, or is widely recognized as, liberal/progressive-leaning.
 
   Talking ABOUT the census, redistricting, or data users does NOT make the commenter a demographer
   — require explicit self-identification. Individuals affiliated with an organization are classified
@@ -431,6 +483,13 @@ second_pass:
       - "Scientific / Professional Association"
       - "Industry / Business"
       - "Elected Official"
+      - "Nonprofit / Funder / Philanthropic Institution"
+      - "Civil Society Organization"
+      - "Union / Labor Organization"
+      - "Immigrant Rights Organization"
+      - "Law Firm / Legal Advocacy Organization"
+      - "Think Tank (Conservative)"
+      - "Think Tank (Liberal)"
     verify_attorney_on_quote_mismatch: true
 
   # State and political affiliation are not surfaced for this rule — skip verification.
@@ -508,8 +567,11 @@ second_pass:
         statistician, survey methodologist, or census/population researcher.
       - State or Local Government, Tribal Government / Native Organization, Civil Rights / Advocacy
         Organization, University / Research Institution, Scientific / Professional Association,
-        Industry / Business: ONLY when the comment is submitted BY that organization or body as an
-        entity, not by an individual affiliated with it.
+        Industry / Business, Nonprofit / Funder / Philanthropic Institution, Civil Society
+        Organization, Union / Labor Organization, Immigrant Rights Organization, Law Firm / Legal
+        Advocacy Organization, Think Tank (Conservative), Think Tank (Liberal): ONLY when the
+        comment is submitted BY that organization or body as an entity, not by an individual
+        affiliated with it.
       - Elected Official: explicitly identifies as a current or former elected official.
       - If you cannot point to a specific phrase where they identify their role, classify as
         Individual/Other.
