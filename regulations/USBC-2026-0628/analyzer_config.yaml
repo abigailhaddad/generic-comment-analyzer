@@ -31,9 +31,9 @@ stances:
       support. If the comment would read the same way had this rule never been proposed, select no
       position at all rather than this one.
 
-  - name: "Concern: Part 60 excludes undocumented immigrants"
+  - name: "Concern: Part 60 excludes undocumented immigrants and non-citizens"
     indicator: >
-      Discusses excluding undocumented/non-citizen immigrants from the enumeration used for
+      Discusses excluding undocumented immigrants and other non-citizens from the enumeration used for
       apportionment — either objecting to it (arguing the count must include the whole number of
       persons regardless of legal status, invoking the Fourteenth Amendment, warning of undercounts
       of immigrant communities) or endorsing it (arguing only citizens or legal residents should be
@@ -58,9 +58,16 @@ stances:
       (arguing the data are essential for enforcing the Voting Rights Act, civil-rights compliance,
       or public-health and research uses) or endorsing it (arguing such questions are irrelevant,
       divisive, or should not factor into a headcount).
+      
+  - name: "Concern: SPD-15 Implementation"
+    indicator: >
+      Discusses the need for implementing the updated 2024 race and ethnicity standards from the Office of Management and Budget, statistical policy directive 15 (SPD-15).      
 
   - name: "Concern: Restrictions on sexual orientation / gender identity data"
     indicator: "Objects to (or endorses) prohibiting sexual-orientation or gender-identity questions, or limiting demographic questions to biological sex only"
+    
+  - name: "Concern: Undercount of specific populations"
+    indicator: "Raises issues regarding how the proposed rulemaking will affect the count specific communities including members of the military, Americans living overseas, children, and transient individuals"
 
   - name: "Concern: Disclosure avoidance and differential privacy"
     indicator: "Discusses restrictions on noise infusion, differential privacy, disclosure-avoidance methods, or Title 13 §9 confidentiality obligations"
@@ -113,6 +120,7 @@ entity_types:
   - "Law Firm / Legal Advocacy Organization"
   - "Think Tank (Conservative)"
   - "Think Tank (Liberal)"
+  - "Think Tank (nonpartisan)"
 
 entity_classification_rules: >
   Default to Individual/Other UNLESS the commenter explicitly self-identifies IN THE COMMENT TEXT.
@@ -166,6 +174,9 @@ entity_classification_rules: >
 
   Think Tank (Liberal): submitted BY a policy research organization or think tank as an entity that
   self-identifies as, or is widely recognized as, liberal/progressive-leaning.
+  
+  Think Tank (nonpartisan): submitted BY a policy research organization or think tank as an entity that
+  self-identifies as, or is widely recognized as, nonpartisan or bipartisan.
 
   Talking ABOUT the census, redistricting, or data users does NOT make the commenter a demographer
   — require explicit self-identification. Individuals affiliated with an organization are classified
