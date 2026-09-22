@@ -1018,6 +1018,78 @@ def load_id_list(path: str) -> set:
     return entries
 
 
+def load_named_campaigns_roster() -> Dict[str, List[str]]:
+    """Load the `named_campaigns:` config block: a list of {name, ids}, kept
+    inline in analyzer_config.yaml (not a separate file) so a roster is just
+    part of the config someone can read and diff normally. Optional -- a
+    regulation with no known campaigns to track omits the key entirely.
+    Returns {campaign name: [Document ID, ...]}."""
+    config_path = Path('analyzer_config.yaml')
+    if not config_path.exists():
+        return {}
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+    entries = config.get('named_campaigns') or []
+    if not isinstance(entries, list):
+        return {}
+    roster = {}
+    for entry in entries:
+        if not isinstance(entry, dict) or not entry.get('name'):
+            continue
+        ids = entry.get('ids') or []
+        roster[entry['name']] = [str(i) for i in ids]
+    return roster
+
+
+def compute_named_campaigns(comments: List[Dict[str, Any]], roster: Dict[str, List[str]]) -> List[Dict[str, Any]]:
+    """Build the "Known Campaigns" list: comments matched against a roster of
+    campaigns known ahead of time (e.g. an advocacy org's own count of its
+    mailer), alongside -- not instead of -- the organic MinHash-detected
+    campaigns above. Same per-entry shape as campaigns_list (size, snippet,
+    canonical, sample_ids, stance, oppose_pct/support_pct) so the template can
+    render both with the same markup. Returns [] when the regulation has no
+    named_campaigns config."""
+    if not roster:
+        return []
+    by_id = {c.get('id'): c for c in comments}
+
+    result = []
+    for name, ids in roster.items():
+        matched = [by_id[i] for i in ids if i in by_id]
+        missing = [i for i in ids if i not in by_id]
+        if missing:
+            print(f"  WARNING: named campaign {name!r} lists {len(missing)} id(s) "
+                  f"not found in this corpus (e.g. {missing[0]!r}) -- roster may be stale")
+        if not matched:
+            continue
+        positions = [comment_position(c) for c in matched]
+        pc = Counter(positions)
+        support_n, oppose_n, unclear_n = pc.get('Support', 0), pc.get('Oppose', 0), pc.get('Unclear', 0)
+        mx = max(support_n, oppose_n, unclear_n)
+        winners = [k for k, v in (('Support', support_n), ('Oppose', oppose_n), ('Unclear', unclear_n)) if v == mx]
+        stance = winners[0] if len(winners) == 1 and winners[0] in ('Support', 'Oppose') else 'Mixed'
+        c_denom = oppose_n + support_n
+        c_oppose_pct = round(oppose_n / c_denom * 100) if c_denom else 100
+        c_support_pct = 100 - c_oppose_pct if c_denom else 0
+        # A representative snippet: the most common exact text among matched
+        # members -- same idea as the organic campaign's canonical text.
+        text_counts = Counter((c.get('comment_text') or '').strip() for c in matched)
+        canonical = text_counts.most_common(1)[0][0] if text_counts else ''
+        result.append({
+            'name': name,
+            'size': len(matched),
+            'missing': len(missing),
+            'snippet': _snippet(canonical, 70),
+            'canonical': canonical,
+            'sample_ids': [c.get('id', '') for c in matched[:10]],
+            'stance': stance,
+            'support': support_n, 'oppose': oppose_n, 'unclear': unclear_n,
+            'oppose_pct': c_oppose_pct, 'support_pct': c_support_pct,
+        })
+    result.sort(key=lambda g: -g['size'])
+    return result
+
+
 def compute_flag_sections(comments: List[Dict[str, Any]], flags_cfg: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Build one generic section per configured regex flag.
 
@@ -1117,6 +1189,20 @@ def load_rule_sections():
         return data if isinstance(data, list) and data else None
     except Exception:
         return None
+
+
+def load_campaign_audit():
+    """Load campaign_audit.json (written by audit_named_campaigns.py) for the
+    discrete Campaign Audit page, or None when it hasn't been run -- same
+    "absent is a normal state" reasoning as load_eval_scores. Regenerate it
+    with `python audit_named_campaigns.py --regulation <slug>` whenever the
+    roster or the corpus changes; this file is not kept in sync automatically."""
+    p = Path('campaign_audit.json')
+    if not p.exists():
+        return None
+    with open(p) as f:
+        data = json.load(f)
+    return data or None
 
 
 def compute_rule_page(comments, rule_sections, patterns, sample_n=8):
@@ -1344,6 +1430,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
     value_sections, regex_value_patterns = compute_value_sections(comments, fields)
     briefing = compute_briefing(comments)
     briefing['flag_sections'] = compute_flag_sections(comments, flags_cfg)
+    briefing['named_campaigns_list'] = compute_named_campaigns(comments, load_named_campaigns_roster())
     flag_meta = [{'key': s['key'], 'label': s['label']} for s in briefing['flag_sections']]
     filter_values = get_filter_values(comments)
     rows = prepare_rows(
@@ -1379,6 +1466,8 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
     rule_page_url = 'read-the-rule.html' if rule_sections else None
     eval_scores = load_eval_scores()
     accuracy_page_url = 'accuracy.html' if eval_scores else None
+    campaign_audit = load_campaign_audit()
+    campaign_audit_url = 'campaign-audit.html' if campaign_audit else None
     model_name = determine_model(comments, model_used)
     generated_time = datetime.now().strftime('%B %d, %Y at %I:%M %p')
 
@@ -1407,6 +1496,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         changelog=load_changelog(),
         accuracy_page_url=accuracy_page_url,
         eval_scores=eval_scores,
+        campaign_audit_url=campaign_audit_url,
     )
 
     with open(output_file, 'w', encoding='utf-8') as f:
@@ -1436,6 +1526,9 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
 
     if eval_scores:
         _render_accuracy_page(env, eval_scores, metadata, colors, output_file, generated_time)
+
+    if campaign_audit:
+        _render_campaign_audit_page(env, campaign_audit, metadata, colors, output_file, generated_time)
 
     _render_comment_page(env, metadata, colors, flags_cfg, output_file)
 
@@ -1489,6 +1582,23 @@ def _render_accuracy_page(env, scores, metadata, colors, output_file, generated_
         generated_time=generated_time,
     )
     out = os.path.join(os.path.dirname(output_file) or '.', 'accuracy.html')
+    with open(out, 'w', encoding='utf-8') as f:
+        f.write(html_out)
+
+
+def _render_campaign_audit_page(env, audits, metadata, colors, output_file, generated_time):
+    """Render campaign-audit.html from campaign_audit.json — same pattern as
+    the accuracy page and read-the-rule. Discrete: not linked from the top of
+    the report, only from a small note in the Known Campaigns section."""
+    tpl = env.get_template('campaign_audit_template.html')
+    html_out = tpl.render(
+        metadata=metadata,
+        audits=audits,
+        colors=colors,
+        report_url=os.path.basename(output_file),
+        generated_time=generated_time,
+    )
+    out = os.path.join(os.path.dirname(output_file) or '.', 'campaign-audit.html')
     with open(out, 'w', encoding='utf-8') as f:
         f.write(html_out)
 

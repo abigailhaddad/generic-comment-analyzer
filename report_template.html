@@ -502,6 +502,39 @@
             {% endif %}
         </div>
 
+        <!-- Known Campaigns: a curated roster (e.g. from an advocacy org's own
+             count of its mailer) matched by Document ID, alongside -- not instead
+             of -- the organically-detected campaigns above. Only rendered when
+             the regulation's config declares named_campaigns. -->
+        {% if briefing.named_campaigns_list %}
+        <div class="section" id="namedCampaignsSection">
+            <h2><i class="fas fa-flag"></i> Known Campaigns</h2>
+            <p style="color: var(--color-text-muted); font-size:0.85rem; margin-bottom:1rem;">
+                {{ briefing.named_campaigns_list | length }} campaign{{ 's' if briefing.named_campaigns_list | length != 1 else '' }} matched by Document ID against a known roster (not text similarity). Click a bar to see details.
+            </p>
+            <div class="legend">
+                <span class="legend-item"><span class="legend-swatch" style="background: var(--color-oppose);"></span> Oppose</span>
+                <span class="legend-item"><span class="legend-swatch" style="background: var(--color-support);"></span> Support</span>
+            </div>
+            {% for campaign in briefing.named_campaigns_list %}
+            <div class="concern-row" style="cursor:pointer;" onclick="showNamedCampaignModal({{ loop.index0 }})" title="{{ campaign.name }} — {{ "{:,}".format(campaign.size) }} comments">
+                <div class="concern-label" style="width:240px; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500;">{{ campaign.name }}</div>
+                <div class="concern-bar-bg">
+                    {% set pct = (campaign.size / briefing.total_comments * 100) %}
+                    <div class="concern-bar-stacked" style="width: {{ pct }}%;">
+                        <div class="seg-oppose" style="width: {{ campaign.oppose_pct }}%;"></div>
+                        <div class="seg-support" style="width: {{ campaign.support_pct }}%;"></div>
+                    </div>
+                    <span class="concern-count-outside" style="left: {{ (pct + 1) }}%;">{{ "{:,}".format(campaign.size) }} comments</span>
+                </div>
+            </div>
+            {% endfor %}
+            {% if campaign_audit_url %}
+            <p style="margin-top:0.75rem;"><a href="{{ campaign_audit_url }}" style="font-size:0.8rem; color: var(--color-text-muted);">How were these rosters checked?</a></p>
+            {% endif %}
+        </div>
+        {% endif %}
+
         <!-- Regex multi-value breakdowns (e.g. CFR Sections Referenced) -->
         {% for vs in value_sections %}
         {% if 'section' in vs.show and vs.entries %}
@@ -730,6 +763,7 @@
         const unclearComments = {{ briefing.unclear_comments | tojson }};
         const regexPatterns = {{ regex_patterns | tojson }};
         const campaignsList = {{ briefing.campaigns_list | tojson }};
+        const namedCampaignsList = {{ briefing.named_campaigns_list | tojson }};
         const flagSections = {{ briefing.flag_sections | tojson }};
         const flagMeta = {{ flag_meta | tojson }};
         const fieldMeta = {{ field_meta | tojson }};
@@ -853,6 +887,36 @@
             }
             html += '</div>';
             html += '<div class="filter-buttons" style="justify-content:flex-start; margin-top:1rem;"><button class="btn-apply" onclick="Report.filterToCampaign(' + campaign.rank + ')">Show in table</button></div>';
+            document.getElementById('entityModalBody').innerHTML = html;
+            new bootstrap.Modal(document.getElementById('entityModal')).show();
+        }
+
+        // Same shape as showCampaignModal, keyed by index into namedCampaignsList
+        // (a curated roster, so it has a name instead of a rank/id).
+        function showNamedCampaignModal(idx) {
+            const campaign = namedCampaignsList[idx];
+            if (!campaign) return;
+            document.getElementById('entityModalTitle').textContent = campaign.name + ' — ' + campaign.size.toLocaleString() + ' comments'
+                + (campaign.missing ? ' (' + campaign.missing.toLocaleString() + ' listed ids not found in this corpus)' : '');
+            let html = '';
+            html += '<p style="margin-bottom:0.75rem;"><span class="stance-badge stance-' + (campaign.stance || '').toLowerCase() + '">' + campaign.stance + ' campaign</span> '
+                + '<span style="color:var(--color-text-muted); font-size:0.82rem;">'
+                + campaign.support.toLocaleString() + ' Support / ' + campaign.oppose.toLocaleString() + ' Oppose'
+                + (campaign.unclear ? ' / ' + campaign.unclear.toLocaleString() + ' Unclear' : '') + '</span></p>';
+            if (campaign.canonical) {
+                html += '<div class="detail-label">Most Common Version</div>';
+                html += '<div style="background:var(--color-surface); padding:16px; border-radius:6px; margin-bottom:16px; border-left:4px solid var(--color-accent); font-size:0.9rem; line-height:1.6; white-space:pre-wrap;">' + escapeHtml(campaign.canonical) + '</div>';
+            }
+            html += '<div class="detail-label">Sample Comments in This Campaign</div>';
+            html += '<div style="font-size:0.8rem; color:var(--color-text-muted);">';
+            campaign.sample_ids.forEach(function(id, j) {
+                if (j > 0) html += ', ';
+                html += '<a href="https://www.regulations.gov/comment/' + id + '" target="_blank">' + id.split('-').pop() + '</a>';
+            });
+            if (campaign.size > campaign.sample_ids.length) {
+                html += ' <span class="text-muted">+ ' + (campaign.size - campaign.sample_ids.length).toLocaleString() + ' more</span>';
+            }
+            html += '</div>';
             document.getElementById('entityModalBody').innerHTML = html;
             new bootstrap.Modal(document.getElementById('entityModal')).show();
         }

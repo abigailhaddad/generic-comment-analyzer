@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campaign audit — {{ metadata.regulation_name }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            /* Same config-driven palette tokens as the main report. */
+            --color-bg: {{ colors.bg }};
+            --color-surface: {{ colors.surface }};
+            --color-text: {{ colors.text }};
+            --color-text-muted: {{ colors.text_muted }};
+            --color-accent: {{ colors.accent }};
+            --color-accent-hover: {{ colors.accent_hover }};
+            --color-highlight: {{ colors.highlight }};
+            --color-border: {{ colors.border }};
+            --color-error: {{ colors.error }};
+
+            --font-heading: 'DM Sans', sans-serif;
+            --font-body: 'Source Sans 3', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --card-radius: 0.5rem;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        body { font-family: var(--font-body); background: var(--color-bg); color: var(--color-text); line-height: 1.65; font-size: 1.0rem; margin: 0; }
+        h1, h2, h3 { font-family: var(--font-heading); color: var(--color-text); letter-spacing: -0.01em; }
+        h2 { margin: 2.5rem 0 0.35rem; font-size: 1.35rem; }
+        h3 { margin: 1.25rem 0 0.35rem; font-size: 1.02rem; }
+        a { color: var(--color-accent); text-decoration: underline; text-decoration-color: rgba(0,0,0,0.2); text-underline-offset: 2px; }
+        a:hover { text-decoration-color: var(--color-accent); }
+        .site-container { max-width: 980px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+        .report-header { padding: 2.25rem 0 1.1rem; }
+        .report-header h1 { margin: 0 0 0.35rem; font-size: 1.75rem; }
+        .subtitle { color: var(--color-text-muted); font-size: 1.0rem; margin-bottom: 0.5rem; max-width: 720px; }
+        .nav-link { font-size: 0.92rem; }
+        .muted { color: var(--color-text-muted); }
+        .small { font-size: 0.85rem; }
+
+        .campaign-block { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--card-radius); padding: 1.1rem 1.25rem; margin: 1rem 0 2rem; }
+        .campaign-title { font-family: var(--font-heading); font-size: 1.1rem; font-weight: 700; margin-bottom: 0.2rem; }
+        .stat-row { display: flex; flex-wrap: wrap; gap: 1.25rem; margin: 0.4rem 0 0.6rem; font-size: 0.9rem; }
+        .stat-row .stat b { font-family: var(--font-heading); }
+        .canonical { background: var(--color-bg); border-left: 3px solid var(--color-accent); padding: 0.6rem 0.85rem; border-radius: 0.35rem; font-size: 0.88rem; margin: 0.5rem 0 0.75rem; white-space: pre-wrap; color: var(--color-text-muted); }
+        .warn { color: var(--color-error); font-size: 0.88rem; margin: 0.4rem 0; }
+
+        table.t { border-collapse: collapse; width: 100%; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 0.4rem; overflow: hidden; margin: 0.4rem 0 0.75rem; font-size: 0.87rem; }
+        table.t th, table.t td { padding: 0.45rem 0.65rem; text-align: left; border-bottom: 1px solid var(--color-border); vertical-align: top; }
+        table.t th { font-family: var(--font-heading); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--color-text-muted); background: color-mix(in srgb, var(--color-text) 3%, var(--color-bg)); }
+        table.t tr:last-child td { border-bottom: none; }
+        table.t td.sim { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+        table.t td.id { white-space: nowrap; font-family: var(--font-mono); font-size: 0.78rem; }
+        table.t td.snippet { color: var(--color-text-muted); }
+        .empty-note { color: var(--color-text-muted); font-size: 0.88rem; font-style: italic; }
+
+        .footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--color-border); color: var(--color-text-muted); font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+    <div class="site-container">
+        <div class="report-header">
+            <h1>Campaign audit</h1>
+            <div class="subtitle">For each named campaign, how close is the "in/out" line to the text? Non-members shown below scored close to the campaign's own text but weren't on the roster — candidates the list might be missing. Roster members shown below scored the least similar to the rest of the roster — candidates worth a second look. Similarity is the same 5-gram text measure the organic campaign detector uses, not an LLM judgment.</div>
+            <div><a href="{{ report_url }}" class="nav-link"><i class="fas fa-arrow-left"></i> Back to the comment analysis</a></div>
+        </div>
+
+        {% for c in audits %}
+        <div class="campaign-block">
+            <div class="campaign-title">{{ c.name }}</div>
+            {% if c.error %}
+            <p class="warn"><i class="fas fa-triangle-exclamation"></i> {{ c.error }} (roster: {{ c.roster_size }} id{{ 's' if c.roster_size != 1 else '' }}, {{ c.matched }} found in this corpus)</p>
+            {% else %}
+            <div class="stat-row">
+                <span class="stat"><b>{{ "{:,}".format(c.matched) }}</b> matched{% if c.roster_size != c.matched %} of {{ "{:,}".format(c.roster_size) }} listed{% endif %}</span>
+                {% if c.missing_ids %}<span class="stat muted">{{ c.missing_ids | length }} listed id{{ 's' if c.missing_ids | length != 1 else '' }} not found in this corpus</span>{% endif %}
+                <span class="stat">member similarity: <b>{{ c.member_sim_min }}</b> min &middot; <b>{{ c.member_sim_median }}</b> median</span>
+            </div>
+            <div class="canonical">{{ c.canonical }}</div>
+
+            <h3>Not on the roster, but close to this campaign's text ({{ c.closest_non_members_total }} above the floor)</h3>
+            {% if c.closest_non_members %}
+            <table class="t">
+                <thead><tr><th>Similarity</th><th>Document ID</th><th>Snippet</th></tr></thead>
+                <tbody>
+                {% for r in c.closest_non_members %}
+                <tr>
+                    <td class="sim">{{ r.sim }}</td>
+                    <td class="id"><a href="https://www.regulations.gov/comment/{{ r.id }}" target="_blank">{{ r.id }}</a></td>
+                    <td class="snippet">{{ r.snippet }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="empty-note">None above the floor — nothing close by outside the roster.</p>
+            {% endif %}
+
+            <h3>On the roster, but least similar to the rest of it</h3>
+            <table class="t">
+                <thead><tr><th>Similarity</th><th>Document ID</th><th>Snippet</th></tr></thead>
+                <tbody>
+                {% for r in c.lowest_similarity_members %}
+                <tr>
+                    <td class="sim">{{ r.sim }}</td>
+                    <td class="id"><a href="https://www.regulations.gov/comment/{{ r.id }}" target="_blank">{{ r.id }}</a></td>
+                    <td class="snippet">{{ r.snippet }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <div class="footer">
+            Generated {{ generated_time }} from <span class="small">campaign_audit.json</span> (run <span class="small">audit_named_campaigns.py</span> again after the roster or the corpus changes — this page doesn't update itself) &middot; <a href="{{ report_url }}">back to the analysis</a>
+        </div>
+    </div>
+</body>
+</html>
