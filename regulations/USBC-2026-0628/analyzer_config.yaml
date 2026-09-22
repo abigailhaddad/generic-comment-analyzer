@@ -71,7 +71,7 @@ stances:
     indicator: "Raises constitutional objections (e.g. Enumeration Clause, Fourteenth Amendment, separation of powers, equal protection) or cites case law/precedent as a legal basis for challenging the rule"
 
   - name: "Concern: 30-day comment period too short"
-    indicator: "States that the comment period is too short, inadequate, or insufficient for meaningful public participation"
+    indicator: "States that the comment period is too short, inadequate, or insufficient for meaningful public participation; asks for an extension."
 
   - name: "Concern: Rule determined to be significant"
     indicator: "References the rule's designation as a 'significant regulatory action' under Executive Order 12866 (or similar significance determination) and raises this designation as an issue or highlights it as otherwise important"
