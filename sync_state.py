@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pull/push a regulation's local state (source.csv, full_run.parquet) to Cloudflare R2.
+"""Pull/push a regulation's local state (source.csv, full_run.parquet) to R2 or S3.
 
 source.csv and full_run.parquet are gitignored (too big for git) but are exactly
 what a scheduled run needs to resume from: the last CSV the API fetcher appended
@@ -7,17 +7,30 @@ to, and the last parquet the pipeline analyzed into. This is how a clean GitHub
 Actions checkout (which starts with neither file) picks up where the previous
 run left off, and how a laptop run can pick up whatever CI last produced.
 
-State lives at r2://<bucket>/state/<slug>/{source.csv.gz,full_run.parquet.gz}.
+State lives at <bucket>/state/<slug>/{source.csv.gz,full_run.parquet.gz}.
 The bucket comes from the regulation's own `analyzer_config.yaml` (`state.bucket`,
 falling back to the already-established `report.full_export.bucket`) — never
 hardcoded, per the no-regulation-strings-in-code convention.
 
-Uses the `aws` CLI against the R2 S3-compatible endpoint (the same tool
-deploy_report.sh already uses) rather than boto3, so there's only one
-AWS-talking dependency to keep working.
+Uses the `aws` CLI (the same tool deploy_report.sh already uses) rather than
+boto3, so there's only one AWS-talking dependency to keep working. Two storage
+providers are supported, chosen by `state.provider` (default `r2`, so every
+existing regulation needs no config change):
 
-Requires CF_R2_ACCOUNT_ID / CF_R2_ACCESS_KEY_ID / CF_R2_SECRET_ACCESS_KEY
-(from .env locally, from repo secrets in CI).
+  - `r2` (default): Cloudflare R2, S3-compatible via a per-account endpoint.
+    Requires CF_R2_ACCOUNT_ID / CF_R2_ACCESS_KEY_ID / CF_R2_SECRET_ACCESS_KEY.
+  - `s3`: plain AWS S3, no custom endpoint — the `aws` CLI resolves it from
+    the region. Requires the CLI's own standard AWS_ACCESS_KEY_ID /
+    AWS_SECRET_ACCESS_KEY / AWS_DEFAULT_REGION. Since a collaborator's bucket
+    may live in a different account than the project's own R2 creds, these
+    are meant to come from a regulation-scoped `.env` (e.g.
+    `regulations/<slug>/.env`, gitignored the same as the root one) sourced
+    only when acting on that regulation — never the shared root `.env`, so
+    they can't silently shadow another regulation's credentials.
+
+Credentials come from whichever `.env` is currently sourced into the shell
+(from .env locally, from repo secrets in CI) — this script does not load one
+itself.
 
 Idempotent: re-running pull or push is always safe. A 0-byte or corrupt
 download is refused rather than used to overwrite good local state; an empty
@@ -57,13 +70,15 @@ import yaml
 # back on those comments were published with their attached letter missing.
 ATTACHMENT_CACHE = 'attachment_cache'
 FILES = ['source.csv', 'full_run.parquet', ATTACHMENT_CACHE]
-CREDS = ('CF_R2_ACCOUNT_ID', 'CF_R2_ACCESS_KEY_ID', 'CF_R2_SECRET_ACCESS_KEY')
+CREDS_R2 = ('CF_R2_ACCOUNT_ID', 'CF_R2_ACCESS_KEY_ID', 'CF_R2_SECRET_ACCESS_KEY')
+CREDS_S3 = ('AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY')
 
 
-def require_creds():
-    missing = [v for v in CREDS if not os.environ.get(v)]
+def require_creds(provider):
+    creds = CREDS_R2 if provider == 'r2' else CREDS_S3
+    missing = [v for v in creds if not os.environ.get(v)]
     if missing:
-        raise SystemExit(f"Missing R2 credentials: {', '.join(missing)} "
+        raise SystemExit(f"Missing {provider} credentials: {', '.join(missing)} "
                           "(source .env locally, or set as repo secrets in CI)")
 
 
@@ -71,11 +86,21 @@ def r2_endpoint():
     return f"https://{os.environ['CF_R2_ACCOUNT_ID']}.r2.cloudflarestorage.com"
 
 
-def s3_env():
+def endpoint_args(provider):
+    """Extra `aws` CLI args for the given provider. R2 needs an explicit
+    per-account endpoint; plain S3 resolves its endpoint from the region."""
+    return ['--endpoint-url', r2_endpoint()] if provider == 'r2' else []
+
+
+def s3_env(provider):
     env = dict(os.environ)
-    env['AWS_ACCESS_KEY_ID'] = os.environ['CF_R2_ACCESS_KEY_ID']
-    env['AWS_SECRET_ACCESS_KEY'] = os.environ['CF_R2_SECRET_ACCESS_KEY']
-    env['AWS_DEFAULT_REGION'] = 'auto'
+    if provider == 'r2':
+        env['AWS_ACCESS_KEY_ID'] = os.environ['CF_R2_ACCESS_KEY_ID']
+        env['AWS_SECRET_ACCESS_KEY'] = os.environ['CF_R2_SECRET_ACCESS_KEY']
+        env['AWS_DEFAULT_REGION'] = 'auto'
+    # s3: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_DEFAULT_REGION are
+    # expected to already be in the environment, under the CLI's own standard
+    # names, exactly as a regulation-scoped .env would set them.
     return env
 
 
@@ -86,9 +111,13 @@ def reg_dir_for(regulation):
     return reg_dir
 
 
-def bucket_for(reg_dir):
+def _state_config(reg_dir):
     cfg_path = os.path.join(reg_dir, 'analyzer_config.yaml')
-    cfg = yaml.safe_load(open(cfg_path)) or {}
+    return yaml.safe_load(open(cfg_path)) or {}, cfg_path
+
+
+def bucket_for(reg_dir):
+    cfg, cfg_path = _state_config(reg_dir)
     bucket = (cfg.get('state') or {}).get('bucket')
     if not bucket:
         bucket = ((cfg.get('report') or {}).get('full_export') or {}).get('bucket')
@@ -97,9 +126,19 @@ def bucket_for(reg_dir):
     return bucket
 
 
-def s3_cp(src, dst, env):
+def provider_for(reg_dir):
+    """'r2' (default) or 's3', from `state.provider`. Defaulting to r2 means no
+    existing regulation's config needs to change for this to work."""
+    cfg, cfg_path = _state_config(reg_dir)
+    provider = (cfg.get('state') or {}).get('provider', 'r2')
+    if provider not in ('r2', 's3'):
+        raise SystemExit(f"state.provider must be 'r2' or 's3' in {cfg_path}, got {provider!r}")
+    return provider
+
+
+def s3_cp(src, dst, env, provider):
     """Run `aws s3 cp`, returning (ok, stderr). Never raises on a plain missing key."""
-    proc = subprocess.run(['aws', 's3', 'cp', src, dst, '--endpoint-url', r2_endpoint()],
+    proc = subprocess.run(['aws', 's3', 'cp', src, dst, *endpoint_args(provider)],
                            env=env, capture_output=True, text=True)
     return proc.returncode == 0, proc.stderr
 
@@ -159,9 +198,9 @@ def extract_attachment_cache_tar(src_tar, reg_dir):
     return written, kept
 
 
-def s3_size(uri, env):
+def s3_size(uri, env, provider):
     """Size in bytes of an existing S3 object, or None if it isn't there."""
-    proc = subprocess.run(['aws', 's3', 'ls', uri], env=env,
+    proc = subprocess.run(['aws', 's3', 'ls', uri, *endpoint_args(provider)], env=env,
                           capture_output=True, text=True)
     if proc.returncode != 0 or not proc.stdout.strip():
         return None
@@ -172,17 +211,18 @@ def s3_size(uri, env):
 
 
 def pull(args):
-    require_creds()
     reg_dir = reg_dir_for(args.regulation)
+    provider = provider_for(reg_dir)
+    require_creds(provider)
     bucket = bucket_for(reg_dir)
-    env = s3_env()
+    env = s3_env(provider)
     prefix = f'state/{args.regulation}'
 
     with tempfile.TemporaryDirectory() as tmp:
         for fname in args.files:
             key = f'{prefix}/{remote_name(fname)}'
             local_gz = os.path.join(tmp, fname + '.gz')
-            ok, err = s3_cp(f's3://{bucket}/{key}', local_gz, env)
+            ok, err = s3_cp(f's3://{bucket}/{key}', local_gz, env, provider)
             if not ok:
                 if 'does not exist' in err or 'Not Found' in err or '404' in err:
                     # The attachment cache is an optimisation, not state: a run
@@ -248,10 +288,11 @@ def pull(args):
 
 
 def push(args):
-    require_creds()
     reg_dir = reg_dir_for(args.regulation)
+    provider = provider_for(reg_dir)
+    require_creds(provider)
     bucket = bucket_for(reg_dir)
-    env = s3_env()
+    env = s3_env(provider)
     prefix = f'state/{args.regulation}'
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -279,7 +320,7 @@ def push(args):
             # State only ever grows. A push that would shrink it sharply means
             # something upstream went wrong — a failed pull, a truncated fetch,
             # a half-written parquet — and pushing it destroys the only backup.
-            remote_size = s3_size(f's3://{bucket}/{key}', env)
+            remote_size = s3_size(f's3://{bucket}/{key}', env, provider)
             new_size = os.path.getsize(local_gz)
             if remote_size and new_size < remote_size * 0.9 and not args.force:
                 raise SystemExit(
@@ -287,7 +328,7 @@ def push(args):
                     f'gzipped vs {remote_size:,} remote ({new_size / remote_size:.0%}).\n'
                     f'State should only grow. Check that the pull succeeded and the '
                     f'local file is complete.\nPass --force if the shrink is intended.')
-            ok, err = s3_cp(local_gz, f's3://{bucket}/{key}', env)
+            ok, err = s3_cp(local_gz, f's3://{bucket}/{key}', env, provider)
             if not ok:
                 raise SystemExit(f'Failed uploading s3://{bucket}/{key}:\n{err}')
             print(f'  pushed {fname} ({os.path.getsize(src):,} bytes -> s3://{bucket}/{key})')

@@ -32,10 +32,19 @@ stances:
       position at all rather than this one.
 
   - name: "Concern: Part 60 excludes undocumented immigrants"
-    indicator: "Argues the enumeration must count the whole number of persons regardless of legal status; invokes Article I, Section 2 or the Fourteenth Amendment; warns of undercounts of immigrant communities"
+    indicator: >
+      Discusses excluding undocumented/non-citizen immigrants from the enumeration used for
+      apportionment — either objecting to it (arguing the count must include the whole number of
+      persons regardless of legal status, invoking the Fourteenth Amendment, warning of undercounts
+      of immigrant communities) or endorsing it (arguing only citizens or legal residents should be
+      counted, invoking Article I Section 2 or citizenship-based representation).
 
   - name: "Concern: Apportionment and redistricting effects"
-    indicator: "Warns that changing who is counted shifts House seats, Electoral College votes, or the population base used to draw legislative and congressional districts"
+    indicator: >
+      Discusses how changing who is counted shifts House seats, Electoral College votes, or the
+      population base used to draw legislative and congressional districts — whether warning this
+      is harmful (diluting representation for undercounted communities) or endorsing it as a needed
+      correction (restoring representation to citizens/legal residents).
 
   - name: "Concern: Administrative or tax-records linkage"
     indicator: "Objects to (or endorses) using IRS, DHS/USCIS, SSA, state, or commercial administrative data to assess legal status or residence; data-quality, coverage, or privacy problems with record linkage"
@@ -44,7 +53,11 @@ stances:
     indicator: "Objects to the enumeration window; argues it miscounts students, seasonal residents, people experiencing homelessness, or those who move"
 
   - name: "Concern: Part 70 removes race and ethnicity questions"
-    indicator: "Objects to removing race and ethnicity questions; argues the data are essential for enforcing the Voting Rights Act, civil-rights compliance, or public-health and research uses"
+    indicator: >
+      Discusses removing race and ethnicity questions from the census — either objecting to it
+      (arguing the data are essential for enforcing the Voting Rights Act, civil-rights compliance,
+      or public-health and research uses) or endorsing it (arguing such questions are irrelevant,
+      divisive, or should not factor into a headcount).
 
   - name: "Concern: Restrictions on sexual orientation / gender identity data"
     indicator: "Objects to (or endorses) prohibiting sexual-orientation or gender-identity questions, or limiting demographic questions to biological sex only"
@@ -68,14 +81,18 @@ stances:
     indicator: "Argues the rule's regulatory impact analysis, cost-benefit analysis, or economic analysis is inadequate, missing, incomplete, or does not satisfy Executive Order 12866 / 13563 analytical requirements"
 
   - name: "Concern: Constitutional and case law concerns"
-    indicator: "Raises constitutional objections (e.g. Enumeration Clause, Fourteenth Amendment, separation of powers, equal protection) or cites case law/precedent as a legal basis for challenging the rule"
+    indicator: >
+      Raises constitutional or case-law arguments about the rule — either challenging it (equal
+      protection, separation of powers, the Fourteenth Amendment) or citing constitutional or
+      case-law grounds to support it (the Enumeration Clause, Article I Section 2, apportionment
+      case law such as Franklin v. Massachusetts).
 
   - name: "Concern: 30-day comment period too short"
     indicator: "States that the comment period is too short, inadequate, or insufficient for meaningful public participation; asks for an extension."
 
   - name: "Concern: Rule determined to be significant"
     indicator: "References the rule's designation as a 'significant regulatory action' under Executive Order 12866 (or similar significance determination) and raises this designation as an issue or highlights it as otherwise important"
-    
+
 # -------------------------------------------------------------------
 # Entity Types — the model classifies each commenter into exactly one.
 # -------------------------------------------------------------------
@@ -289,6 +306,7 @@ instructions:
   - "Be objective and avoid inserting personal opinions."
   - "For entity type, prioritize explicit self-identification in the comment text over the submitter name."
   - "This rule has two independent parts (Part 60 on who is counted, Part 70 on which questions are asked); a comment may address only one, and opposing one part is still Oppose."
+  - "If a comment endorses one part and objects to the other (e.g. supports the citizenship-based residence criteria but wants to keep the race/ethnicity questions), select BOTH 'Position: Support the proposed rule' AND 'Position: Oppose the proposed rule' — it is genuinely mixed, not one or the other."
   - "Agreeing with a general goal the rule invokes (e.g. immigration enforcement, or protecting privacy) is not the same as endorsing this rule."
 
 # -------------------------------------------------------------------
@@ -326,10 +344,14 @@ report:
 # -------------------------------------------------------------------
 # Remote state backup (sync_state.py) — lets a scheduled CI run resume from the
 # last run's source.csv + full_run.parquet even though both are gitignored.
-# Reuses the same R2 bucket as report.full_export.bucket.
+# This regulation's own AWS S3 bucket, not the project's shared R2 bucket —
+# `provider: s3` tells sync_state.py to skip the R2 endpoint and use plain S3.
+# Credentials come from regulations/usbc-2026-0628/.env (gitignored), not the
+# project's root .env.
 # -------------------------------------------------------------------
 state:
-  bucket: "regulations-comments"
+  provider: s3
+  bucket: "handsoffourcensus"
 
 # -------------------------------------------------------------------
 # Form-letter campaign detection (MinHash near-duplicate clustering).

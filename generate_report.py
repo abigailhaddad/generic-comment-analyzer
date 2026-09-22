@@ -164,37 +164,25 @@ def compute_briefing(comments: List[Dict[str, Any]]) -> Dict[str, Any]:
         if not isinstance(stances, list):
             stances = []
 
-        # Use verified_stance if available, otherwise fall back to stances list
-        verified = analysis.get('verified_stance')
         comment_text = c.get('comment_text', '') or ''
         stance_entry = {
             'name': 'Anonymous' if (c.get('submitter', '') or '').strip() in ('Anonymous Anonymous', '') else c.get('submitter', '').strip(),
             'id': c.get('id', ''),
             'sentence': comment_text[:200],
         }
-        if verified == 'Unclear':
+        # Position bucket for this comment — the single source of truth (also
+        # reused for the per-concern split just below), so the top-line
+        # oppose/support/unclear counts can never disagree with it.
+        pos = comment_position(c)
+        if pos == 'Oppose':
+            oppose_count += 1
+        elif pos == 'Support':
+            support_count += 1
+            support_comments.append(stance_entry)
+        else:
             unclear_count += 1
             unclear_comments.append(stance_entry)
-        else:
-            bucketed = False
-            for s in stances:
-                if 'Position: Oppose' in s:
-                    oppose_count += 1
-                    bucketed = True
-                    break
-                elif 'Position: Support' in s:
-                    support_count += 1
-                    support_comments.append(stance_entry)
-                    bucketed = True
-                    break
-            # A comment with neither an Oppose nor a Support position tag is
-            # ambiguous — bucket it as Unclear so oppose+support+unclear ≈ 100%.
-            if not bucketed:
-                unclear_count += 1
-                unclear_comments.append(stance_entry)
 
-        # Position bucket for this comment (reused for the per-concern split).
-        pos = comment_position(c)
         for s in stances:
             if s.startswith('Concern:'):
                 label = s.replace('Concern: ', '')
@@ -564,9 +552,15 @@ def _snippet(text: str, n: int = 70) -> str:
 def comment_position(c: Dict[str, Any]) -> str:
     """Bucket a comment into Oppose / Support / Unclear from already-computed data.
 
-    Prefers the second-pass `verified_stance` when present, else the Position tag
+    Prefers the second-pass `verified_stance` when present, else the Position tag(s)
     in the stances list. Used both for the stance stat cards and to derive each
     campaign's overall stance.
+
+    A comment can legitimately carry BOTH Position tags (e.g. it endorses one part
+    of a multi-part rule and objects to another) — that isn't a coin flip decided
+    by which tag the model happened to list first. Oppose wins deterministically,
+    matching the same "opposing any part is still Oppose" principle regulations
+    already write into their own stance instructions.
     """
     analysis = c.get('analysis') or {}
     verified = analysis.get('verified_stance')
@@ -577,11 +571,10 @@ def comment_position(c: Dict[str, Any]) -> str:
         stances = stances.tolist()
     if not isinstance(stances, list):
         stances = []
-    for s in stances:
-        if 'Position: Oppose' in s:
-            return 'Oppose'
-        if 'Position: Support' in s:
-            return 'Support'
+    if any('Position: Oppose' in s for s in stances):
+        return 'Oppose'
+    if any('Position: Support' in s for s in stances):
+        return 'Support'
     return 'Unclear'
 
 
