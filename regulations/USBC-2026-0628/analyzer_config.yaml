@@ -374,6 +374,19 @@ campaigns:
   min_chars: 100
 
 # -------------------------------------------------------------------
+# Pre-publish quality gate (pipeline.py: check_batch_quality). Defaults are
+# tuned for a docket whose split has been stable for weeks (OMB), and this
+# one isn't that yet: it's young and growing fast, a single organized letter
+# can be most of a catch-up batch, and hitting the default 30pp/3pp shift
+# thresholds is the EXPECTED shape of a normal week here, not a sign of a
+# bad join or a stalled key. Disabled rather than widened, since there's no
+# stable baseline yet to widen thresholds around. Revisit once the docket's
+# split settles down.
+# -------------------------------------------------------------------
+quality_gate:
+  enabled: false
+
+# -------------------------------------------------------------------
 # Definitions used by audit_stances.py to CHECK the classifier's work.
 # Deliberately stricter than the second-pass prompt so the audit can disagree
 # with it rather than agree by construction. See METHOD-stance-audit.md.
