@@ -34,11 +34,17 @@ name: Update regulation from regulations.gov
 
 on:
   schedule:
-    # Catch-up ingest — 9am/11am/1pm/3pm/5pm US Eastern (UTC-4). Ingest only.
-    - cron: '23 13-21/2 * * *'
-    # Daily publish — 7pm US Eastern, after that day's OMB posting is done.
+    # Catch-up ingest — ~9am/11am/1pm/3pm/5pm US Eastern (UTC-4). Ingest only.
+    # Offset to :53 (not :23, like update-usbc.yml) deliberately: both
+    # workflows share the same REGULATIONS_API_KEY secret, so firing at the
+    # same minute meant every scheduled window had both regulations hitting
+    # the same ~500-calls/hour budget at once, and neither could make real
+    # progress on a large backlog. Splitting them by 30 minutes lets one
+    # regulation's run actually use the budget before the other starts.
+    - cron: '53 13-21/2 * * *'
+    # Daily publish — ~7pm US Eastern, after that day's OMB posting is done.
     # Ingest + report + deploy. Nothing scheduled overnight (8pm-8am ET).
-    - cron: '23 23 * * *'
+    - cron: '53 23 * * *'
   workflow_dispatch:
     inputs:
       regulation:
