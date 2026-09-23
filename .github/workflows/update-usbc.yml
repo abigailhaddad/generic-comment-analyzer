@@ -146,12 +146,45 @@ jobs:
           echo "added=${added:-0}" >> "$GITHUB_OUTPUT"
           echo "fetched ${added:-0} new comment(s) this run"
 
+      # No API key, no rate limit, so this always attempts to fill whatever is
+      # STILL missing after the live fetch above — including a run where that
+      # step got 0 because the hourly budget was already spent before this run
+      # even started. It is a supplement, not a guaranteed-current replacement
+      # for the live API (see fetch_comments_mirrulations.py's own docstring —
+      # confirmed 2026-09-23 it was ahead of our own key for this docket, but
+      # that isn't guaranteed for every docket or every day), so it always
+      # runs AFTER, never instead of, the fetch step above. `always()` so a
+      # hard failure in the fetch step doesn't skip the one source that might
+      # still get something this run.
+      - name: Backfill remainder from the Mirrulations mirror (no rate limit)
+        id: mirror
+        if: always()
+        run: |
+          set -o pipefail
+          python fetch_comments_mirrulations.py --regulation "$REGULATION" | tee mirror.log
+          added=$(grep -oE 'appended [0-9,]+ rows' mirror.log | grep -oE '[0-9,]+' | tr -d ',' || true)
+          echo "added=${added:-0}" >> "$GITHUB_OUTPUT"
+          echo "pulled ${added:-0} more comment(s) from the Mirrulations mirror"
+
+      # Combines both sources into the one signal the rest of the workflow
+      # gates on, so a run where the live key was fully rate-limited but the
+      # mirror still had something new doesn't skip analysis, report and
+      # deploy. `|| 0` covers a step above failing outright and never setting
+      # its output — this must always resolve to a number.
+      - name: Combine fetch totals
+        id: total
+        if: always()
+        run: |
+          total=$(( ${{ steps.fetch.outputs.added || 0 }} + ${{ steps.mirror.outputs.added || 0 }} ))
+          echo "added=$total" >> "$GITHUB_OUTPUT"
+          echo "combined total: $total new comment(s) this run"
+
       - name: Nothing new — done
-        if: steps.fetch.outputs.added == '0'
-        run: echo "No new comments on the docket (or none fetched) — nothing to do this run."
+        if: steps.total.outputs.added == '0'
+        run: echo "No new comments on the docket (or none fetched from either source) — nothing to do this run."
 
       - name: Install full dependencies
-        if: ${{ steps.fetch.outputs.added != '0' || env.IS_PUBLISH == 'true' || github.event.inputs.preview == 'true' }}
+        if: ${{ steps.total.outputs.added != '0' || env.IS_PUBLISH == 'true' || github.event.inputs.preview == 'true' }}
         run: pip install -r requirements.txt
 
       # The attachment cache comes down with the parquet: it is what lets this run
@@ -162,21 +195,21 @@ jobs:
       # A preview-only run (no new comments) still needs this: it renders
       # whatever the last analysis produced, it doesn't redo the analysis.
       - name: Pull full_run.parquet + attachment cache from S3 (now that there's real work to do)
-        if: ${{ steps.fetch.outputs.added != '0' || env.IS_PUBLISH == 'true' || github.event.inputs.preview == 'true' }}
+        if: ${{ steps.total.outputs.added != '0' || env.IS_PUBLISH == 'true' || github.event.inputs.preview == 'true' }}
         run: python sync_state.py pull --regulation "$REGULATION" --files full_run.parquet attachment_cache --allow-missing
 
       - name: Run analysis pipeline (incremental)
-        if: ${{ steps.fetch.outputs.added != '0' || env.IS_PUBLISH == 'true' }}
+        if: ${{ steps.total.outputs.added != '0' || env.IS_PUBLISH == 'true' }}
         run: python pipeline.py --regulation "$REGULATION" --workers 8
 
-      # Runs whenever the fetch step completed AND added anything, even if the
+      # Runs whenever either fetch source added anything, even if the
       # pipeline above failed partway — a successful fetch is never lost,
       # regardless of how analysis went. (The extra "!= ''" excludes the case
-      # where the fetch step itself failed outright and never set the output —
+      # where the total step itself never ran or never set the output —
       # always() alone would otherwise still try to run this.) Pushes both
       # files back together so they stay paired.
       - name: Push state to S3 (source.csv, full_run.parquet, attachment cache)
-        if: ${{ always() && steps.fetch.outputs.added != '' && steps.fetch.outputs.added != '0' }}
+        if: ${{ always() && steps.total.outputs.added != '' && steps.total.outputs.added != '0' }}
         run: python sync_state.py push --regulation "$REGULATION"
 
       # The catch-up runs deliberately fetch ahead of the publish run, so by
@@ -259,11 +292,11 @@ jobs:
           fi
 
       # Also regenerates on any catch-up run that fetched+classified new
-      # comments (steps.fetch.outputs.added != '0'), so the preview sync below
-      # stays current through the day, not just at the evening publish or an
-      # explicit manual preview dispatch.
+      # comments from either source (steps.total.outputs.added != '0'), so
+      # the preview sync below stays current through the day, not just at
+      # the evening publish or an explicit manual preview dispatch.
       - name: Generate report
-        if: ${{ steps.fetch.outputs.added != '0' || (env.IS_PUBLISH == 'true' && steps.pub.outputs.changed == 'true') || github.event.inputs.preview == 'true' }}
+        if: ${{ steps.total.outputs.added != '0' || (env.IS_PUBLISH == 'true' && steps.pub.outputs.changed == 'true') || github.event.inputs.preview == 'true' }}
         run: python ../../generate_report.py --parquet full_run.parquet --output index.html
         working-directory: regulations/${{ env.REGULATION }}
 
@@ -278,7 +311,7 @@ jobs:
       # prefix down (or a presigned URL) instead of running the pipeline
       # themselves.
       - name: Sync preview report to S3 (private — not public)
-        if: ${{ steps.fetch.outputs.added != '0' || (env.IS_PUBLISH == 'true' && steps.pub.outputs.changed == 'true') || github.event.inputs.preview == 'true' }}
+        if: ${{ steps.total.outputs.added != '0' || (env.IS_PUBLISH == 'true' && steps.pub.outputs.changed == 'true') || github.event.inputs.preview == 'true' }}
         run: |
           # Reuses sync_state.py's own bucket_for(), the same lookup the state
           # push/pull steps above already rely on, instead of re-parsing

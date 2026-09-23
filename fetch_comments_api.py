@@ -159,17 +159,13 @@ def list_comment_ids(docket, key, since=None):
     return seen
 
 
-def row_for(docid, key, attrs_out=None):
-    """One CSV row from the detail endpoint, attachments included.
+def attrs_to_row(docid, a):
+    """One CSV row (minus attachments) from a comment's raw API attributes.
 
-    `attrs_out`, if given, is updated with the raw API attributes. The bulk
-    export has no column for modifyDate -- the timestamp of the withdrawal
-    itself -- so a caller that wants it has no way to read it back off the row.
+    Split out from row_for() so a second source of the same v4 comment
+    resource shape -- the Mirrulations mirror, see fetch_comments_mirrulations.py
+    -- can build an identical row without duplicating the schema mapping.
     """
-    d = get(f'comments/{docid}', {'include': 'attachments'}, key)
-    a = d['data']['attributes']
-    if attrs_out is not None:
-        attrs_out.update(a)
     row = {c: '' for c in COLUMNS}
     row['Document ID'] = docid
     for src, dst in FIELD_MAP.items():
@@ -193,6 +189,21 @@ def row_for(docid, key, attrs_out=None):
         if v:
             # Bulk export style: 2026-07-13T04:00Z
             row[dst] = v.replace(':00Z', 'Z') if v.endswith(':00:00Z') else v
+    return row
+
+
+def row_for(docid, key, attrs_out=None):
+    """One CSV row from the detail endpoint, attachments included.
+
+    `attrs_out`, if given, is updated with the raw API attributes. The bulk
+    export has no column for modifyDate -- the timestamp of the withdrawal
+    itself -- so a caller that wants it has no way to read it back off the row.
+    """
+    d = get(f'comments/{docid}', {'include': 'attachments'}, key)
+    a = d['data']['attributes']
+    if attrs_out is not None:
+        attrs_out.update(a)
+    row = attrs_to_row(docid, a)
 
     urls = []
     for inc in d.get('included', []) or []:
@@ -287,17 +298,29 @@ def check_withdrawn(listed, known, key, csv_path):
 
     print(f'checking {len(candidates):,} already-held comment(s) whose record changed')
     found = 0
+    # candidates preserves listed's insertion order, which list_comment_ids
+    # pages in ascending lastModifiedDate order, so the modified date of the
+    # last candidate actually verified is a safe watermark even on an early
+    # break: everything at or before it is done, nothing after it was skipped.
+    checked_through = mark
+    rate_limited = False
     for doc_id in candidates:
         if doc_id in already:
+            checked_through = listed.get(doc_id) or checked_through
             continue
         attrs = {}
         try:
             row = row_for(doc_id, key, attrs_out=attrs)
         except RateLimited:
-            # Keep what we found and leave the mark alone, so the next run
-            # re-checks this window rather than skipping past it.
+            # Save the watermark up to here rather than leaving the mark
+            # alone: a candidate set too big to clear in one run's budget
+            # would otherwise re-check the SAME comments every run forever
+            # instead of shrinking, permanently starving new-comment fetches
+            # that share the same hourly call budget.
             print('Rate limited during the withdrawal check — will resume next run.')
+            rate_limited = True
             break
+        checked_through = listed.get(doc_id) or checked_through
         if (row.get('Is Withdrawn?') or '').lower() != 'true':
             continue
         original = {}
@@ -327,11 +350,11 @@ def check_withdrawn(listed, known, key, csv_path):
             'original_comment': original.get('Comment', ''),
         })
         found += 1
-    else:
-        # Only advance the mark when the whole candidate set was checked.
-        if high_water > mark:
-            with open(WITHDRAWN_STATE, 'w', encoding='utf-8') as f:
-                json.dump({'last_checked': high_water}, f, indent=2)
+
+    final_mark = high_water if not rate_limited else checked_through
+    if final_mark > mark:
+        with open(WITHDRAWN_STATE, 'w', encoding='utf-8') as f:
+            json.dump({'last_checked': final_mark}, f, indent=2)
 
     if found:
         record['comments'].sort(key=lambda c: c['document_id'])
@@ -404,46 +427,41 @@ def main():
     missing = [i for i in ids if i not in known]
     print(f'listing returned {len(ids):,}; {len(missing):,} not in the CSV')
 
-    # Withdrawals change a comment we already hold, so they never show up as
-    # "missing". Check before the early return: a day with no new comments can
-    # still have withdrawals.
-    if not args.dry_run:
-        check_withdrawn(ids, known, key, args.csv)
-    if args.dry_run or not missing:
+    if args.dry_run:
         for m in missing[:20]:
             print('   ', m)
-        if not args.dry_run:
-            print(f'Caught up: 0 comments missing from {args.csv}.')
         return
 
     total_missing = len(missing)
-    if args.limit:
-        missing = missing[:args.limit]
+    fetch_ids = missing[:args.limit] if args.limit else missing
 
-    # Append as we go rather than accumulating and writing at the end: when the
-    # hourly budget runs out mid-run we keep every comment fetched so far
-    # instead of throwing the whole run away.
+    # Fetch genuinely new comments FIRST, ahead of the withdrawal check below:
+    # both draw on the same hourly call budget, and a backlog of new comments
+    # is the higher priority of the two. Append as we go rather than
+    # accumulating and writing at the end, so when the budget runs out mid-run
+    # we keep every comment fetched so far instead of throwing the run away.
     written = 0
     stopped_early = False
-    with open(args.csv, 'a', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=COLUMNS)
-        for n, docid in enumerate(missing, 1):
-            try:
-                writer.writerow(row_for(docid, key))
-            except RateLimited:
-                print(f'\nRate limit reached after {written:,} — stopping here and '
-                      f'keeping what was fetched.')
-                stopped_early = True
-                break
-            except Exception as e:
-                print(f'\n  FAILED {docid}: {e}')
-                continue
-            written += 1
-            if written % 50 == 0:
-                f.flush()
-            print(f'  fetched {n:,}/{len(missing):,}', end='\r', flush=True)
-    print()
-    print(f'appended {written:,} rows to {args.csv} (now {len(known) + written:,})')
+    if fetch_ids:
+        with open(args.csv, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=COLUMNS)
+            for n, docid in enumerate(fetch_ids, 1):
+                try:
+                    writer.writerow(row_for(docid, key))
+                except RateLimited:
+                    print(f'\nRate limit reached after {written:,} — stopping here and '
+                          f'keeping what was fetched.')
+                    stopped_early = True
+                    break
+                except Exception as e:
+                    print(f'\n  FAILED {docid}: {e}')
+                    continue
+                written += 1
+                if written % 50 == 0:
+                    f.flush()
+                print(f'  fetched {n:,}/{len(fetch_ids):,}', end='\r', flush=True)
+        print()
+        print(f'appended {written:,} rows to {args.csv} (now {len(known) + written:,})')
 
     # Stopping early — capped or rate limited — is expected, not a failure. Exit
     # 0 either way and say how much is left, so the next scheduled run picks up.
@@ -454,6 +472,13 @@ def main():
               f'— next run will continue.')
     else:
         print(f'Caught up: 0 comments missing from {args.csv}.')
+
+    # Withdrawals change a comment we already hold, so they never show up as
+    # "missing" above. Check with whatever budget the fetch loop left behind
+    # -- even on a day with no new comments, and even after a rate limit,
+    # since check_withdrawn saves its own partial progress rather than
+    # re-checking the same candidates every run (see its watermark comment).
+    check_withdrawn(ids, known, key, args.csv)
 
 
 if __name__ == '__main__':
