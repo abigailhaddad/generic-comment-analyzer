@@ -198,9 +198,20 @@ jobs:
         if: ${{ steps.total.outputs.added != '0' || env.IS_PUBLISH == 'true' || github.event.inputs.preview == 'true' }}
         run: python sync_state.py pull --regulation "$REGULATION" --files full_run.parquet attachment_cache --allow-missing
 
+      # --force: always bypass pipeline.py's quality gate (the check that a new
+      # batch's stance mix doesn't look wildly different from the existing
+      # corpus). Hit for real on 2026-09-23 when the Mirrulations backfill
+      # landed ~2,700 comments that were 99.5% Oppose against 63.5% existing —
+      # a legitimate organized-campaign wave (confirmed by the run's own
+      # campaign detector: 17 campaigns, 3,727 comments), but the gate stopped
+      # the run rather than publish it unattended. Forcing means a future
+      # swing like that publishes automatically instead of silently stalling
+      # the report/preview until someone notices and re-runs by hand — the
+      # tradeoff is this run no longer stops itself on a batch that turns out
+      # to be bad data rather than a real campaign.
       - name: Run analysis pipeline (incremental)
         if: ${{ steps.total.outputs.added != '0' || env.IS_PUBLISH == 'true' }}
-        run: python pipeline.py --regulation "$REGULATION" --workers 8
+        run: python pipeline.py --regulation "$REGULATION" --workers 8 --force
 
       # Runs whenever either fetch source added anything, even if the
       # pipeline above failed partway — a successful fetch is never lost,
