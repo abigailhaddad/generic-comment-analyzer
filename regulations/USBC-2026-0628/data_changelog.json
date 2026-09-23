@@ -1,15 +1,19 @@
 {
-  "last_total": 2508,
+  "last_total": 5201,
   "entries": [
+    {
+      "date": "2026-09-23",
+      "note": "Updated to 5,201 comments (+2,693 new)."
+    },
     {
       "date": "2026-09-23",
       "note": "Published analysis of 2,508 public comments."
     }
   ],
   "last_shares": {
-    "Support": 35.048,
-    "Oppose": 63.477,
-    "none": 0.638,
-    "other": 0.837
+    "Support": 17.093,
+    "Oppose": 82.119,
+    "none": 0.385,
+    "other": 0.404
   }
 }
