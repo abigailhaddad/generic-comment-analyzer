@@ -1,50 +1,36 @@
 name: Update regulation from regulations.gov
 
 # Replaces the manual "download the bulk CSV, run the pipeline, deploy" loop with
-# scheduled runs against the regulations.gov v4 API. State (source.csv,
+# on-demand runs against the regulations.gov v4 API. State (source.csv,
 # full_run.parquet) is gitignored and lives in Cloudflare R2 instead — see
 # sync_state.py and the "Automated updates" section of CLAUDE.md.
 #
-# Two schedules, gated by which one fired (github.event.schedule):
-#   - Catch-up ingest, every couple of hours during the day: pull state, fetch
-#     new comments, run the pipeline, push state. No report, no deploy, no
-#     git commit. Its only job is to keep chipping away at the backlog.
-#   - Daily publish, once in the evening after that day's posting is done:
-#     everything ingest does, then updates the changelog, renders the report,
-#     and deploys (Netlify + the full export to R2).
+# MANUAL ONLY — no `schedule:` trigger. This and update-usbc.yml share the
+# same REGULATIONS_API_KEY secret; USBC-2026-0628 is the one running on a
+# cron schedule, and this workflow firing on the same budget alongside it
+# was starving both regulations of the ~500-calls/hour quota. Run it by hand
+# (workflow_dispatch) when you actually want an omb-financial-assistance
+# update; nothing runs here on its own.
+#
+# The `deploy` input still distinguishes two modes when you do dispatch it:
+#   - deploy=false: catch-up ingest — pull state, fetch new comments, run the
+#     pipeline, push state. No report, no deploy, no git commit.
+#   - deploy=true (default): everything ingest does, then updates the
+#     changelog, renders the report, and deploys (Netlify + the full export
+#     to R2).
 #
 # The regulations.gov API key is capped at ~500 "comment" calls/hour, so a big
 # backlog can't always be caught up in one run — fetch_comments_api.py backs
 # off on 429 and keeps going, so a single run can legitimately sit through
 # more than one hourly window (see timeout-minutes below). Either way the job
 # succeeds; a run that stops early because comments are still missing just
-# logs how many, for the next scheduled run to pick up.
+# logs how many, for the next run to pick up.
 #
-# A CATCH-UP day with nothing new to fetch is designed to be nearly free: the
-# fetch step runs before any heavy dependency install or the (larger) parquet
+# A run with nothing new to fetch is designed to be nearly free: the fetch
+# step runs before any heavy dependency install or the (larger) parquet
 # download, and if it finds nothing missing, everything else is skipped.
-#
-# The PUBLISH run is deliberately NOT gated that way. Catch-up runs fetch ahead
-# of it, so by the evening there is usually nothing left to fetch — and gating
-# publish on "did this run fetch something" meant the site was never updated
-# precisely when the catch-up runs had done their job. Publish instead asks
-# whether anything is UNPUBLISHED: pipeline.py rewrites data_changelog.json only
-# when the comment total has grown past the last published entry, so a dirty
-# changelog is the signal, and a clean one means the live report is current.
 
 on:
-  schedule:
-    # Catch-up ingest — ~9am/11am/1pm/3pm/5pm US Eastern (UTC-4). Ingest only.
-    # Offset to :53 (not :23, like update-usbc.yml) deliberately: both
-    # workflows share the same REGULATIONS_API_KEY secret, so firing at the
-    # same minute meant every scheduled window had both regulations hitting
-    # the same ~500-calls/hour budget at once, and neither could make real
-    # progress on a large backlog. Splitting them by 30 minutes lets one
-    # regulation's run actually use the budget before the other starts.
-    - cron: '53 13-21/2 * * *'
-    # Daily publish — ~7pm US Eastern, after that day's OMB posting is done.
-    # Ingest + report + deploy. Nothing scheduled overnight (8pm-8am ET).
-    - cron: '53 23 * * *'
   workflow_dispatch:
     inputs:
       regulation:
@@ -72,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     # A run never waits out the hourly rate limit — fetch_comments_api.py stops
     # as soon as the budget is spent, keeping everything it fetched, and the
-    # next scheduled run continues. So a run is bounded by one budget's worth of
+    # next dispatched run continues. So a run is bounded by one budget's worth of
     # comments (~485 after the ~14 listing calls) plus analysis, not by hours of
     # sleeping. A drained run exits in well under a minute.
     timeout-minutes: 60
@@ -88,10 +74,10 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       REGULATION: ${{ github.event.inputs.regulation || 'omb-financial-assistance' }}
       MAX_NEW: ${{ github.event.inputs.max_new || '5000' }}
-      # True on the daily-publish schedule, or on a manual run with deploy left
-      # at its default-true. False on the catch-up schedule (unless dispatched
-      # by hand with deploy explicitly enabled — same input either way).
-      IS_PUBLISH: ${{ (github.event_name == 'workflow_dispatch' && (github.event.inputs.deploy || 'true') == 'true') || (github.event_name == 'schedule' && github.event.schedule == '23 23 * * *') }}
+      # Manual-only workflow (no schedule trigger), so this is just the
+      # `deploy` input, left at its default-true unless you dispatch with it
+      # unchecked.
+      IS_PUBLISH: ${{ (github.event.inputs.deploy || 'true') == 'true' }}
     steps:
       - uses: actions/checkout@v4
         with:
