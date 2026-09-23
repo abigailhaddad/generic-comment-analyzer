@@ -801,40 +801,47 @@ def analyze_comments_parallel(comments: List[Dict[str, Any]], model: str = "gemi
 
                 # Collect results as they complete
                 batch_results = []
-                for future in as_completed(future_to_comment):
-                    try:
-                        result = future.result()
-                    except LLMCredentialsError as e:
-                        # Every remaining comment would fail the same way. Keep
-                        # what this batch already produced, checkpoint it, and
-                        # abort — this needs a human, not a retry.
-                        for f in future_to_comment:
-                            f.cancel()
-                        if batch_results:
-                            _append_checkpoint(batch_results)
-                        logger.error(
-                            "LLM credentials rejected (key invalid or out of credit): %s", e)
-                        logger.error(
-                            "Aborting after %d comments analyzed this run; everything "
-                            "already analyzed is checkpointed and will be reused.",
-                            len(analyzed_comments) + len(batch_results))
-                        raise
-                    except KeyboardInterrupt:
-                        # Cancel whatever hasn't started yet so we don't wait on the
-                        # full batch; in-flight API calls are left to finish rather
-                        # than killed mid-request. Checkpoint what completed so the
-                        # next run resumes from here instead of redoing it.
-                        for f in future_to_comment:
-                            f.cancel()
-                        if batch_results:
-                            _append_checkpoint(batch_results)
-                        logger.warning(
-                            "Interrupted (Ctrl-C). Checkpointed %d comment(s) analyzed "
-                            "this run (%d total so far); re-run to resume from here.",
-                            len(batch_results), len(analyzed_comments) + len(batch_results))
-                        raise
-                    batch_results.append(result)
-                    overall_pbar.update(1)  # Update overall progress bar
+                try:
+                    for future in as_completed(future_to_comment):
+                        try:
+                            result = future.result()
+                        except LLMCredentialsError as e:
+                            # Every remaining comment would fail the same way. Keep
+                            # what this batch already produced, checkpoint it, and
+                            # abort — this needs a human, not a retry.
+                            for f in future_to_comment:
+                                f.cancel()
+                            if batch_results:
+                                _append_checkpoint(batch_results)
+                            logger.error(
+                                "LLM credentials rejected (key invalid or out of credit): %s", e)
+                            logger.error(
+                                "Aborting after %d comments analyzed this run; everything "
+                                "already analyzed is checkpointed and will be reused.",
+                                len(analyzed_comments) + len(batch_results))
+                            raise
+                        batch_results.append(result)
+                        overall_pbar.update(1)  # Update overall progress bar
+                except KeyboardInterrupt:
+                    # Wraps the WHOLE loop, not just future.result(): Ctrl-C almost
+                    # always lands while as_completed() is blocked waiting for the
+                    # next future to finish, not during the near-instant
+                    # future.result() call once one already has -- catching it only
+                    # around future.result() (as a previous version of this handler
+                    # did) meant it was bypassed in the common case, silently
+                    # skipping the checkpoint below. Cancel whatever hasn't started
+                    # yet so we don't wait on the full batch; in-flight API calls are
+                    # left to finish rather than killed mid-request. Checkpoint what
+                    # completed so the next run resumes from here instead of redoing it.
+                    for f in future_to_comment:
+                        f.cancel()
+                    if batch_results:
+                        _append_checkpoint(batch_results)
+                    logger.warning(
+                        "Interrupted (Ctrl-C). Checkpointed %d comment(s) analyzed "
+                        "this run (%d total so far); re-run to resume from here.",
+                        len(batch_results), len(analyzed_comments) + len(batch_results))
+                    raise
 
                 # Maintain original order within batch
                 comment_id_to_result = {result['id']: result for result in batch_results}

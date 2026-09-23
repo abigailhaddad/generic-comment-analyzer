@@ -35,8 +35,11 @@ import yaml
 from campaign_similarity import make_campaign_minhash
 
 
-def load_roster(reg_dir):
-    cfg = yaml.safe_load(open(os.path.join(reg_dir, 'analyzer_config.yaml'))) or {}
+def load_config(reg_dir):
+    return yaml.safe_load(open(os.path.join(reg_dir, 'analyzer_config.yaml'))) or {}
+
+
+def load_roster(cfg):
     entries = cfg.get('named_campaigns') or []
     roster = {}
     for e in entries:
@@ -52,7 +55,7 @@ def full_text(row):
     return (body + '\n' + att).strip() if att else body
 
 
-def audit_campaign(name, ids, comments_by_id, all_rows, near_floor, top_n):
+def audit_campaign(name, ids, comments_by_id, all_rows, near_floor, top_n, min_chars, comment_minhashes):
     member_ids = set(ids)
     matched = [comments_by_id[i] for i in ids if i in comments_by_id]
     missing_ids = [i for i in ids if i not in comments_by_id]
@@ -65,16 +68,21 @@ def audit_campaign(name, ids, comments_by_id, all_rows, near_floor, top_n):
     # — same idea as the organic campaign's canonical text in generate_report.py.
     text_counts = Counter(full_text(c) for c in matched)
     canonical = text_counts.most_common(1)[0][0]
-    canon_mh = make_campaign_minhash(canonical)
+    canon_mh = make_campaign_minhash(canonical, min_chars=min_chars)
     if canon_mh is None:
         return {'name': name, 'roster_size': len(ids), 'matched': len(matched),
                 'missing_ids': missing_ids,
-                'error': 'canonical text too short to compare (fewer than 5 words)'}
+                'error': 'canonical text too short to compare (fewer than 5 words, '
+                         f'or under the {min_chars}-char campaign eligibility floor)'}
 
-    sims = {}
-    for row in all_rows:
-        mh = make_campaign_minhash(full_text(row))
-        sims[row['id']] = canon_mh.jaccard(mh) if mh else 0.0
+    # comment_minhashes is precomputed ONCE in main() and shared across every
+    # campaign in the roster — a comment's own MinHash never depends on which
+    # campaign it's being compared against, so recomputing it per campaign
+    # (the previous shape of this function) was O(campaigns x comments) for
+    # no reason.
+    sims = {row['id']: (canon_mh.jaccard(comment_minhashes[row['id']])
+                         if comment_minhashes.get(row['id']) else 0.0)
+            for row in all_rows}
 
     lowest_members = sorted(
         ({'id': c['id'], 'sim': round(sims.get(c['id'], 0.0), 3), 'snippet': full_text(c)[:220]}
@@ -112,10 +120,12 @@ def main():
     args = ap.parse_args()
 
     reg_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'regulations', args.regulation)
-    roster = load_roster(reg_dir)
+    cfg = load_config(reg_dir)
+    roster = load_roster(cfg)
     if not roster:
         print("No named_campaigns in this regulation's config — nothing to audit.")
         return
+    min_chars = (cfg.get('campaigns') or {}).get('min_chars', 100)
 
     cols = ['id', 'comment_text', 'attachment_text']
     df = pd.read_parquet(os.path.join(reg_dir, 'full_run.parquet'), columns=cols)
@@ -123,10 +133,13 @@ def main():
     comments_by_id = {r['id']: r for r in all_rows}
 
     print(f'Auditing {len(roster)} named campaign(s) against {len(all_rows):,} comments...')
+    comment_minhashes = {row['id']: make_campaign_minhash(full_text(row), min_chars=min_chars)
+                          for row in all_rows}
     results = []
     for name, ids in roster.items():
         print(f'  {name}: {len(ids)} listed id(s)')
-        result = audit_campaign(name, ids, comments_by_id, all_rows, args.near_floor, args.top_n)
+        result = audit_campaign(name, ids, comments_by_id, all_rows, args.near_floor, args.top_n,
+                                 min_chars, comment_minhashes)
         results.append(result)
         if 'error' in result:
             print(f'    WARNING: {result["error"]}')
