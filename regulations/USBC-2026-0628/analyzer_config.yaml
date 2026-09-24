@@ -268,6 +268,15 @@ fields:
   # from entity_type_quote above: that field justifies a CATEGORY and may be any
   # phrase, not a name; this field is specifically trying to answer "whose name
   # or organization is this."
+  # Two failure modes found by testing this against 40 real comments before
+  # committing, both fixed below: (1) email addresses and home street addresses
+  # run together with a name in a mail-merge signature block ("Fred
+  # Hayfredjhay@gmail.com261 East View DrBoone, North Carolina 28607") were
+  # getting captured whole -- this docket's whole point is that regulations.gov
+  # withholds structured submitter PII, so re-surfacing a home address in a
+  # prominent report column defeats that on the cases where it matters most.
+  # (2) generic self-description ("I am a citizen of the United States of
+  # America") was sometimes extracted as if it were a name.
   - name: submitter_name
     type: quote
     label: "Identified As"
@@ -276,9 +285,21 @@ fields:
       full name, or an organization's name if writing on its behalf (prefer the organization when the
       comment speaks for one, not an individual signer's name). Use the FULL text, including any
       attachment -- letterhead, a signature block, or "on behalf of X" often carries this even when
-      the body doesn't. Must be an exact substring from the text. Leave empty if the submitter's
-      identity genuinely cannot be determined from the text (e.g. a fully anonymous, unsigned
-      comment).
+      the body doesn't.
+
+      Extract ONLY the name itself. Stop before any email address, phone number, street address, or
+      city/state/zip, even if it immediately follows the name with no space or punctuation separating
+      them -- a signature block like "Fred Hayfredjhay@gmail.com261 East View DrBoone, North Carolina
+      28607" contains the name "Fred Hay" and nothing after it belongs in this field. Never include an
+      email address or a mailing address in this field under any circumstance.
+
+      Must be an actual proper name -- a specific person's name or a specific organization's name --
+      not a self-description, role, or generic statement. "I am a citizen of the United States of
+      America", "a concerned parent", "as an attorney", "a retired teacher" are NOT names; if that is
+      all the text offers, leave this field empty rather than extract a phrase like one of those.
+
+      Must be an exact substring from the text. Leave empty if the submitter's identity genuinely
+      cannot be determined from the text (e.g. a fully anonymous, unsigned comment).
     show: [column, modal]
 
   - name: state_identified
