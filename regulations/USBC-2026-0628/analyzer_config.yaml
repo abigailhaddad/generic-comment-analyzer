@@ -282,10 +282,17 @@ fields:
     label: "Identified As"
     prompt: >
       The canonical name of whoever is actually submitting or speaking for this comment: a person's
-      full name, or an organization's name if writing on its behalf (prefer the organization when the
-      comment speaks for one, not an individual signer's name). Use the FULL text, including any
+      full name, or an organization's name if writing on its behalf. Use the FULL text, including any
       attachment -- letterhead, a signature block, or "on behalf of X" often carries this even when
       the body doesn't.
+
+      A very common pattern in this docket: a formal letter FROM an organization, SIGNED BY one of its
+      staff (e.g. "Sincerely, Jocelyn Bissonnette, Executive Director, Census Funder Collaborative").
+      In that pattern, extract the ORGANIZATION's name ("Census Funder Collaborative"), not the
+      signer's personal name -- even though the signer's name sits closer to the end of the text and
+      is easy to grab instead. The test is who the letter speaks FOR, not whose name is physically
+      closest: an individual signing in their official capacity on an organization's letterhead is
+      the organization submitting, not that person submitting personally.
 
       Extract ONLY the name itself. Stop before any email address, phone number, street address, or
       city/state/zip, even if it immediately follows the name with no space or punctuation separating
