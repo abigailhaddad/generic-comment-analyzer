@@ -139,6 +139,28 @@ def get_date_range(comments: List[Dict[str, Any]]) -> str:
     return "Unknown"
 
 
+def display_submitter(c: Dict[str, Any]) -> tuple:
+    """The name to show for who submitted a comment, and whether it's an LLM
+    inference rather than the raw regulations.gov submitter field.
+
+    Falls back to submitter_name -- a field some regulations' config declares
+    (e.g. USBC-2026-0628, where regulations.gov itself returns no submitter
+    name or organization for any comment on the docket, confirmed against the
+    raw API response) -- only when the raw CSV field is blank, so a real
+    self-reported name always wins. Returns (name, inferred): inferred is
+    True only when the fallback actually supplied something, so the report
+    can mark it (an asterisk) as read out of the comment text rather than a
+    fact from the submission record."""
+    raw = (c.get('submitter', '') or '').strip()
+    if raw and raw != 'Anonymous Anonymous':
+        return raw, False
+    analysis = c.get('analysis') or {}
+    inferred = (analysis.get('submitter_name') or '').strip() if isinstance(analysis, dict) else ''
+    if inferred:
+        return inferred, True
+    return 'Anonymous', False
+
+
 def compute_briefing(comments: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Compute briefing summary stats from analyzed comments."""
     entity_quote_field = entity_type_quote_field()
@@ -167,7 +189,8 @@ def compute_briefing(comments: List[Dict[str, Any]]) -> Dict[str, Any]:
 
         comment_text = c.get('comment_text', '') or ''
         stance_entry = {
-            'name': 'Anonymous' if (c.get('submitter', '') or '').strip() in ('Anonymous Anonymous', '') else c.get('submitter', '').strip(),
+            'name': display_submitter(c)[0],
+            'name_inferred': display_submitter(c)[1],
             'id': c.get('id', ''),
             'sentence': comment_text[:200],
         }
@@ -203,7 +226,8 @@ def compute_briefing(comments: List[Dict[str, Any]]) -> Dict[str, Any]:
             cosigner_names = []
 
         entity_submitters[entity].append({
-            'name': 'Anonymous' if (c.get('submitter', '') or '').strip() in ('Anonymous Anonymous', '') else c.get('submitter', '').strip(),
+            'name': display_submitter(c)[0],
+            'name_inferred': display_submitter(c)[1],
             'org': c.get('organization', '').strip(),
             'id': c.get('id', ''),
             'entity_name': analysis.get(entity_quote_field, ''),
@@ -218,7 +242,8 @@ def compute_briefing(comments: List[Dict[str, Any]]) -> Dict[str, Any]:
             if state not in state_comments:
                 state_comments[state] = []
             state_comments[state].append({
-                'name': 'Anonymous' if (c.get('submitter', '') or '').strip() in ('Anonymous Anonymous', '') else c.get('submitter', '').strip(),
+                'name': display_submitter(c)[0],
+                'name_inferred': display_submitter(c)[1],
                 'id': c.get('id', ''),
                 'entity_type': entity,
                 'quote': analysis.get('state_quote', ''),
@@ -230,7 +255,8 @@ def compute_briefing(comments: List[Dict[str, Any]]) -> Dict[str, Any]:
             if pol not in political_comments:
                 political_comments[pol] = []
             political_comments[pol].append({
-                'name': 'Anonymous' if (c.get('submitter', '') or '').strip() in ('Anonymous Anonymous', '') else c.get('submitter', '').strip(),
+                'name': display_submitter(c)[0],
+                'name_inferred': display_submitter(c)[1],
                 'org': c.get('organization', '').strip(),
                 'id': c.get('id', ''),
                 'entity_type': entity,
@@ -516,7 +542,8 @@ def prepare_rows(comments: List[Dict[str, Any]], campaign_id_to_rank: dict = Non
             'id': comment.get('id', ''),
             'date': formatted_date,
             'received_date': formatted_received,
-            'submitter': 'Anonymous' if (comment.get('submitter', '') or '').strip() in ('Anonymous Anonymous', '') else comment.get('submitter', '').strip(),
+            'submitter': display_submitter(comment)[0],
+            'submitter_inferred': display_submitter(comment)[1],
             'organization': comment.get('organization', '') or '',
             'entity_type': analysis.get('entity_type', 'Individual/Other'),
             'entity_name': analysis.get(entity_quote_field, ''),
@@ -874,6 +901,7 @@ def _row_to_list(r):
         r.get('campaign_size') if r.get('campaign_size') is not None else 0,
         r['campaign_stance'],
         r['multi_values'],
+        bool(r.get('submitter_inferred')),
     ]
 
 
@@ -932,6 +960,7 @@ DETAIL_FIELDS = {
     # than the whole page. These few fields make a shard self-describing, at
     # roughly +10% on a file the report already fetches one of.
     'submitter': 'submitter',
+    'submitter_inferred': 'submitter_inferred',
     'organization': 'organization',
     'date': 'date',
     'received_date': 'received_date',
@@ -1153,7 +1182,8 @@ def compute_flag_sections(comments: List[Dict[str, Any]], flags_cfg: Dict[str, D
                             sentence = extract_matching_sentence(ct, patterns)
                         sort_n = 0
                     matched.append({
-                        'name': 'Anonymous' if (c.get('submitter', '') or '').strip() in ('Anonymous Anonymous', '') else c.get('submitter', '').strip(),
+                        'name': display_submitter(c)[0],
+                        'name_inferred': display_submitter(c)[1],
                         'id': c.get('id', ''),
                         'sentence': sentence,
                         '_sort_n': sort_n,
@@ -1247,7 +1277,7 @@ def compute_rule_page(comments, rule_sections, patterns, sample_n=8):
         if not vals:
             continue
         pos = comment_position(c)
-        name = 'Anonymous' if (c.get('submitter', '') or '').strip() in ('Anonymous Anonymous', '') else c.get('submitter', '').strip()
+        name = display_submitter(c)[0]
         cid = c.get('id', '')
         # Prefer the extracted key_quote (substance) over the raw comment opening
         # (usually boilerplate), clamped to one line.
@@ -1464,6 +1494,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
     )
     regex_patterns = load_regex_flag_patterns()
     show_cosigners = any(r.get('cosigner_count', 1) > 1 for r in rows)
+    show_inferred_note = any(r.get('submitter_inferred') for r in rows)
 
     detail_shard_size, detail_shard_count = write_detail_shards(
         rows, os.path.dirname(output_file) or '.')
@@ -1510,6 +1541,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
         show_stance_cards=show_stance_cards,
         show_entity_cards=show_entity_cards,
         show_cosigners=show_cosigners,
+        show_inferred_note=show_inferred_note,
         rule_page_url=rule_page_url,
         source_url=source_url,
         full_export_url=full_export_url,
