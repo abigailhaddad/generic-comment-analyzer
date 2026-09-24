@@ -124,7 +124,7 @@ def main():
             continue
         cands.append({
             'et': et,
-            'org': (c.get('organization') or a.get('entity_name') or c.get('submitter') or '').strip(),
+            'org': (c.get('organization') or a.get(gr.entity_type_quote_field()) or c.get('submitter') or '').strip(),
             'stance': stance_of[c.get('id')],
             'score': a.get('key_quote_match_score') or 0,
             'quote': q,

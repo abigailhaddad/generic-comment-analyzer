@@ -141,6 +141,7 @@ def get_date_range(comments: List[Dict[str, Any]]) -> str:
 
 def compute_briefing(comments: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Compute briefing summary stats from analyzed comments."""
+    entity_quote_field = entity_type_quote_field()
     total = len(comments)
     oppose_count = 0
     support_count = 0
@@ -205,8 +206,8 @@ def compute_briefing(comments: List[Dict[str, Any]]) -> Dict[str, Any]:
             'name': 'Anonymous' if (c.get('submitter', '') or '').strip() in ('Anonymous Anonymous', '') else c.get('submitter', '').strip(),
             'org': c.get('organization', '').strip(),
             'id': c.get('id', ''),
-            'entity_name': analysis.get('entity_name', ''),
-            'entity_name_score': analysis.get('entity_name_match_score', ''),
+            'entity_name': analysis.get(entity_quote_field, ''),
+            'entity_name_score': analysis.get(f'{entity_quote_field}_match_score', ''),
             'cosigner_names': cosigner_names,
             'cosigner_count': _safe_int(analysis.get('cosigner_count')) or 1,
         })
@@ -451,6 +452,7 @@ def prepare_rows(comments: List[Dict[str, Any]], campaign_id_to_rank: dict = Non
     campaign_id_to_stance = campaign_id_to_stance or {}
     flag_keys = flag_keys or []
     regex_value_patterns = regex_value_patterns or {}
+    entity_quote_field = entity_type_quote_field()
 
     # The table's date column is the submitted date, which only exists in parquets
     # written after received_date was added to read_comments_from_csv. Rendering
@@ -517,7 +519,7 @@ def prepare_rows(comments: List[Dict[str, Any]], campaign_id_to_rank: dict = Non
             'submitter': 'Anonymous' if (comment.get('submitter', '') or '').strip() in ('Anonymous Anonymous', '') else comment.get('submitter', '').strip(),
             'organization': comment.get('organization', '') or '',
             'entity_type': analysis.get('entity_type', 'Individual/Other'),
-            'entity_name': analysis.get('entity_name', ''),
+            'entity_name': analysis.get(entity_quote_field, ''),
             'cosigner_names': cosigner_names,
             'cosigner_count': _safe_int(analysis.get('cosigner_count')) or 1,
             'stances_html': stances_html,
@@ -671,6 +673,25 @@ def load_fields() -> List[Dict[str, Any]]:
         fld['show'] = list(fld.get('show', []) or [])
         out.append(fld)
     return out
+
+
+def entity_type_quote_field() -> str:
+    """The analysis field name that justifies entity_type (`justifies:
+    entity_type` in the field's config entry), not a hardcoded 'entity_name'.
+
+    'entity_name' reads like a submitter's name, but its actual job is quoting
+    evidence for the entity_type category -- which is often not a name at all
+    ("as a retired college instructor"). A regulation can name it whatever
+    avoids that confusion (e.g. USBC-2026-0628 uses entity_type_quote);
+    everything that reads this field (the entity modal, the main table, the
+    coalition-letter flag sentence) resolves it through here instead of
+    assuming the literal string, so older configs that still call it
+    entity_name keep working unchanged."""
+    fields = load_fields() or []
+    for f in fields:
+        if f.get('justifies') == 'entity_type':
+            return f['name']
+    return 'entity_name'
 
 
 def compute_field_meta(fields, report_config: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
@@ -1098,6 +1119,7 @@ def compute_flag_sections(comments: List[Dict[str, Any]], flags_cfg: Dict[str, D
     regulation's analyzer_config.yaml, nothing hardcoded per regulation.
     """
     total = len(comments)
+    entity_quote_field = entity_type_quote_field()
     sections = []
     for key, cfg in flags_cfg.items():
         patterns = cfg.get('patterns', []) if isinstance(cfg, dict) else []
@@ -1118,7 +1140,7 @@ def compute_flag_sections(comments: List[Dict[str, Any]], flags_cfg: Dict[str, D
                     if derived:
                         a = c.get('analysis') or {}
                         n = _safe_int(a.get(derived.get('from', 'cosigner_count'))) or 0
-                        ename = (a.get('entity_name') or '').strip() if isinstance(a, dict) else ''
+                        ename = (a.get(entity_quote_field) or '').strip() if isinstance(a, dict) else ''
                         sentence = f"Cosigned by {n:,} organizations" + (f" — {_snippet(ename, 80)}" if ename else "")
                         sort_n = n
                     else:
