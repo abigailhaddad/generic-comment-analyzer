@@ -57,6 +57,20 @@ def _retry_on_rate_limit(fn, *args, **kwargs):
     raise RuntimeError(f"Failed after {MAX_RETRIES} retries")
 
 
+def entity_quote_field_name(config: dict) -> str:
+    """The analysis field that justifies entity_type (`justifies: entity_type`
+    in its config entry), not a hardcoded 'entity_name' -- a regulation can
+    rename that field (e.g. USBC-2026-0628 uses entity_type_quote) to stop it
+    being confused for an actual submitter name. Same resolution as
+    pipeline.py's identity_quote_fields() and generate_report.py's
+    entity_type_quote_field(), kept local here rather than imported since this
+    module already stands alone."""
+    for f in (config or {}).get('fields') or []:
+        if isinstance(f, dict) and f.get('justifies') == 'entity_type':
+            return f['name']
+    return 'entity_name'
+
+
 def load_second_pass_config():
     """Load second-pass verification config from analyzer_config.yaml.
 
@@ -830,7 +844,7 @@ def verify_stances(comments: List[Dict[str, Any]], model: str = None,
             text = (comment.get('text') or '')[:2000]
             analysis = comment.get('analysis', {})
             entity_type = analysis.get('entity_type', '')
-            entity_name = analysis.get('entity_name', '')
+            entity_name = analysis.get(entity_quote_field_name(config), '')
             submitter = comment.get('submitter', '')
             org = comment.get('organization', '')
             try:

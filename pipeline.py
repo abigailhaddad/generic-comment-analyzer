@@ -364,14 +364,25 @@ def create_dedup_table(comments: List[Dict[str, Any]]) -> tuple[List[Dict[str, A
 # to the field it justifies, cleared alongside it when the quote isn't this
 # commenter's. entity_type is deliberately absent: it is an inference about what kind
 # of commenter this is, and stays right for the group even when the name doesn't.
-IDENTITY_QUOTE_FIELDS = {
-    'entity_name': None,
-    'state_quote': 'state_identified',
-    'political_affiliation_quote': 'political_affiliation',
-}
+def identity_quote_fields(config: Dict[str, Any]) -> Dict[str, Optional[str]]:
+    """The quote-field -> justified-field map, keyed by whatever field this
+    regulation's config actually names as the entity_type quote (`justifies:
+    entity_type`) rather than assuming the literal string 'entity_name' --
+    some regulations rename it (e.g. USBC-2026-0628 uses entity_type_quote)
+    to stop it being confused for an actual submitter name."""
+    entity_field = 'entity_name'
+    for f in (config or {}).get('fields') or []:
+        if isinstance(f, dict) and f.get('justifies') == 'entity_type':
+            entity_field = f['name']
+            break
+    return {
+        entity_field: None,
+        'state_quote': 'state_identified',
+        'political_affiliation_quote': 'political_affiliation',
+    }
 
 
-def localize_identity_quotes(analysis: Any, comment: Dict[str, Any]) -> Any:
+def localize_identity_quotes(analysis: Any, comment: Dict[str, Any], config: Dict[str, Any] = None) -> Any:
     """Drop identity quotes belonging to a *different* commenter.
 
     Comments are deduplicated by text, so one analysis is shared by everyone who
@@ -390,7 +401,7 @@ def localize_identity_quotes(analysis: Any, comment: Dict[str, Any]) -> Any:
 
     own_source = f"{comment.get('submitter', '')} {comment.get('organization', '')} {comment.get('text', '')}"
     localized = None
-    for field, justified in IDENTITY_QUOTE_FIELDS.items():
+    for field, justified in identity_quote_fields(config).items():
         quote = analysis.get(field)
         if not quote or validate_extracted_quote(quote, own_source)['valid']:
             continue
@@ -402,7 +413,7 @@ def localize_identity_quotes(analysis: Any, comment: Dict[str, Any]) -> Any:
     return localized if localized is not None else analysis
 
 
-def merge_analysis_results(unique_analyzed_comments: List[Dict[str, Any]], duplicate_mapping: Dict[str, List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
+def merge_analysis_results(unique_analyzed_comments: List[Dict[str, Any]], duplicate_mapping: Dict[str, List[Dict[str, Any]]], config: Dict[str, Any] = None) -> List[Dict[str, Any]]:
     """Merge analysis results back to all original comments."""
     logger.info("Merging analysis results back to full dataset...")
 
@@ -424,7 +435,7 @@ def merge_analysis_results(unique_analyzed_comments: List[Dict[str, Any]], dupli
                 # (the overwhelming majority of comments).
                 analysis = shared_analysis
                 if len(group) > 1:
-                    analysis = localize_identity_quotes(analysis, original_comment)
+                    analysis = localize_identity_quotes(analysis, original_comment, config)
                     if analysis is not shared_analysis:
                         localized_count += 1
                 merged_comment['analysis'] = analysis
@@ -1519,7 +1530,7 @@ def main():
 
         # Step 4: Merge analysis results back to full dataset
         logger.info("=== STEP 4: Merging Results ===")
-        analyzed_comments = merge_analysis_results(unique_analyzed_comments, duplicate_mapping)
+        analyzed_comments = merge_analysis_results(unique_analyzed_comments, duplicate_mapping, load_yaml_config())
 
         # Save after merge so LLM work is never lost
         logger.info("=== Saving intermediate results ===")

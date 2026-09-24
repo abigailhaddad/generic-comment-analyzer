@@ -242,15 +242,44 @@ fields:
     prompt: "What type of entity is submitting this comment? Choose exactly one from the list below."
     show: [cards, column, filter]
 
-  - name: entity_name
+  # Evidence for the entity_type classification above -- NOT a name field. Renamed
+  # from entity_name (the default in this codebase's other regulations) because
+  # regulations.gov returns no submitter name/organization at all for this docket
+  # (firstName/lastName/organization/submitterName are all null from the API, for
+  # every comment -- confirmed against the raw API response, not a fetch bug on
+  # our side) so the quote here is often the ONLY identifying text there is, and
+  # calling it "entity_name" invited reading it as a clean name when it's really
+  # whatever phrase justified the category (e.g. "as a retired college
+  # instructor" justifies Individual/Other and isn't anyone's name). See
+  # submitter_name below for the actual canonical-name extraction.
+  - name: entity_type_quote
     type: quote
     justifies: entity_type
-    label: "Identified As"
+    label: "Entity Type Evidence"
     prompt: >
       Extract a VERBATIM quote from the text that justifies the entity type classification. Must be
       an exact substring from anywhere in the text including submitter name or organization. Leave
       empty if no identifying information.
     show: [modal]
+
+  # The canonical "who is this" extraction -- one name per comment, grounded in
+  # the full text (body + attachment), for a docket where the structured
+  # submitter/organization metadata is uniformly absent from the source. Separate
+  # from entity_type_quote above: that field justifies a CATEGORY and may be any
+  # phrase, not a name; this field is specifically trying to answer "whose name
+  # or organization is this."
+  - name: submitter_name
+    type: quote
+    label: "Identified As"
+    prompt: >
+      The canonical name of whoever is actually submitting or speaking for this comment: a person's
+      full name, or an organization's name if writing on its behalf (prefer the organization when the
+      comment speaks for one, not an individual signer's name). Use the FULL text, including any
+      attachment -- letterhead, a signature block, or "on behalf of X" often carries this even when
+      the body doesn't. Must be an exact substring from the text. Leave empty if the submitter's
+      identity genuinely cannot be determined from the text (e.g. a fully anonymous, unsigned
+      comment).
+    show: [column, modal]
 
   - name: state_identified
     type: text
