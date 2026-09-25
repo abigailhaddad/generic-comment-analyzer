@@ -36,15 +36,31 @@ import csv
 import json
 import os
 import re
-import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
+from collections import Counter
 
 from fetch_comments_api import COLUMNS, attrs_to_row
 
 MIRROR = 'https://mirrulations.s3.amazonaws.com'
 NS = {'s3': 'http://s3.amazonaws.com/doc/2006-03-01/'}
+DUP_SUFFIX = re.compile(r'^(.*)\((\d+)\)$')
+
+
+def base_id_and_order(raw_id):
+    """(true/bare id, sort key) for a mirror file-key id.
+
+    A "<id>(N)" suffix is Mirrulations' own disambiguation of ITS storage
+    keys for regulations.gov's documented Document ID reuse (see
+    fetch_row()); every one of those keys' JSON body reports the same bare
+    id. Sort key puts the bare form first (order 0), then ascending by N, so
+    grouped entries land in a stable, deterministic order.
+    """
+    m = DUP_SUFFIX.match(raw_id)
+    if m:
+        return m.group(1), int(m.group(2))
+    return raw_id, -1
 
 
 def _list_keys(prefix):
@@ -75,14 +91,16 @@ def list_mirrored_ids(agency, docket):
 def list_mirrored_attachments(agency, docket):
     """Document ID -> [attachment URL, ...], from the mirror's binary copies.
 
-    Empty (not an error) if this docket has no binary-<docket> prefix at all --
-    Mirrulations only creates it once a docket has at least one attachment.
+    A prefix with no matching objects (a docket with no attachments at all)
+    returns HTTP 200 with an empty result set, not an error -- confirmed
+    against a nonexistent prefix -- so no try/except is needed or wanted
+    here: a genuine failure (permission, throttling, a transient 5xx) should
+    raise and stop the run rather than be swallowed into "no attachments",
+    which would silently publish every comment in this run with its attached
+    letter missing.
     """
     prefix = f'raw-data/{agency}/{docket}/binary-{docket}/comments_attachments/'
-    try:
-        keys = _list_keys(prefix)
-    except urllib.error.HTTPError:
-        return {}
+    keys = _list_keys(prefix)
     out = {}
     for key in keys:
         m = re.match(r'(.+?)_attachment_\d+\.\w+$', os.path.basename(key))
@@ -107,7 +125,12 @@ def fetch_row(agency, docket, raw_id, attachments):
         d = json.loads(resp.read())
     true_id = d['data'].get('id') or raw_id
     row = attrs_to_row(true_id, d['data']['attributes'])
-    row['Attachment Files'] = ','.join(attachments.get(true_id, []))
+    # Attachment filenames are keyed by whatever id prefix Mirrulations gave
+    # them, which for a duplicated comment might be the true id or might be
+    # this same raw (possibly suffixed) key -- unconfirmed which, so try both
+    # rather than silently dropping a duplicate comment's attachment.
+    urls = attachments.get(true_id) or attachments.get(raw_id) or []
+    row['Attachment Files'] = ','.join(urls)
     return row
 
 
@@ -125,16 +148,32 @@ def main():
     docket = json.load(open('regulation_metadata.json'))['docket_id']
     agency = docket.split('-')[0]
 
-    known = set()
+    known_counts = Counter()
     if os.path.exists(args.csv):
         with open(args.csv, newline='', encoding='utf-8') as f:
             for r in csv.DictReader(f):
-                known.add(r['Document ID'])
-    print(f'{docket}: {len(known):,} comments already in {args.csv}')
+                known_counts[r['Document ID']] += 1
+    known_total = sum(known_counts.values())
+    print(f'{docket}: {known_total:,} comments already in {args.csv}')
 
     print(f'listing the Mirrulations mirror for {agency}/{docket}...')
     mirrored = list_mirrored_ids(agency, docket)
-    missing = [i for i in mirrored if i not in known]
+
+    # Group by true (bare) id rather than comparing raw mirror keys against
+    # known_counts directly: known_counts is keyed by the bare id (that's
+    # all fetch_row() ever writes to the CSV), so a duplicated id's "(N)"
+    # suffixed key would never match anything in it and would look "missing"
+    # -- and get refetched and re-appended -- on every single run forever.
+    # Only take as many of a base id's keys as the CSV is still short of.
+    groups = {}
+    for raw_id in mirrored:
+        base, order = base_id_and_order(raw_id)
+        groups.setdefault(base, []).append((order, raw_id))
+    missing = []
+    for base, entries in groups.items():
+        entries.sort()
+        have = known_counts.get(base, 0)
+        missing.extend(raw_id for _, raw_id in entries[have:])
     print(f'mirror has {len(mirrored):,} comment(s); {len(missing):,} not in the CSV')
 
     if args.dry_run:
@@ -167,7 +206,7 @@ def main():
                 f.flush()
             print(f'  fetched {n:,}/{len(fetch_ids):,}', end='\r', flush=True)
     print()
-    print(f'appended {written:,} rows to {args.csv} from Mirrulations (now {len(known) + written:,})')
+    print(f'appended {written:,} rows to {args.csv} from Mirrulations (now {known_total + written:,})')
 
     # Two distinct reasons this can be nonzero: a deliberate --limit cap, or a
     # handful of per-item failures (a transient connection reset, say) inside

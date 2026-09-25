@@ -123,6 +123,7 @@ jobs:
         run: pip install "pyyaml==6.0.3"
 
       - name: Pull source.csv from S3 (cheap - enough to know what's missing)
+        id: pull
         run: python sync_state.py pull --regulation "$REGULATION" --files source.csv --allow-missing
 
       # Doubles as the cheap check: on a drained docket this returns almost
@@ -146,19 +147,33 @@ jobs:
           echo "added=${added:-0}" >> "$GITHUB_OUTPUT"
           echo "fetched ${added:-0} new comment(s) this run"
 
-      # No API key, no rate limit, so this always attempts to fill whatever is
-      # STILL missing after the live fetch above — including a run where that
-      # step got 0 because the hourly budget was already spent before this run
-      # even started. It is a supplement, not a guaranteed-current replacement
-      # for the live API (see fetch_comments_mirrulations.py's own docstring —
-      # confirmed 2026-09-23 it was ahead of our own key for this docket, but
-      # that isn't guaranteed for every docket or every day), so it always
-      # runs AFTER, never instead of, the fetch step above. `always()` so a
-      # hard failure in the fetch step doesn't skip the one source that might
-      # still get something this run.
+      # No API key, no rate limit, so this attempts to fill whatever is STILL
+      # missing after the live fetch above — including a run where that step
+      # got 0 or crashed outright (the `!cancelled()` half of the condition
+      # below is what lets it still run in that case). It is a supplement,
+      # not a guaranteed-current replacement for the live API (see
+      # fetch_comments_mirrulations.py's own docstring — confirmed 2026-09-23
+      # it was ahead of our own key for this docket, but that isn't
+      # guaranteed for every docket or every day), so it runs AFTER, never
+      # instead of, the fetch step above.
+      #
+      # Gated on the PULL above having actually succeeded, not just
+      # `always()`: source.csv is gitignored, so if the pull failed (e.g. a
+      # missing/rotated AWS secret — this happened for real 2026-09-23,
+      # `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` were never carried over
+      # from Chris's fork's repo secrets to this repo's) this run has NO
+      # local copy of what's already known. Every one of the docket's
+      # thousands of comments would then look "missing" from Mirrulations,
+      # triggering a slow full re-fetch of the whole mirror, and worse: the
+      # later "Push state to S3" step would then be one `if:` condition away
+      # from overwriting the real, complete remote state with this run's
+      # artificially-incomplete reconstruction. Skipping cleanly here (and
+      # therefore downstream, since `steps.total.outputs.added` stays '0')
+      # instead leaves the job red and the real S3 state untouched, which is
+      # the correct failure mode for "we don't actually know what's missing".
       - name: Backfill remainder from the Mirrulations mirror (no rate limit)
         id: mirror
-        if: always()
+        if: ${{ !cancelled() && steps.pull.outcome == 'success' }}
         run: |
           set -o pipefail
           python fetch_comments_mirrulations.py --regulation "$REGULATION" | tee mirror.log
