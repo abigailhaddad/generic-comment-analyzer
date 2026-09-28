@@ -577,7 +577,7 @@
             </div>
             <div class="active-filters" id="activeChips"></div>
 
-            <p style="color: var(--color-text-muted); font-size: 0.82rem; margin-bottom: 0.75rem;">Click any row to see full details. Showing {{ "{:,}".format(rows | length) }} comments.{% if full_export_url %} &ldquo;Download CSV&rdquo; gives the columns and rows currently shown; &ldquo;Download everything&rdquo; gives every comment with every field, including the original regulations.gov columns (gzipped CSV).{% endif %}</p>
+            <p style="color: var(--color-text-muted); font-size: 0.82rem; margin-bottom: 0.75rem;">Click any row to see full details. Showing {{ "{:,}".format(rows | length) }} comments.{% if full_export_url %} &ldquo;Download CSV&rdquo; gives the columns and rows currently shown; &ldquo;Download everything&rdquo; gives every comment with every field, including the original regulations.gov columns (gzipped CSV).{% endif %}{% if show_inferred_note %} A submitter marked with <b>*</b> wasn't reported in the submission record — the name is read out of the comment text itself.{% endif %}</p>
             <!-- Column headers are built from the config-driven column spec in JS. -->
             <table id="commentsTable" class="table table-hover" style="width:100%">
                 <thead><tr></tr></thead>
@@ -667,7 +667,7 @@
             {% for entity in briefing.entity_counts %}
             "{{ entity.name }}": [
                 {% for s in entity.submitters %}
-                {"name": {{ s.name | tojson }}, "org": {{ s.org | tojson }}, "id": {{ s.id | tojson }}, "entity_name": {{ s.entity_name | tojson }}, "cosigner_names": {{ s.cosigner_names | tojson }}, "cosigner_count": {{ s.cosigner_count | tojson }}},
+                {"name": {{ s.name | tojson }}, "name_inferred": {{ s.name_inferred | tojson }}, "org": {{ s.org | tojson }}, "id": {{ s.id | tojson }}, "entity_name": {{ s.entity_name | tojson }}, "cosigner_names": {{ s.cosigner_names | tojson }}, "cosigner_count": {{ s.cosigner_count | tojson }}},
                 {% endfor %}
             ],
             {% endfor %}
@@ -690,7 +690,7 @@
         const commentDataRaw = window.__ROWS__;
         const COMMENT_FIELDS = ['id', 'date', 'received_date', 'submitter', 'organization', 'entity_type', 'cosigner_count',
             'stances', 'flags', 'state', 'political', 'has_attachment', 'campaign_id', 'campaign_rank',
-            'campaign_size', 'campaign_stance', 'multi_values'];
+            'campaign_size', 'campaign_stance', 'multi_values', 'submitter_inferred'];
         const commentData = commentDataRaw.map(function (r) {
             const obj = {};
             COMMENT_FIELDS.forEach(function (name, i) { obj[name] = r[i]; });
@@ -778,6 +778,16 @@
             return d.innerHTML;
         }
 
+        // A submitter name pulled from the comment text itself (no structural
+        // submitter/organization field on the source row) rather than read
+        // straight from the submission record. Marked with an asterisk and a
+        // tooltip so it doesn't read as a fact regulations.gov itself reported.
+        function submitterCell(name, inferred) {
+            const safe = escapeHtml(name || 'Anonymous');
+            if (!inferred) return safe;
+            return safe + ' <span class="text-muted" title="Read from the comment text, not the submission record" style="cursor:help;">*</span>';
+        }
+
         function showAppToast(message) {
             const t = document.createElement('div');
             t.className = 'app-toast';
@@ -797,7 +807,7 @@
             } else {
                 html += '<table class="table table-sm table-hover"><thead><tr><th>Submitter</th><th>Comment Preview</th><th>Link</th></tr></thead><tbody>';
                 comments.forEach(function(e) {
-                    html += '<tr><td>' + e.name + '</td>';
+                    html += '<tr><td>' + submitterCell(e.name, e.name_inferred) + '</td>';
                     html += '<td style="font-size:0.82rem; max-width:400px;">' + (e.sentence || '-') + '</td>';
                     html += '<td><a href="https://www.regulations.gov/comment/' + e.id + '" target="_blank">' + e.id.split('-').pop() + '</a></td></tr>';
                 });
@@ -940,7 +950,7 @@
             html += '<table class="table table-sm table-hover"><thead><tr><th>Quote</th><th>Submitter</th><th>Entity Type</th><th>Comment</th></tr></thead><tbody>';
             subs.forEach(function(s) {
                 html += '<tr><td><em>' + (s.quote || '-') + '</em></td>';
-                html += '<td>' + s.name + '</td>';
+                html += '<td>' + submitterCell(s.name, s.name_inferred) + '</td>';
                 html += '<td>' + (s.entity_type || '') + '</td>';
                 html += '<td><a href="https://www.regulations.gov/comment/' + s.id + '" target="_blank">' + s.id.split('-').pop() + '</a></td></tr>';
             });
@@ -951,7 +961,7 @@
         function showEntityModal(entityName) {
             const subs = entityData[entityName] || [];
             document.getElementById('entityModalTitle').textContent = entityName + ' (' + subs.length + ')';
-            let html = '<table class="table table-sm table-hover"><thead><tr><th>Identified As</th><th>Submitter</th><th>Comment</th></tr></thead><tbody>';
+            let html = '<table class="table table-sm table-hover"><thead><tr><th>Entity Type Evidence</th><th>Submitter</th><th>Comment</th></tr></thead><tbody>';
             subs.forEach(function(s) {
                 const idx = commentIndexById[s.id];
                 const clickable = idx !== undefined;
@@ -961,7 +971,7 @@
                 }
                 html += '<tr' + (clickable ? ' class="clickable-row" style="cursor:pointer;" onclick="openCommentFromEntity(' + idx + ')" title="Click to see full comment details"' : '') + '>';
                 html += '<td>' + identified + '</td>';
-                html += '<td>' + s.name + '</td>';
+                html += '<td>' + submitterCell(s.name, s.name_inferred) + '</td>';
                 html += '<td><a href="https://www.regulations.gov/comment/' + s.id + '" target="_blank" onclick="event.stopPropagation();">' + s.id.split('-').pop() + '</a></td></tr>';
             });
             html += '</tbody></table>';
@@ -1001,7 +1011,7 @@
             let html = '';
 
             html += '<div class="row mb-3">';
-            html += '<div class="col-sm-4"><div class="detail-label">Submitter</div><div class="detail-value">' + (c.submitter || 'Anonymous') + (c.organization ? ' (' + c.organization + ')' : '') + '</div></div>';
+            html += '<div class="col-sm-4"><div class="detail-label">Submitter</div><div class="detail-value">' + submitterCell(c.submitter, c.submitter_inferred) + (c.organization ? ' (' + c.organization + ')' : '') + '</div></div>';
             html += '<div class="col-sm-4"><div class="detail-label">Entity Type</div><div class="detail-value">' + c.entity_type + '</div></div>';
             // Both dates here, since only Submitted is a table column. Naming them
             // separately is the point — the gap between the two is the agency's
@@ -1010,8 +1020,12 @@
                  + '<span class="text-muted" style="font-size:0.8em;"> · posted ' + (c.date || '—') + '</span></div></div>';
             html += '</div>';
 
+            // d.entity_name is the field that JUSTIFIES the entity_type category
+            // (config field name varies by regulation, e.g. entity_type_quote on
+            // USBC-2026-0628) -- evidence for a classification, not necessarily
+            // anyone's name. Submitter above is the actual "who is this" answer.
             if (detailReady && d.entity_name) {
-                html += '<div class="detail-label">Identified As</div><div class="detail-value"><blockquote>' + d.entity_name + '</blockquote></div>';
+                html += '<div class="detail-label">Entity Type Evidence</div><div class="detail-value"><blockquote>' + d.entity_name + '</blockquote></div>';
             }
 
             if (c.cosigner_count > 1) {
@@ -1146,7 +1160,7 @@
               filter: { name: 'Submitted Date', type: 'daterange',
                         value: function (c) { return c.received_date; } } },
             { key: 'submitter', title: 'Submitter',
-              cell: function (c) { return escapeHtml(c.submitter) + (c.organization ? ' <span class="text-muted" style="font-size:11px;">(' + escapeHtml(c.organization) + ')</span>' : ''); },
+              cell: function (c) { return submitterCell(c.submitter, c.submitter_inferred) + (c.organization ? ' <span class="text-muted" style="font-size:11px;">(' + escapeHtml(c.organization) + ')</span>' : ''); },
               // Text, not multiselect: there is very nearly one distinct submitter
               // per comment, so enumerating every value would build a list as long
               // as the table itself.

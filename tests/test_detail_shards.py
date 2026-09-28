@@ -35,6 +35,7 @@ def make_rows(n):
             'state_quote': f'state {i}',
             'political_affiliation_quote': f'politics {i}',
             'submitter': f'submitter {i}',
+            'submitter_inferred': i % 2 == 0,
             'organization': f'org {i}',
             'date': f'2026-01-{(i % 28) + 1:02d}',
             'received_date': f'2026-01-{(i % 28) + 1:02d}',
