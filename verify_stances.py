@@ -143,6 +143,13 @@ STATE_VERIFICATION_PROMPT = _DEFAULT_STATE_VERIFICATION_PROMPT
 POLITICAL_VERIFICATION_PROMPT = _DEFAULT_POLITICAL_VERIFICATION_PROMPT
 COSIGNER_SPAN_PROMPT = _DEFAULT_COSIGNER_SPAN_PROMPT
 
+# The stance labels the second pass may emit. Defaults to the original three; a
+# regulation whose stance prompt distinguishes "took no position" from
+# "genuinely ambiguous" (see METHOD-stance-audit.md) adds a fourth via
+# second_pass.stance.labels in analyzer_config.yaml. Kept as a plain default
+# here so a regulation that does not set `labels` is completely unaffected.
+STANCE_LABELS = ['Oppose', 'Support', 'Unclear']
+
 
 def _load_prompts():
     """Load verification prompts from config into module globals.
@@ -152,6 +159,7 @@ def _load_prompts():
     """
     global STANCE_VERIFICATION_PROMPT, ENTITY_VERIFICATION_PROMPT
     global STATE_VERIFICATION_PROMPT, POLITICAL_VERIFICATION_PROMPT, COSIGNER_SPAN_PROMPT
+    global STANCE_LABELS
 
     config = load_second_pass_config()
     prompts = config.get('prompts', {}) or {}
@@ -168,13 +176,15 @@ def _load_prompts():
     STATE_VERIFICATION_PROMPT = prompts.get('state') or _DEFAULT_STATE_VERIFICATION_PROMPT
     POLITICAL_VERIFICATION_PROMPT = prompts.get('political') or _DEFAULT_POLITICAL_VERIFICATION_PROMPT
     COSIGNER_SPAN_PROMPT = prompts.get('cosigner') or _DEFAULT_COSIGNER_SPAN_PROMPT
+    STANCE_LABELS = (config.get('stance', {}) or {}).get('labels') or ['Oppose', 'Support', 'Unclear']
 
     # Build constrained response models so the verifier can only emit valid values.
     global STANCE_VERIFICATION_MODEL, ENTITY_VERIFICATION_MODEL
-    stance_enum = Enum("VStanceEnum", {"Oppose": "Oppose", "Support": "Support", "Unclear": "Unclear"}, type=str)
+    stance_enum = Enum("VStanceEnum", {re.sub(r'\W+', '_', v) or f'V{i}': v
+                                       for i, v in enumerate(STANCE_LABELS)}, type=str)
     STANCE_VERIFICATION_MODEL = create_model(
         "ConstrainedStanceVerification", __base__=StanceVerification,
-        verified_stance=(stance_enum, Field(description="Exactly one of: Oppose, Support, Unclear.")),
+        verified_stance=(stance_enum, Field(description=f"Exactly one of: {', '.join(STANCE_LABELS)}.")),
     )
     entity_types = _load_full_config().get('entity_types', []) or []
     if "Individual/Other" not in entity_types:

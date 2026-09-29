@@ -14,6 +14,11 @@ correcting is a second step (see --emit-ids and METHOD-stance-audit.md).
     python audit_stances.py --regulation omb-financial-assistance --position support
     python audit_stances.py --regulation omb-financial-assistance --position oppose --sample 2500
 
+`--position unclear` / `--position no_position` audit the OTHER direction: recall,
+not precision — do comments bucketed there actually belong in Oppose/Support?
+These two select by the same computed bucket the report uses (comment_position()),
+not a literal `Position:` tag, since neither label is ever written as one.
+
 Definitions live in the regulation's analyzer_config.yaml under `stance_audit:`,
 so a different docket audits against its own wording, not this file's.
 """
@@ -26,8 +31,14 @@ import threading
 
 import pandas as pd
 import yaml
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from litellm import completion
+
+load_dotenv()
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from generate_report import comment_position  # noqa: E402
 
 # Fallback wording. A regulation that cares should put its own under
 # `stance_audit:` in analyzer_config.yaml rather than rely on these.
@@ -50,38 +61,65 @@ DEFAULT_DEFINITIONS = {
 
 
 class Verdict(BaseModel):
-    holds_position: bool = Field(description="True if the comment genuinely holds the position "
-                                             "it was labelled with, per the definition given.")
-    reads_as: str = Field(description="The position the comment actually takes. Exactly one of: "
-                                      "oppose, support, no_position, cannot_tell")
+    reads_as: str = Field(description="The position the comment actually takes, regardless of "
+                                      "what it was labelled. Exactly one of: oppose, support, "
+                                      "no_position, cannot_tell (genuinely ambiguous/off-topic).")
 
 
 PROMPT = """A pipeline labelled this public comment as {POSITION} on a proposed rule.
 
-Decide whether that label is right, using this definition:
+This docket defines {POSITION} as:
 
 {DEFINITION}
 
-Answer holds_position=true only if the comment genuinely holds that position.
+Read the comment and decide what position it actually takes — set reads_as to exactly one of:
+oppose, support, no_position, cannot_tell. Judge the comment itself, not the label it was given.
 
 COMMENT:
 {TEXT}"""
 
+# Position labels selected by a literal `Position: X` stance tag (the model's
+# precision on what it explicitly claimed). "unclear" and "no_position" have no
+# such tag — they are selected by the same computed bucket the report uses
+# (comment_position()), so auditing them checks RECALL: comments that landed in
+# the catch-all buckets but actually lean oppose or support.
+TAGGED_POSITIONS = {'support', 'oppose'}
+BUCKET_LABELS = {'unclear': 'Unclear', 'no_position': 'No Position'}
+
+# The label is correct exactly when the model's own reads_as matches this —
+# derived in code rather than asked of the model as a second, separate
+# holds_position field. Asking for both let them disagree with each other (a
+# verdict of reads_as="cannot_tell" with holds_position=False on a
+# --position unclear audit is a direct self-contradiction: "cannot_tell" IS
+# what "Unclear" means), which silently inflated the disputed count. One
+# question the model can't contradict itself on beats two that can drift apart.
+EXPECTED_READS_AS = {'support': 'support', 'oppose': 'oppose',
+                     'unclear': 'cannot_tell', 'no_position': 'no_position'}
+
 
 def build(reg_dir, position, sample, seed):
     cfg = yaml.safe_load(open(os.path.join(reg_dir, 'analyzer_config.yaml'))) or {}
-    definition = (cfg.get('stance_audit') or {}).get(position) or DEFAULT_DEFINITIONS[position]
+    definition = (cfg.get('stance_audit') or {}).get(position) or DEFAULT_DEFINITIONS.get(position)
+    if not definition:
+        raise SystemExit(
+            f"no stance_audit.{position} definition in analyzer_config.yaml, and no "
+            f"module default for it — add one before auditing this position")
 
     df = pd.read_parquet(os.path.join(reg_dir, 'full_run.parquet'),
                          columns=['id', 'analysis', 'comment_text', 'attachment_text'])
-    want = f'Position: {position.capitalize()}'
+    want_tag = f'Position: {position.capitalize()}' if position in TAGGED_POSITIONS else None
+    want_bucket = BUCKET_LABELS.get(position)
     rows = []
     for _, r in df.iterrows():
         a = r['analysis'] or {}
-        s = a.get('stances')
-        s = list(s) if s is not None and not isinstance(s, str) else (s or [])
-        if not any(want in str(x) for x in s):
-            continue
+        if want_tag is not None:
+            s = a.get('stances')
+            s = list(s) if s is not None and not isinstance(s, str) else (s or [])
+            if not any(want_tag in str(x) for x in s):
+                continue
+        else:
+            if comment_position({'analysis': a}) != want_bucket:
+                continue
         # A body of "See attached file(s)" carries no signal; fall back to the extraction.
         t = str(r['comment_text'] or '').strip()
         if len(t) < 60:
@@ -101,7 +139,8 @@ def build(reg_dir, position, sample, seed):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--regulation', required=True)
-    ap.add_argument('--position', required=True, choices=['support', 'oppose'])
+    ap.add_argument('--position', required=True,
+                    choices=['support', 'oppose', 'unclear', 'no_position'])
     ap.add_argument('--sample', type=int, default=0, help='0 = audit all')
     ap.add_argument('--seed', type=int, default=7)
     ap.add_argument('--model', default='gpt-5.4-mini')
@@ -131,12 +170,14 @@ def main():
     def judge(row):
         cid, text = row
         try:
+            display_position = BUCKET_LABELS.get(a.position, a.position).upper()
             resp = completion(model=a.model, timeout=90, response_format=Verdict,
                               messages=[{"role": "user", "content": PROMPT.format(
-                                  POSITION=a.position.upper(), DEFINITION=definition, TEXT=text)}])
+                                  POSITION=display_position, DEFINITION=definition, TEXT=text)}])
             v = json.loads(resp.choices[0].message.content)
-            rec = {'id': cid, 'holds_position': bool(v.get('holds_position')),
-                   'reads_as': v.get('reads_as', '?')}
+            reads_as = v.get('reads_as', '?')
+            rec = {'id': cid, 'holds_position': reads_as == EXPECTED_READS_AS[a.position],
+                   'reads_as': reads_as}
         except Exception as e:
             rec = {'id': cid, 'error': type(e).__name__}
         with lock:

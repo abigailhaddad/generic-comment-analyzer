@@ -463,6 +463,21 @@ stance_audit:
     quality damage, or general outrage at the proposal. It is NOT oppose when the comment states no
     position, is purely procedural, only describes the rule, is off-topic or incoherent, or in fact
     supports it.
+  unclear: >
+    UNCLEAR correctly applies ONLY when the comment is genuinely ambiguous — off-topic, a single
+    word or fragment, incoherent, pure docket metadata, or its own text pulls in contradictory
+    directions with no discernible lean either way. It is NOT correctly Unclear when the comment
+    plainly leans oppose or support once read past the first sentence — e.g. it warns of
+    undercounts, defends the whole-number count or the race/ethnicity questions, invokes the
+    Fourteenth Amendment, or otherwise reads as objecting to or endorsing the rule. A comment that
+    merely lacks the words "oppose" or "support" is not automatically Unclear.
+  no_position: >
+    NO POSITION correctly applies when the comment clearly engages with this rulemaking but takes
+    no side on the rule itself — e.g. it only asks to extend the comment period, asks a procedural
+    question, or summarizes/describes the rule without objecting or endorsing. It is NOT correctly
+    No Position when a procedural ask is paired with substantive opposition or support (e.g.
+    "extend the comment period AND withdraw this unconstitutional rule" is Oppose, not No
+    Position), or when the comment in fact leans oppose or support once read in full.
 
 # -------------------------------------------------------------------
 # Evaluation set — build_eval_set.py / label_eval_set.py / score_stances.py.
@@ -568,6 +583,11 @@ second_pass:
   max_workers: 8
 
   stance:
+    # A 4th label beyond the default three: separates "took no side on the rule"
+    # (No Position) from "genuinely can't tell" (Unclear) — see
+    # METHOD-stance-audit.md, which documents the same conflation causing a
+    # mislabeled Support comment on another docket.
+    labels: ["Oppose", "Support", "Unclear", "No Position"]
     trigger_stances:
       - "Support"
       - "Unclear"
@@ -621,7 +641,8 @@ second_pass:
       (restrictions on demographic questions, removing race and ethnicity questions and limiting
       demographic questions to biological sex).
 
-      Classify the comment's overall position as exactly one of: "Oppose", "Support", or "Unclear".
+      Classify the comment's overall position as exactly one of: "Oppose", "Support", "Unclear", or
+      "No Position".
 
       - "Oppose" — opposes the rule (either part). This includes comments that: argue the count
         must include the whole number of persons regardless of legal status; invoke Article I or
@@ -629,7 +650,8 @@ second_pass:
         questions; warn of undercounts, apportionment or redistricting harm, or damage to data
         quality; or express general outrage at the proposal even without naming a section.
         Agreeing with a general goal the rule invokes (immigration enforcement, privacy) while
-        objecting to THIS rule is still Oppose.
+        objecting to THIS rule is still Oppose. If there is ANY indication of opposition sentiment
+        anywhere in the comment, classify as Oppose rather than Unclear or No Position.
       - "Support" — the comment endorses THIS RULE, or specific provisions of it. Take an explicit
         "I support this rule" / "Commerce should finalize this" at face value, and endorsing a
         named provision (the citizenship-based residence criteria, removing the race/ethnicity
@@ -637,15 +659,23 @@ second_pass:
         tougher immigration enforcement, less spending, or more privacy is NOT Support unless the
         comment ties that to backing this rule. Asking the Bureau to revise, narrow, or reconsider
         any part is NOT Support. If the comment would read the same way had this rule never been
-        proposed, it is "Unclear", not "Support".
-      - "Unclear" — use this in EITHER of two cases: (a) the comment is truly off-topic, a single
-        ambiguous word, incoherent, or just docket metadata; or (b) it engages with the subject
-        but states NO position on the rule itself — it is procedural (asking to extend the comment
-        period, asking a process question), only describes or summarises the rule, or argues for
-        something adjacent (immigration policy, privacy in general) without endorsing or objecting
-        to THIS rule. If there is ANY indication of opposition sentiment, classify as Oppose. Do
-        NOT reach for "Support" merely because the comment is not hostile — silence on the rule is
-        "Unclear".
+        proposed, it is "Unclear" or "No Position" (see below), not "Support".
+      - "No Position" — the comment clearly ENGAGES with this rulemaking but takes no side on the
+        rule itself: it is purely procedural (asks to extend the comment period, asks a process
+        question), only describes or summarizes the rule without objecting or endorsing, or argues
+        for something adjacent (immigration policy, privacy in general) without endorsing or
+        objecting to THIS rule. Use "No Position" — NOT "Unclear" — whenever you can point to what
+        the comment is actually doing (asking for an extension, describing Part 60, discussing
+        immigration policy broadly); reserve "Unclear" for when you cannot. If a procedural ask
+        (e.g. "extend the comment period") is paired with ANY substantive opposition or support
+        elsewhere in the comment, that substance controls — classify Oppose or Support, not No
+        Position.
+      - "Unclear" — the comment is genuinely ambiguous: truly off-topic, a single ambiguous word or
+        fragment, incoherent, just docket metadata, or its own text pulls in contradictory
+        directions with no discernible lean. Do NOT reach for "Support" merely because the comment
+        is not hostile, and do NOT use "Unclear" for a comment that plainly does something
+        identifiable but non-committal (that is "No Position" above) — "Unclear" means you cannot
+        tell what the comment is even doing, not just that it avoids taking a side.
 
       SARCASM CHECK: before calling something "Support", make sure the praise is sincere. A comment
       that calls the rule "great" but then describes it causing undercounts, disenfranchisement, or

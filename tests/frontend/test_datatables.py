@@ -46,4 +46,4 @@ def test_position_column_short_labels(page):
     tags = page.query_selector_all("#commentsTable tbody tr .tag-position")
     labels = set(t.inner_text().strip() for t in tags)
     assert labels, "No position tags rendered"
-    assert labels <= {"Oppose", "Support", "Unclear"}, f"Position labels not short: {labels}"
+    assert labels <= {"Oppose", "Support", "Unclear", "No Position"}, f"Position labels not short: {labels}"

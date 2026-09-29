@@ -30,6 +30,7 @@
             --color-support: {{ colors.support }};
             --color-unclear: {{ colors.unclear }};
             --color-mixed: {{ colors.mixed }};
+            --color-no-position: {{ colors.no_position }};
 
             --font-heading: 'DM Sans', sans-serif;
             --font-body: 'Source Sans 3', sans-serif;
@@ -116,6 +117,7 @@
         .stat-number.oppose { color: var(--color-oppose); }
         .stat-number.support { color: var(--color-support); }
         .stat-number.unclear { color: var(--color-unclear); }
+        .stat-number.no_position { color: var(--color-no-position); }
         .stat-number.small { font-size: 1.15rem; }
         .stat-label {
             font-size: 0.85rem;
@@ -203,6 +205,7 @@
         .tag-position.pos-oppose { color: var(--color-oppose); }
         .tag-position.pos-support { color: var(--color-support); }
         .tag-position.pos-unclear { color: var(--color-unclear); }
+        .tag-position.pos-no-position { color: var(--color-no-position); }
         .flag-yes { font-weight: 600; color: var(--color-accent); }
         .clickable-row { cursor: pointer; }
 
@@ -416,9 +419,13 @@
                 <div class="stat-number support">{{ briefing.support_pct }}%</div>
                 <div class="stat-label">Support ({{ "{:,}".format(briefing.support_count) }})</div>
             </div>
-            <div class="stat-card clickable" onclick="showStanceModal('unclear')" title="No clear position or off-topic.">
+            <div class="stat-card clickable" onclick="showStanceModal('unclear')" title="Genuinely ambiguous, off-topic, or contradictory — no discernible lean either way.">
                 <div class="stat-number unclear">{{ briefing.unclear_pct }}%</div>
                 <div class="stat-label">Unclear ({{ "{:,}".format(briefing.unclear_count) }})</div>
+            </div>
+            <div class="stat-card clickable" onclick="showStanceModal('no_position')" title="Engages with the subject but takes no side on the rule itself — e.g. procedural, describes the rule, or asks a question without objecting or endorsing.">
+                <div class="stat-number no_position">{{ briefing.no_position_pct }}%</div>
+                <div class="stat-label">No Position ({{ "{:,}".format(briefing.no_position_count) }})</div>
             </div>
         </div>
         {% endif %}
@@ -690,7 +697,7 @@
         const commentDataRaw = window.__ROWS__;
         const COMMENT_FIELDS = ['id', 'date', 'received_date', 'submitter', 'organization', 'entity_type', 'cosigner_count',
             'stances', 'flags', 'state', 'political', 'has_attachment', 'campaign_id', 'campaign_rank',
-            'campaign_size', 'campaign_stance', 'multi_values', 'submitter_inferred'];
+            'campaign_size', 'campaign_stance', 'multi_values', 'submitter_inferred', 'position'];
         const commentData = commentDataRaw.map(function (r) {
             const obj = {};
             COMMENT_FIELDS.forEach(function (name, i) { obj[name] = r[i]; });
@@ -761,6 +768,7 @@
 
         const supportComments = {{ briefing.support_comments | tojson }};
         const unclearComments = {{ briefing.unclear_comments | tojson }};
+        const noPositionComments = {{ briefing.no_position_comments | tojson }};
         const regexPatterns = {{ regex_patterns | tojson }};
         const campaignsList = {{ briefing.campaigns_list | tojson }};
         const namedCampaignsList = {{ briefing.named_campaigns_list | tojson }};
@@ -798,8 +806,12 @@
         }
 
         function showStanceModal(type) {
-            var comments = type === 'support' ? supportComments : unclearComments;
-            var title = type === 'support' ? 'Support' : 'Unclear';
+            var byType = {support: [supportComments, 'Support'],
+                          unclear: [unclearComments, 'Unclear'],
+                          no_position: [noPositionComments, 'No Position']};
+            var entry = byType[type] || byType.unclear;
+            var comments = entry[0];
+            var title = entry[1];
             document.getElementById('entityModalTitle').textContent = title + ' Comments (' + comments.length + ')';
             var html = '';
             if (comments.length === 0) {
@@ -883,7 +895,8 @@
             html += '<p style="margin-bottom:0.75rem;"><span class="stance-badge stance-' + (campaign.stance || '').toLowerCase() + '">' + campaign.stance + ' campaign</span> '
                 + '<span style="color:var(--color-text-muted); font-size:0.82rem;">'
                 + campaign.support.toLocaleString() + ' Support / ' + campaign.oppose.toLocaleString() + ' Oppose'
-                + (campaign.unclear ? ' / ' + campaign.unclear.toLocaleString() + ' Unclear' : '') + '</span></p>';
+                + (campaign.unclear ? ' / ' + campaign.unclear.toLocaleString() + ' Unclear' : '')
+                + (campaign.no_position ? ' / ' + campaign.no_position.toLocaleString() + ' No Position' : '') + '</span></p>';
             html += '<div class="detail-label">Most Common Version</div>';
             html += '<div style="background:var(--color-surface); padding:16px; border-radius:6px; margin-bottom:16px; border-left:4px solid var(--color-accent); font-size:0.9rem; line-height:1.6; white-space:pre-wrap;">' + escapeHtml(campaign.canonical) + '</div>';
             html += '<div class="detail-label">Sample Comments in This Campaign</div>';
@@ -912,7 +925,8 @@
             html += '<p style="margin-bottom:0.75rem;"><span class="stance-badge stance-' + (campaign.stance || '').toLowerCase() + '">' + campaign.stance + ' campaign</span> '
                 + '<span style="color:var(--color-text-muted); font-size:0.82rem;">'
                 + campaign.support.toLocaleString() + ' Support / ' + campaign.oppose.toLocaleString() + ' Oppose'
-                + (campaign.unclear ? ' / ' + campaign.unclear.toLocaleString() + ' Unclear' : '') + '</span></p>';
+                + (campaign.unclear ? ' / ' + campaign.unclear.toLocaleString() + ' Unclear' : '')
+                + (campaign.no_position ? ' / ' + campaign.no_position.toLocaleString() + ' No Position' : '') + '</span></p>';
             if (campaign.canonical) {
                 html += '<div class="detail-label">Most Common Version</div>';
                 html += '<div style="background:var(--color-surface); padding:16px; border-radius:6px; margin-bottom:16px; border-left:4px solid var(--color-accent); font-size:0.9rem; line-height:1.6; white-space:pre-wrap;">' + escapeHtml(campaign.canonical) + '</div>';
@@ -1114,14 +1128,19 @@
             return 'Unclear';
         }
         function cPositions(c) {
+            // Explicit Position: tags only ever say Oppose/Support (see
+            // verify_stances.py) — anything else falls back to the row's
+            // precomputed bucket (c.position), which distinguishes "Unclear"
+            // from "No Position" (or any other label a regulation configures)
+            // the same way the server-side stat cards do.
             var raw = (c.stances || []).filter(function (s) { return s.indexOf('Position:') === 0; });
-            if (!raw.length) return ['Unclear'];
+            if (!raw.length) return [c.position || 'Unclear'];
             var out = [];
             raw.forEach(function (s) {
                 var sh = shortPosition(s);
                 if (out.indexOf(sh) < 0) out.push(sh);
             });
-            return out.length ? out : ['Unclear'];
+            return out.length ? out : [c.position || 'Unclear'];
         }
         function cConcerns(c) {
             return (c.stances || []).filter(function (s) { return s.indexOf('Concern:') === 0; })
@@ -1174,7 +1193,7 @@
               filter: showsField('state_identified', 'filter') ? { name: fieldLabel('state_identified', 'State'), vals: function (c) { return c.state ? [c.state] : []; } } : null },
             { key: 'position', title: 'Position', orderable: false, enabled: showsField('stances', 'column'),
               cell: function (c) { return cPositions(c).map(function (p) {
-                  var cls = p.indexOf('Oppose') >= 0 ? 'pos-oppose' : (p.indexOf('Support') >= 0 ? 'pos-support' : 'pos-unclear');
+                  var cls = p.indexOf('Oppose') >= 0 ? 'pos-oppose' : (p.indexOf('Support') >= 0 ? 'pos-support' : (p === 'No Position' ? 'pos-no-position' : 'pos-unclear'));
                   return '<span class="stance-tag tag-position ' + cls + '">' + escapeHtml(p) + '</span>';
               }).join(' '); },
               filter: showsField('stances', 'filter') ? { name: 'Position', vals: cPositions } : null },

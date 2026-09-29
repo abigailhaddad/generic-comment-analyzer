@@ -168,8 +168,9 @@ def compute_briefing(comments: List[Dict[str, Any]]) -> Dict[str, Any]:
     oppose_count = 0
     support_count = 0
     unclear_count = 0
+    no_position_count = 0
     concern_counts = {}
-    concern_stance = {}  # concern label -> {Oppose, Support, Unclear} split
+    concern_stance = {}  # concern label -> {Oppose, Support, Unclear, No Position} split
     entity_counts = {}
     entity_submitters = {}  # entity_type -> list of {name, org, id}
     state_counts = {}
@@ -178,6 +179,7 @@ def compute_briefing(comments: List[Dict[str, Any]]) -> Dict[str, Any]:
     political_comments = {}  # party -> list of submitter details
     support_comments = []
     unclear_comments = []
+    no_position_comments = []
 
     for c in comments:
         analysis = c.get('analysis') or {}
@@ -203,6 +205,9 @@ def compute_briefing(comments: List[Dict[str, Any]]) -> Dict[str, Any]:
         elif pos == 'Support':
             support_count += 1
             support_comments.append(stance_entry)
+        elif pos == 'No Position':
+            no_position_count += 1
+            no_position_comments.append(stance_entry)
         else:
             unclear_count += 1
             unclear_comments.append(stance_entry)
@@ -211,7 +216,7 @@ def compute_briefing(comments: List[Dict[str, Any]]) -> Dict[str, Any]:
             if s.startswith('Concern:'):
                 label = s.replace('Concern: ', '')
                 concern_counts[label] = concern_counts.get(label, 0) + 1
-                cs = concern_stance.setdefault(label, {'Oppose': 0, 'Support': 0, 'Unclear': 0})
+                cs = concern_stance.setdefault(label, {'Oppose': 0, 'Support': 0, 'Unclear': 0, 'No Position': 0})
                 cs[pos] = cs.get(pos, 0) + 1
 
         entity = analysis.get('entity_type', 'Individual/Other')
@@ -272,14 +277,15 @@ def compute_briefing(comments: List[Dict[str, Any]]) -> Dict[str, Any]:
         oppose = cs.get('Oppose', 0)
         support = cs.get('Support', 0)
         unclear = cs.get('Unclear', 0)
+        no_position = cs.get('No Position', 0)
         denom = oppose + support
-        # Split the bar oppose-vs-support (unclear excluded from the ratio); an
-        # all-unclear concern renders as a neutral full-oppose bar.
+        # Split the bar oppose-vs-support (unclear/no-position excluded from the
+        # ratio); an all-unclear concern renders as a neutral full-oppose bar.
         oppose_pct = round(oppose / denom * 100) if denom else 100
         support_pct = 100 - oppose_pct if denom else 0
         concern_list.append({
             'name': name, 'count': count, 'pct': pct,
-            'oppose': oppose, 'support': support, 'unclear': unclear,
+            'oppose': oppose, 'support': support, 'unclear': unclear, 'no_position': no_position,
             'oppose_pct': oppose_pct, 'support_pct': support_pct,
         })
 
@@ -326,14 +332,19 @@ def compute_briefing(comments: List[Dict[str, Any]]) -> Dict[str, Any]:
         exact_dupes = canonical_counts.get(canonical, 0)
         preview = canonical[:200] + '...' if len(canonical) > 200 else canonical
         # Derive the campaign's overall stance from its members' already-computed
-        # positions (no LLM call): plurality Support/Oppose, else Mixed.
+        # positions (no LLM call): plurality Support/Oppose, else Mixed. Counting
+        # generically over whatever position labels actually appear (not just the
+        # original three) means an extra label a regulation defines — e.g. "No
+        # Position" — still counts toward the plurality instead of being silently
+        # dropped from consideration.
         pc = Counter(g['positions'])
         support_n, oppose_n, unclear_n = pc.get('Support', 0), pc.get('Oppose', 0), pc.get('Unclear', 0)
-        mx = max(support_n, oppose_n, unclear_n)
-        winners = [k for k, v in (('Support', support_n), ('Oppose', oppose_n), ('Unclear', unclear_n)) if v == mx]
+        no_position_n = pc.get('No Position', 0)
+        mx = max(pc.values()) if pc else 0
+        winners = [k for k, v in pc.items() if v == mx]
         stance = winners[0] if len(winners) == 1 and winners[0] in ('Support', 'Oppose') else 'Mixed'
         campaign_id_to_stance[cid] = stance
-        # Oppose/Support split for the stacked bar (unclear excluded from the ratio).
+        # Oppose/Support split for the stacked bar (unclear/no-position excluded from the ratio).
         c_denom = oppose_n + support_n
         c_oppose_pct = round(oppose_n / c_denom * 100) if c_denom else 100
         c_support_pct = 100 - c_oppose_pct if c_denom else 0
@@ -350,6 +361,7 @@ def compute_briefing(comments: List[Dict[str, Any]]) -> Dict[str, Any]:
             'support': support_n,
             'oppose': oppose_n,
             'unclear': unclear_n,
+            'no_position': no_position_n,
             'oppose_pct': c_oppose_pct,
             'support_pct': c_support_pct,
         })
@@ -362,8 +374,11 @@ def compute_briefing(comments: List[Dict[str, Any]]) -> Dict[str, Any]:
         'support_pct': display_pct(support_count, total),
         'unclear_count': unclear_count,
         'unclear_pct': display_pct(unclear_count, total),
+        'no_position_count': no_position_count,
+        'no_position_pct': display_pct(no_position_count, total),
         'support_comments': support_comments,
         'unclear_comments': unclear_comments,
+        'no_position_comments': no_position_comments,
         'with_attachments': with_attachments,
         'date_range': get_date_range(comments),
         'concern_counts': concern_list,
@@ -401,6 +416,8 @@ def get_filter_values(comments: List[Dict[str, Any]]) -> Dict[str, list]:
     positions = sorted(s.replace('Position: ', '') for s in stances if s.startswith('Position:'))
     if 'Unclear' not in positions:
         positions.append('Unclear')
+    if 'No Position' not in positions:
+        positions.append('No Position')
     positions.sort()
     concerns = sorted(s.replace('Concern: ', '') for s in stances if s.startswith('Concern:'))
 
@@ -549,6 +566,7 @@ def prepare_rows(comments: List[Dict[str, Any]], campaign_id_to_rank: dict = Non
             'entity_name': analysis.get(entity_quote_field, ''),
             'cosigner_names': cosigner_names,
             'cosigner_count': _safe_int(analysis.get('cosigner_count')) or 1,
+            'position': comment_position(comment),
             'stances_html': stances_html,
             'position_html': position_html,
             'concerns_html': concerns_html,
@@ -579,11 +597,15 @@ def _snippet(text: str, n: int = 70) -> str:
 
 
 def comment_position(c: Dict[str, Any]) -> str:
-    """Bucket a comment into Oppose / Support / Unclear from already-computed data.
+    """Bucket a comment into a position (Oppose / Support / Unclear, plus any
+    extra labels a regulation's second_pass.stance.labels defines — e.g. "No
+    Position" for a docket that separates "took no side" from "genuinely
+    ambiguous") from already-computed data.
 
-    Prefers the second-pass `verified_stance` when present, else the Position tag(s)
-    in the stances list. Used both for the stance stat cards and to derive each
-    campaign's overall stance.
+    Prefers the second-pass `verified_stance` when present — trusted as-is since
+    it was generated against an enum built from the regulation's own configured
+    labels — else the Position tag(s) in the stances list. Used both for the
+    stance stat cards and to derive each campaign's overall stance.
 
     A comment can legitimately carry BOTH Position tags (e.g. it endorses one part
     of a multi-part rule and objects to another) — that isn't a coin flip decided
@@ -593,7 +615,7 @@ def comment_position(c: Dict[str, Any]) -> str:
     """
     analysis = c.get('analysis') or {}
     verified = analysis.get('verified_stance')
-    if verified in ('Oppose', 'Support', 'Unclear'):
+    if isinstance(verified, str) and verified:
         return verified
     stances = analysis.get('stances', [])
     if hasattr(stances, 'tolist'):
@@ -752,6 +774,7 @@ DEFAULT_COLORS = {
     'accent': '#1B3A5C', 'accent_hover': '#12293F', 'highlight': '#D4A03C',
     'border': '#E8DDD0', 'code_bg': '#2A211A', 'error': '#C0392B',
     'oppose': '#C0392B', 'support': '#2D6A4F', 'unclear': '#7A6E62', 'mixed': '#7A6E62',
+    'no_position': '#5B7B91',
 }
 
 
@@ -902,6 +925,7 @@ def _row_to_list(r):
         r['campaign_stance'],
         r['multi_values'],
         bool(r.get('submitter_inferred')),
+        r.get('position', 'Unclear'),
     ]
 
 
@@ -1115,8 +1139,9 @@ def compute_named_campaigns(comments: List[Dict[str, Any]], roster: Dict[str, Li
         positions = [comment_position(c) for c in matched]
         pc = Counter(positions)
         support_n, oppose_n, unclear_n = pc.get('Support', 0), pc.get('Oppose', 0), pc.get('Unclear', 0)
-        mx = max(support_n, oppose_n, unclear_n)
-        winners = [k for k, v in (('Support', support_n), ('Oppose', oppose_n), ('Unclear', unclear_n)) if v == mx]
+        no_position_n = pc.get('No Position', 0)
+        mx = max(pc.values()) if pc else 0
+        winners = [k for k, v in pc.items() if v == mx]
         stance = winners[0] if len(winners) == 1 and winners[0] in ('Support', 'Oppose') else 'Mixed'
         c_denom = oppose_n + support_n
         c_oppose_pct = round(oppose_n / c_denom * 100) if c_denom else 100
@@ -1133,7 +1158,7 @@ def compute_named_campaigns(comments: List[Dict[str, Any]], roster: Dict[str, Li
             'canonical': canonical,
             'sample_ids': [c.get('id', '') for c in matched[:10]],
             'stance': stance,
-            'support': support_n, 'oppose': oppose_n, 'unclear': unclear_n,
+            'support': support_n, 'oppose': oppose_n, 'unclear': unclear_n, 'no_position': no_position_n,
             'oppose_pct': c_oppose_pct, 'support_pct': c_support_pct,
         })
     result.sort(key=lambda g: -g['size'])

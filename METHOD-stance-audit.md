@@ -37,7 +37,45 @@ model whether the comment text actually holds it — against a definition writte
 construction. It only reports; correcting is a separate deliberate step.
 
 Definitions live under `stance_audit:` in the regulation's `analyzer_config.yaml`, so
-each docket audits against its own wording. `audit_stances.py` carries fallbacks.
+each docket audits against its own wording. `audit_stances.py` carries fallbacks for
+`support`/`oppose` only — `unclear`/`no_position` (below) have no sensible
+regulation-agnostic default and must be defined per docket.
+
+### Auditing the other direction: recall, not precision
+
+`--position support` / `--position oppose` check PRECISION — of the comments the
+pipeline put in that bucket, how many actually belong there. That leaves the opposite
+failure mode unchecked: comments sitting in Unclear (or, for a regulation using the
+4-label split below, No Position) that actually lean Oppose or Support and were
+under-classified.
+
+    python audit_stances.py --regulation <slug> --position unclear
+    python audit_stances.py --regulation <slug> --position no_position --sample 1000
+
+These select by the report's own computed bucket (`comment_position()` in
+generate_report.py — verified_stance if present, else the absence of a Position tag),
+not a literal `Position:` tag, since neither label is ever written as one. A dispute
+here means the audit read the comment as actually Oppose/Support (see its `reads_as`
+field in the output jsonl) even though the pipeline called it ambiguous or no-position
+— feed `--emit-ids` into the same re-verify workflow below.
+
+### Splitting Unclear from No Position
+
+A regulation can distinguish "genuinely can't tell what this comment is doing"
+(Unclear) from "clearly engages but takes no side" (No Position — e.g. a pure request
+to extend the comment period) by adding a fourth label:
+
+```yaml
+second_pass:
+  stance:
+    labels: ["Oppose", "Support", "Unclear", "No Position"]
+```
+
+and defining `stance_audit.unclear` / `stance_audit.no_position` alongside
+`support`/`oppose`. Leave `labels` out and a regulation keeps the original three —
+this is opt-in per docket, not a global behavior change. See USBC-2026-0628's
+`analyzer_config.yaml` for a worked example of both the label split and its audit
+definitions.
 
 Resume is automatic — judging is the only cost, so a re-run never pays twice.
 
