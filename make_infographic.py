@@ -402,7 +402,7 @@ def shorten(s, n):
     return s if len(s) <= n else s[:n - 1].rstrip() + '…'
 
 
-def draw_gauge(ax, frac, pal, n_seg=20):
+def draw_gauge(ax, frac, pal, color, n_seg=20):
     ax.set_aspect('equal')
     ax.set_xlim(-1.3, 1.3)
     ax.set_ylim(-0.3, 1.25)
@@ -410,7 +410,7 @@ def draw_gauge(ax, frac, pal, n_seg=20):
     r_out, r_in = 1.0, 0.6
     ang = lambda p: 180 - 180 * p  # 0 -> left, 1 -> right
     # filled portion + remainder, then bg-coloured gaps cut radial slots
-    ax.add_patch(Wedge((0, 0), r_out, ang(frac), 180, width=r_out - r_in, fc=pal['oppose'], ec='none'))
+    ax.add_patch(Wedge((0, 0), r_out, ang(frac), 180, width=r_out - r_in, fc=color, ec='none'))
     ax.add_patch(Wedge((0, 0), r_out, 0, ang(frac), width=r_out - r_in, fc=pal['neutral'], ec='none'))
     for i in range(1, n_seg):
         a = math.radians(ang(i / n_seg))
@@ -478,7 +478,11 @@ def build(df, meta, cfg, pal, out_dir, args):
     n_op = int((df['_pos'] == 'Oppose').sum())
     n_su = int((df['_pos'] == 'Support').sum())
     n_un = total - n_op - n_su
-    frac = n_op / total if total else 0
+    meter = args.meter or cfg.get('meter', 'oppose')
+    if meter not in ('oppose', 'support'):
+        sys.exit(f"meter must be 'oppose' or 'support', got {meter!r}")
+    n_meter = n_op if meter == 'oppose' else n_su
+    frac = n_meter / total if total else 0
     rule_id = meta.get('docket_id') or args.rule_id
     dates = date_range_label(df, args.date_field)
     title = cfg.get('title', args.title)
@@ -495,10 +499,10 @@ def build(df, meta, cfg, pal, out_dir, args):
     T(0.03, 0.785, f'{total:,}', fontsize=62, fontweight='bold', va='center', ha='left')
     T(0.033, 0.685, 'comments', fontsize=19, va='center', ha='left', color=muted)
     gax = fig.add_axes([0.03, 0.235, 0.31, 0.40])
-    draw_gauge(gax, frac, pal)
-    T(0.185, 0.185, pct_str(n_op, total).replace('<', '').replace('>', ''), fontsize=54, fontweight='bold',
-      color=pal['oppose'], ha='center', va='center')
-    T(0.185, 0.105, 'OPPOSE', fontsize=20, fontweight='bold', ha='center', va='center')
+    draw_gauge(gax, frac, pal, pal[meter])
+    T(0.185, 0.185, pct_str(n_meter, total).replace('<', '').replace('>', ''), fontsize=54, fontweight='bold',
+      color=pal[meter], ha='center', va='center')
+    T(0.185, 0.105, meter.upper(), fontsize=20, fontweight='bold', ha='center', va='center')
     T(0.185, 0.055, f'{n_op:,} oppose  ·  {n_su:,} support  ·  {n_un:,} neither', fontsize=10.5,
       ha='center', va='center', color=muted)
 
@@ -584,7 +588,8 @@ def build(df, meta, cfg, pal, out_dir, args):
     plt.close(fig)
 
     data = dict(rule_id=rule_id, date_range=dates, total=total, oppose=n_op, support=n_su, neither=n_un,
-                pct_oppose=round(100 * frac, 1), topics=topics, entities=ent, cloud_words=cloud_words,
+                meter=meter, pct_oppose=round(100 * n_op / total, 1) if total else 0,
+                pct_support=round(100 * n_su / total, 1) if total else 0, topics=topics, entities=ent, cloud_words=cloud_words,
                 voices_used_for_clouds=int(len(v)), palette=pal)
     jp = out_dir / f'{args.name}.json'
     jp.write_text(json.dumps(data, indent=2, default=str), encoding='utf-8')
@@ -608,6 +613,8 @@ def main(argv=None):
     ap.add_argument('--date-field', default='date', help="'date' (posted, as in the report) or 'received_date'")
     ap.add_argument('--palette', choices=sorted(PALETTES), help=f'default: {DEFAULT_PALETTE}')
     ap.add_argument('--color', action='append', default=[], metavar='ROLE=#HEX', help=f'roles: {", ".join(ROLES)}')
+    ap.add_argument('--meter', choices=['oppose', 'support'], default=None,
+                    help='which share the gauge shows (default: oppose, or infographic.meter in the config)')
     ap.add_argument('--font', default='DejaVu Sans')
     ap.add_argument('--topics', type=int, default=6)
     ap.add_argument('--topic-prefix', default='Concern:')
