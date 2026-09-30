@@ -338,8 +338,27 @@ def load_stopwords_file(path):
     return words
 
 
-def find_font(family, weight='bold'):
-    return font_manager.findfont(font_manager.FontProperties(family=family, weight=weight))
+FONT_EXTS = ('.ttf', '.otf', '.ttc')
+
+
+def resolve_font(spec, role):
+    """(family, file path) for a font given by installed name or by a .ttf/.otf path.
+
+    A missing font is a hard error: matplotlib would otherwise silently substitute
+    its default, and a CI runner without the font would publish a different-looking slide."""
+    p = Path(spec).expanduser()
+    if p.suffix.lower() in FONT_EXTS or p.is_file():
+        if not p.is_file():
+            sys.exit(f'{role} font file not found: {spec}')
+        font_manager.fontManager.addfont(str(p))
+        return font_manager.FontProperties(fname=str(p)).get_name(), str(p)
+    try:
+        path = font_manager.findfont(font_manager.FontProperties(family=spec, weight='bold'),
+                                     fallback_to_default=False)
+    except ValueError:
+        sys.exit(f"{role} font {spec!r} is not installed on this machine. Install it, or pass the path "
+                 f"to a .ttf/.otf file instead (e.g. --{role}-font path/to/font.ttf).")
+    return spec, path
 
 
 def render_cloud(weights, w, h, color, font_path, min_px, max_px, seed=7, margin=4):
@@ -446,8 +465,9 @@ def build(df, meta, cfg, pal, out_dir, args):
     dpi = 144
     fig = plt.figure(figsize=(W / dpi, H / dpi), dpi=dpi, facecolor=pal['bg'])
     muted = mix(pal['ink'], pal['bg'], 0.38)
-    font = cfg.get('font', args.font)
-    plt.rcParams.update({'font.family': font, 'text.parse_math': False, 'svg.fonttype': 'path'})
+    body_family = args.fonts['body'][0]
+    disp = args.fonts['display'][0]
+    plt.rcParams.update({'font.family': body_family, 'text.parse_math': False, 'svg.fonttype': 'path'})
     T = lambda x, y, s, **k: fig.text(x, y, s, **{'color': pal['ink'], **k})
     renderer = fig.canvas.get_renderer()
 
@@ -490,19 +510,19 @@ def build(df, meta, cfg, pal, out_dir, args):
     # frame + header
     fig.add_artist(Rectangle((0.008, 0.014), 0.984, 0.972, transform=fig.transFigure, fill=False,
                              ec=pal['ink'], lw=2.4))
-    T(0.03, 0.925, title.upper(), fontsize=19, fontweight='bold', va='center', ha='left')
+    T(0.03, 0.925, title.upper(), fontsize=19, fontweight='bold', va='center', ha='left', family=disp)
     T(0.97, 0.925, f'{rule_id}   ·   {dates}' if dates else rule_id, fontsize=15, ha='right',
-      va='center', family='DejaVu Sans Mono', fontweight='bold', color=pal['ink'])
+      va='center', family=args.fonts['mono'][0], fontweight='bold', color=pal['ink'])
     fig.add_artist(plt.Line2D([0.03, 0.97], [0.875, 0.875], transform=fig.transFigure, color=pal['ink'], lw=1.6))
 
     # ---- left: total + gauge
-    T(0.03, 0.785, f'{total:,}', fontsize=62, fontweight='bold', va='center', ha='left')
+    T(0.03, 0.785, f'{total:,}', fontsize=62, fontweight='bold', va='center', ha='left', family=disp)
     T(0.033, 0.685, 'comments', fontsize=19, va='center', ha='left', color=muted)
     gax = fig.add_axes([0.03, 0.235, 0.31, 0.40])
     draw_gauge(gax, frac, pal, pal[meter])
     T(0.185, 0.185, pct_str(n_meter, total).replace('<', '').replace('>', ''), fontsize=54, fontweight='bold',
-      color=pal[meter], ha='center', va='center')
-    T(0.185, 0.105, meter.upper(), fontsize=20, fontweight='bold', ha='center', va='center')
+      color=pal[meter], ha='center', va='center', family=disp)
+    T(0.185, 0.105, meter.upper(), fontsize=20, fontweight='bold', ha='center', va='center', family=disp)
     T(0.185, 0.055, f'{n_op:,} oppose  ·  {n_su:,} support  ·  {n_un:,} neither', fontsize=10.5,
       ha='center', va='center', color=muted)
 
@@ -513,7 +533,7 @@ def build(df, meta, cfg, pal, out_dir, args):
     stop |= args.stopwords_from_file
     stop |= {t for t in re.split(r'[^a-z]+', rule_id.lower()) if len(t) >= 3}
     min_df = max(3, math.ceil(args.min_df_frac * len(v)))
-    fp = find_font(font)
+    fp = args.fonts['cloud'][1]
     boxes = {'Oppose': (0.375, 0.485, 0.30, 0.335), 'Support': (0.375, 0.075, 0.30, 0.335)}
     other = {'Oppose': 'Support', 'Support': 'Oppose'}
     cloud_words = {}
@@ -532,11 +552,11 @@ def build(df, meta, cfg, pal, out_dir, args):
         ax.imshow(img, interpolation='none', aspect='auto')
         ax.axis('off')
         fig.add_artist(Rectangle((x, y + h + 0.012), 0.014, 0.024, transform=fig.transFigure, fc=col, ec='none'))
-        T(x + 0.022, y + h + 0.024, grp.upper(), fontsize=12, fontweight='bold', va='center', ha='left')
+        T(x + 0.022, y + h + 0.024, grp.upper(), fontsize=12, fontweight='bold', va='center', ha='left', family=disp)
 
     # ---- right top: topics
     rx, rw = 0.715, 0.255
-    T(rx, 0.848, 'TOPICS', fontsize=12, fontweight='bold', va='center', ha='left', color=muted)
+    T(rx, 0.848, 'TOPICS', fontsize=12, fontweight='bold', va='center', ha='left', color=muted, family=disp)
     topics = topic_counts(df, cfg.get('topic_prefix', args.topic_prefix), args.topics)
     tmax = max((t['n'] for t in topics), default=1)
     bh, line_h, gap = 0.017, 0.0235, 0.012
@@ -563,10 +583,11 @@ def build(df, meta, cfg, pal, out_dir, args):
 
     # ---- right bottom: entities
     ent = entity_summary(df, args.entities)
-    T(rx, 0.40, 'WHO IS COMMENTING', fontsize=12, fontweight='bold', va='center', ha='left', color=muted)
-    T(rx, 0.325, pct_str(ent['primary_n'], ent['total']).replace('<', '').replace('>', ''),
-      fontsize=40, fontweight='bold', va='center', ha='left')
-    T(rx + 0.105, 0.325, shorten(cfg.get('entity_primary_label', ent['primary']), 26), fontsize=13,
+    T(rx, 0.40, 'WHO IS COMMENTING', fontsize=12, fontweight='bold', va='center', ha='left', color=muted, family=disp)
+    big = T(rx, 0.325, pct_str(ent['primary_n'], ent['total']).replace('<', '').replace('>', ''),
+            fontsize=40, fontweight='bold', va='center', ha='left', family=disp)
+    label_x = rx + big.get_window_extent(renderer).width / W + 0.014  # follows the number's real width
+    T(label_x, 0.325, shorten(cfg.get('entity_primary_label', ent['primary']), 26), fontsize=13,
       va='center', ha='left', color=muted)
     y0 = 0.245
     rows = list(ent['shown']) + ([(f"+{ent['other_types']} more types", ent['other_n'])] if ent['other_n'] else [])
@@ -615,7 +636,11 @@ def main(argv=None):
     ap.add_argument('--color', action='append', default=[], metavar='ROLE=#HEX', help=f'roles: {", ".join(ROLES)}')
     ap.add_argument('--meter', choices=['oppose', 'support'], default=None,
                     help='which share the gauge shows (default: oppose, or infographic.meter in the config)')
-    ap.add_argument('--font', default='DejaVu Sans')
+    ap.add_argument('--font', help="body text: an installed font name or a .ttf/.otf path (default: DejaVu Sans)")
+    ap.add_argument('--display-font', help='the big labels: comment total, meter %% and label, title, section '
+                    'headers, entity %%. Default: same as --font')
+    ap.add_argument('--cloud-font', help='word clouds. Default: same as --font')
+    ap.add_argument('--mono-font', help='rule ID and date in the header (default: DejaVu Sans Mono)')
     ap.add_argument('--topics', type=int, default=6)
     ap.add_argument('--topic-prefix', default='Concern:')
     ap.add_argument('--entities', type=int, default=5, help='organisation types listed before "+N more"')
@@ -658,6 +683,16 @@ def main(argv=None):
         if not Path(f).is_file():
             sys.exit(f'Stop-word file not found: {f}')
         args.stopwords_from_file |= load_stopwords_file(f)
+    def font_spec(key, default):
+        v = getattr(args, key) or cfg.get(key)
+        if not v:
+            return default
+        return str(reg / v) if (reg / str(v)).is_file() else str(v)  # config paths are relative to the regulation dir
+    body_spec = font_spec('font', 'DejaVu Sans')
+    args.fonts = dict(body=resolve_font(body_spec, 'body'),
+                      display=resolve_font(font_spec('display_font', body_spec), 'display'),
+                      cloud=resolve_font(font_spec('cloud_font', body_spec), 'cloud'),
+                      mono=resolve_font(font_spec('mono_font', 'DejaVu Sans Mono'), 'mono'))
     warns = check_palette(pal)
     for w in warns:
         print(f'palette warning: {w}', file=sys.stderr)
