@@ -426,9 +426,22 @@ state:
 # min_chars is the minimum normalized text length (body + attachments) for a
 # comment to be eligible to join a campaign; short generic one-liners are written
 # independently by many people and are not a coordinated campaign.
+#
+# sweep_orphans (default true, listed here for visibility) is a second pass
+# that folds a personalized comment into a campaign it already matches
+# closely enough elsewhere in its text, even though the whole comment doesn't
+# match closely enough for the primary MinHash pass to have caught it — see
+# the changelog entry below and pipeline.py's sweep_orphans_into_campaigns
+# docstring for the full validation. Left at the defaults validated there
+# (sweep_threshold 0.75, sweep_min_canon_shingles 30).
 # -------------------------------------------------------------------
 campaigns:
   min_chars: 100
+  sweep_orphans: true
+
+changelog:
+  - date: "2026-09-30"
+    note: "Added a second campaign-detection pass that recovers personalized comments a form-letter template's exact-duplicate detection missed. Biggest effect: the \"I am a citizen of the United States of America, and I am commenting as an individual...\" template (Support, sections 60.4/70.2) grows from 213 to 352 comments — 139 were sitting completely uncounted because each one changed enough of the template's own wording (a name, a dropped clause, reordered sentences) that the primary detector no longer recognized them as related, even though nothing else in the comment was original. The new pass matches on shared wording anywhere in the text, weighted so that boilerplate common to many unrelated comments (the rule's own title, a generic salutation) doesn't count — a first version without that weighting incorrectly pulled 42 unrelated comments, including two that were not even opposition stances, into an unrelated campaign made almost entirely of the rule's title. Deliberately conservative: comments that reworded the template's substance rather than just personalizing around it (about a dozen found, all human-readable as the same letter) are still left uncounted rather than risk pulling in something that doesn't belong. This only changes which campaign a comment is grouped under, never its own analyzed position — no comment's stance changed, and the docket-wide oppose/support split is unaffected."
 
 # -------------------------------------------------------------------
 # Pre-publish quality gate (pipeline.py: check_batch_quality). Defaults are

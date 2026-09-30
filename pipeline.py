@@ -10,7 +10,9 @@ Usage: python pipeline.py --csv comments.csv [--sample N] [--model gemini-2.0-fl
 
 import argparse
 import collections
+import hashlib
 import json
+import math
 import os
 import csv
 import re
@@ -986,7 +988,8 @@ def detect_campaigns(comments: List[Dict[str, Any]], threshold: float = 0.45, mi
 
     # Build lookup: comment index -> campaign info
     idx_to_campaign = {}
-    for campaign_id, cluster in enumerate(campaigns):
+    seen_ids = {}
+    for cluster in campaigns:
         # Label the campaign by the most common substantive member text — the
         # attachment when the body is just a "see attached" stub (see
         # _campaign_label_text), so it isn't shown as "See attached file(s)".
@@ -995,6 +998,27 @@ def detect_campaigns(comments: List[Dict[str, Any]], threshold: float = 0.45, mi
         for idx in cluster:
             text_counts[_campaign_label_text(comments[idx])] += 1
         canonical_text = text_counts.most_common(1)[0][0] if text_counts else ''
+
+        # campaign_id is derived from the canonical text itself, not from
+        # position in this run's size-sorted list. A plain enumerate() index
+        # meant "campaign 13" pointed at a DIFFERENT cluster every time the
+        # docket grew and sort order shifted — harmless for the report (which
+        # re-derives its own by-size campaign_rank fresh every generate_report.py
+        # run and never persists a raw campaign_id across runs), but it broke
+        # every other use of the number: the --export-csv `campaign_id` column
+        # is meaningless to compare across two days' exports, and "campaign 13"
+        # meant something different in every conversation about this pipeline.
+        # Hashing the (normalized) canonical text instead makes the ID a
+        # property of the campaign's content, so it only changes if the
+        # majority-vote canonical text itself changes. Truncated to 48 bits
+        # (12 hex digits) so it round-trips through JS's 53-bit-safe integers
+        # in generate_report.py's embedded JSON.
+        campaign_id = int(hashlib.sha1(normalize(canonical_text).encode('utf-8')).hexdigest()[:12], 16)
+        if campaign_id in seen_ids and seen_ids[campaign_id] != canonical_text:
+            logger.warning(f"campaign_id hash collision between two different canonical "
+                            f"texts (1-in-281-trillion event) — this run's numbering may "
+                            f"be unstable until the campaigns' texts diverge further")
+        seen_ids[campaign_id] = canonical_text
 
         for idx in cluster:
             idx_to_campaign[idx] = {
@@ -1019,6 +1043,201 @@ def detect_campaigns(comments: List[Dict[str, Any]], threshold: float = 0.45, mi
     logger.info(f"Tagged {total_in_campaigns} comments across {len(campaigns)} campaigns")
     logger.info(f"Remaining unique comments: {len(comments) - total_in_campaigns}")
 
+    return comments
+
+
+def sweep_orphans_into_campaigns(comments: List[Dict[str, Any]],
+                                  threshold: float = 0.75, min_chars: int = 100,
+                                  min_canon_shingles: int = 30) -> List[Dict[str, Any]]:
+    """Second pass: fold a comment detect_campaigns() missed into a campaign it
+    ALREADY found, when the comment shares enough of that campaign's template
+    ANYWHERE in its text — even though the whole comment doesn't match closely
+    enough for detect_campaigns() itself to have caught it.
+
+    detect_campaigns() measures whole-document Jaccard similarity, which dilutes
+    as a comment adds more of the writer's own reasoning around the shared
+    template: the more someone personalizes a form letter, the LESS likely they
+    are to be counted as part of it, which is backwards from what a campaign
+    detector should do. Confirmed on USBC-2026-0628: one campaign family showed
+    208 members across 9 variants, but 151 more comments used the exact same
+    "My name is X, I am a citizen of the United States..." template and were
+    sitting uncounted, every one of them longer than the shortest already-
+    detected member.
+
+    Measured with an overlap coefficient (shared 5-gram shingles over the
+    SMALLER side's shingle count) instead of Jaccard, over the WHOLE text, so a
+    long personalized comment is not penalized for its own extra content. An
+    earlier version of this restricted the comparison to each text's opening,
+    on the assumption personalization comes after the shared template. Checked
+    that assumption against real data and it was wrong in both directions: it
+    missed a comment (USBC-2026-0628-0073) that opened with its own preamble
+    ("Thank you for the opportunity to comment...") before an otherwise 99%
+    verbatim copy of a campaign's template, and it produced false positives —
+    three genuinely independent letters (USBC-2026-0628-7341/-3726/-6245, each
+    with its own distinct reasoning and structure) got swept into a campaign
+    they don't belong to on nothing but a shared formal salutation ("To the
+    U.S. Census Bureau, I am writing to comment on the proposed rule... (Docket
+    No....)") that independent writers converge on for reasons that have
+    nothing to do with coordination. Whole-text comparison gets both right:
+    0.99 for the first (real match, wherever the shared text sits) and
+    0.14-0.32 for the three false positives (correctly below threshold once
+    the rest of each letter, which shares nothing, is actually counted).
+
+    Whole-text overlap alone is still not enough, though: it's vulnerable to a
+    SHORT canonical, because the overlap coefficient divides by the SMALLER
+    side's shingle count — if that's the campaign's own tiny shingle set, a
+    single shared phrase can cover all or most of it regardless of the rest of
+    an unrelated, much longer letter. Found on all three regulations once this
+    was checked against real text, not just scores: USBC-2026-0628 campaign
+    "I am unequivocally opposed to the proposed rule: [official title]" (24
+    words, mostly the docket's own rule name) swept in 42 unrelated letters
+    including two comment-period-extension requests that aren't even opposition
+    stances. Worse on DOJ-OAG-2026-0001: a campaign whose ENTIRE canonical was
+    the six-word slogan "No one is above the law" scored a PERFECT 1.000
+    against an unrelated 18,277-character organizational comment letter that
+    happened to include that common phrase once — because with only 2 shingles
+    of "canonical" to match, matching that phrase IS matching the whole
+    campaign. Two such slogan-campaigns alone swept in 1,098 unrelated comments
+    on DOJ. This can't be fixed by raising the threshold; a campaign built
+    entirely from a common phrase hits 1.0 no matter how high the bar is.
+
+    Fixed two ways, both validated against hand-read comment text (not just
+    scores) on all three regulations:
+      1. Shared shingles are weighted by inverse document frequency (rarer
+         across the pool of orphans + campaign canonicals counts for more), so
+         a campaign built partly from boilerplate that's common docket-wide
+         (like the proposed rule's own official title) doesn't get free credit
+         for it — this is what the original USBC/OMB investigation called
+         "whole-text overlap," refined to not reward shared *common* text.
+      2. A campaign is only eligible as a sweep target if its canonical has at
+         least `min_canon_shingles` shingles (default 30, ~34 words) — because
+         IDF-weighting can't save a campaign whose ENTIRE identity is a short,
+         common phrase (fix #1 downweights the shared phrase, but if that
+         phrase is ~all the campaign has, the weighted overlap is still ~100%
+         of the campaign's own weight). The floor is not tuned to any one
+         regulation: every hand-confirmed FALSE positive campaign across all
+         three regs had well under 30 shingles (2-23), and every hand-confirmed
+         TRUE campaign had 34+; there was no case in between to split on.
+    Net effect measured on real text: USBC-2026-0628 swept drops 256->201 (the
+    citizen-template fix keeps 139 of its 143 recovered members; the 4 lost
+    were right at the old threshold and are the kind of "hard to find" miss
+    preferred over a false positive); DOJ-OAG-2026-0001 drops 1,660->660 with
+    the slogan false positives at 0; omb-financial-assistance drops 3,627->2,909
+    (a marginal NASA-opposition campaign with generic-phrase bycatch is
+    excluded by the floor; the two largest legitimate campaigns, 1,619 and 437
+    members, are untouched and clean at their lowest scores).
+
+    Deliberately additive only: it can never create a new campaign or move a
+    comment that is already in one, so it cannot change anything
+    detect_campaigns() itself decided — only add orphans to a campaign that
+    already exists. That keeps this safe to run on every regulation without
+    re-validating every existing campaign's membership, not just the one this
+    was built for.
+    """
+
+    def normalize(text):
+        text = re.sub(r'[^a-z0-9 ]', '', (text or '').lower())
+        return re.sub(r'\s+', ' ', text).strip()
+
+    def all_shingles(text):
+        words = normalize(text).split()
+        if len(words) < 5:
+            return None
+        return {tuple(words[j:j + 5]) for j in range(len(words) - 4)}
+
+    # One representative shingle set per campaign already found, from its
+    # canonical text (the same text the report already labels the campaign
+    # by) — excluding campaigns whose canonical is too short/generic to be a
+    # safe sweep target (see docstring point 2).
+    campaign_shingles = {}
+    campaign_canonical = {}
+    for c in comments:
+        cid = c.get('campaign_id')
+        if cid is None or cid in campaign_shingles:
+            continue
+        canonical = c.get('campaign_canonical') or ''
+        shingles = all_shingles(canonical)
+        if shingles and len(shingles) >= min_canon_shingles:
+            campaign_shingles[cid] = shingles
+            campaign_canonical[cid] = canonical
+
+    orphans = []
+    for c in comments:
+        if c.get('campaign_id') is not None:
+            continue
+        text = c.get('text', '') or ''
+        if len(normalize(text)) < min_chars:
+            continue
+        shingles = all_shingles(text)
+        if shingles:
+            orphans.append((c, shingles))
+
+    # Document frequency over the pool actually being matched (orphans +
+    # campaign canonicals), so a shingle common to this docket — e.g. its own
+    # official rule title — is downweighted without needing per-regulation
+    # tuning (see docstring point 1).
+    doc_freq = collections.Counter()
+    for _, shingles in orphans:
+        for s in shingles:
+            doc_freq[s] += 1
+    for shingles in campaign_shingles.values():
+        for s in shingles:
+            doc_freq[s] += 1
+
+    n_docs = len(orphans) + len(campaign_shingles)
+
+    def idf(shingle):
+        return math.log((n_docs + 1) / (doc_freq[shingle] + 1)) + 1.0
+
+    campaign_idf = {}
+    campaign_weight = {}
+    for cid, shingles in campaign_shingles.items():
+        weights = {s: idf(s) for s in shingles}
+        campaign_idf[cid] = weights
+        campaign_weight[cid] = sum(weights.values())
+
+    # Inverted index (shingle -> campaigns containing it) so each orphan is
+    # only scored against campaigns it could plausibly match, not all of them
+    # — this is what keeps a 100k+-orphan regulation like omb-financial-
+    # assistance tractable.
+    inverted_index: Dict[Any, List[Any]] = {}
+    for cid, shingles in campaign_shingles.items():
+        for s in shingles:
+            inverted_index.setdefault(s, []).append(cid)
+
+    swept = 0
+    for c, shingles in orphans:
+        candidate_cids = set()
+        for s in shingles:
+            candidate_cids.update(inverted_index.get(s, ()))
+        if not candidate_cids:
+            continue
+        orphan_weight = sum(idf(s) for s in shingles)
+        best_cid, best_score = None, 0.0
+        for cid in candidate_cids:
+            camp_shingles = campaign_shingles[cid]
+            shared = shingles & camp_shingles
+            shared_weight = sum(campaign_idf[cid][s] for s in shared)
+            denom = min(orphan_weight, campaign_weight[cid])
+            if denom <= 0:
+                continue
+            score = shared_weight / denom
+            if score > best_score:
+                best_cid, best_score = cid, score
+        if best_cid is not None and best_score >= threshold:
+            c['campaign_id'] = best_cid
+            c['campaign_canonical'] = campaign_canonical[best_cid]
+            swept += 1
+
+    if swept:
+        sizes = collections.Counter(c.get('campaign_id') for c in comments if c.get('campaign_id') is not None)
+        for c in comments:
+            if c.get('campaign_id') is not None:
+                c['campaign_size'] = sizes[c['campaign_id']]
+
+    logger.info(f"Swept {swept} personalized/orphaned comment(s) into an existing "
+                f"campaign by IDF-weighted whole-text overlap (threshold={threshold}, "
+                f"min_canon_shingles={min_canon_shingles})")
     return comments
 
 
@@ -1553,6 +1772,15 @@ def main():
         campaign_cfg = (load_yaml_config() or {}).get('campaigns') or {}
         analyzed_comments = detect_campaigns(
             analyzed_comments, min_chars=campaign_cfg.get('min_chars', 100))
+
+        # Step 6a: Sweep personalized comments the primary pass missed into a
+        # campaign it already found (config: campaigns.sweep_orphans, default on).
+        if campaign_cfg.get('sweep_orphans', True):
+            analyzed_comments = sweep_orphans_into_campaigns(
+                analyzed_comments,
+                threshold=campaign_cfg.get('sweep_threshold', 0.75),
+                min_chars=campaign_cfg.get('min_chars', 100),
+                min_canon_shingles=campaign_cfg.get('sweep_min_canon_shingles', 30))
 
         # Step 6b: Cluster campaigns into letter families
         analyzed_comments = cluster_families(analyzed_comments)
