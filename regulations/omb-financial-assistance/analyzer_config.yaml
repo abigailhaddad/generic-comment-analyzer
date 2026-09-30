@@ -281,6 +281,12 @@ campaigns:
   # ("I am writing to strongly oppose this OMB regulation.") are written
   # independently by many people and are not a coordinated campaign.
   min_chars: 100
+  # Orphan sweep validated on this docket's real data (swept drops from 3,627
+  # to 2,909 once IDF-weighting + a 30-shingle floor exclude a marginal,
+  # partly-false-positive NASA-opposition campaign and similar short ones —
+  # see pipeline.py's sweep_orphans_into_campaigns docstring) but left off in
+  # production for now pending the same close spot-check USBC got.
+  sweep_orphans: false
 
 # -------------------------------------------------------------------
 # Changelog — manual/methodology notes shown in a collapsible section in the
