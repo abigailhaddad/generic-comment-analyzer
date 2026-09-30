@@ -186,6 +186,20 @@ def date_range_label(df, field):
     return f"{lo:%b} {lo.day}, {lo.year} – {hi:%b} {hi.day}, {hi.year}"
 
 
+def timeline_counts(df, field):
+    """Comments per day (weekly if the span is very long) by position, or None if the date field is unusable."""
+    if field not in df:
+        return None
+    d = pd.to_datetime(df[field], errors='coerce', utc=True).dt.tz_localize(None).dt.normalize()
+    if d.notna().sum() == 0:
+        return None
+    t = pd.crosstab(d, df['_pos']).reindex(columns=['Oppose', 'Support', 'Unclear'], fill_value=0)
+    t = t.reindex(pd.date_range(t.index.min(), t.index.max(), freq='D'), fill_value=0)
+    if len(t) > 62:
+        t = t.resample('W').sum()
+    return t
+
+
 def topic_counts(df, prefix, top):
     """Count comments per topic tag and split each by position.
 
@@ -581,24 +595,60 @@ def build(df, meta, cfg, pal, out_dir, args):
             x0 += wseg
         cursor = bar_y - gap
 
-    # ---- right bottom: entities
-    ent = entity_summary(df, args.entities)
-    T(rx, 0.40, 'WHO IS COMMENTING', fontsize=12, fontweight='bold', va='center', ha='left', color=muted, family=disp)
-    big = T(rx, 0.325, pct_str(ent['primary_n'], ent['total']).replace('<', '').replace('>', ''),
-            fontsize=40, fontweight='bold', va='center', ha='left', family=disp)
-    label_x = rx + big.get_window_extent(renderer).width / W + 0.014  # follows the number's real width
-    T(label_x, 0.325, shorten(cfg.get('entity_primary_label', ent['primary']), 26), fontsize=13,
-      va='center', ha='left', color=muted)
-    y0 = 0.245
-    rows = list(ent['shown']) + ([(f"+{ent['other_types']} more types", ent['other_n'])] if ent['other_n'] else [])
-    rmax = max((n for _, n in rows), default=1)
-    step = min(0.05, 0.19 / max(len(rows), 1))
-    for i, (name, n) in enumerate(rows):
-        y = y0 - i * step
-        fig.add_artist(Rectangle((rx, y - 0.016), rw * 0.62 * n / rmax + 0.002, 0.032, transform=fig.transFigure,
-                                 fc=pal['neutral'], ec='none'))
-        fit(rx + 0.004, y, name, rw - 0.05, fontsize=9.5, va='center')
-        T(rx + rw, y, f'{n:,}', fontsize=10, fontweight='bold', va='center', ha='right')
+    # ---- right bottom: timeline (default) or entity summary
+    ent = entity_summary(df, args.entities)  # always in the JSON, drawn only when panel == 'entities'
+    panel = args.panel or cfg.get('panel', 'timeline')
+    tl = None
+    if panel == 'timeline':
+        tl_field = args.timeline_date_field or cfg.get('timeline_date_field', 'received_date')
+        tl = timeline_counts(df, tl_field if tl_field in df else args.date_field)
+        if tl is None:
+            print('no usable date column for the timeline; showing the entity summary instead', file=sys.stderr)
+            panel = 'entities'
+    if panel == 'timeline':
+        per = 'WEEK' if (len(tl) > 1 and (tl.index[1] - tl.index[0]).days == 7) else 'DAY'
+        T(rx, 0.40, f'COMMENTS PER {per}', fontsize=12, fontweight='bold', va='center', ha='left', color=muted,
+          family=disp)
+        ax = fig.add_axes([rx + 0.03, 0.095, rw - 0.03, 0.255])
+        ax.patch.set_alpha(0)
+        xs = np.arange(len(tl))
+        bottom = np.zeros(len(tl))
+        for col, colr in (('Oppose', pal['oppose']), ('Support', pal['support']), ('Unclear', pal['neutral'])):
+            ax.bar(xs, tl[col].values, bottom=bottom, color=colr, width=0.8, linewidth=0)
+            bottom = bottom + tl[col].values
+        peak = int(bottom.max()) if len(bottom) else 0
+        ax.axhline(peak, color=pal['neutral'], lw=1, zorder=0)
+        ax.set_xlim(-0.6, len(tl) - 0.4)
+        ax.set_ylim(0, peak * 1.04 if peak else 1)
+        for side in ('top', 'right', 'left'):
+            ax.spines[side].set_visible(False)
+        ax.spines['bottom'].set_color(pal['ink'])
+        ax.spines['bottom'].set_linewidth(1.6)
+        ax.set_yticks([peak])
+        ax.set_yticklabels([f'{peak:,}'])
+        idx = sorted(set(np.linspace(0, len(tl) - 1, min(len(tl), 4)).round().astype(int)))
+        ax.set_xticks(idx)
+        ax.set_xticklabels([f'{tl.index[i]:%b} {tl.index[i].day}' for i in idx])
+        ax.tick_params(axis='y', length=0, labelsize=9, colors=pal['ink'], pad=3)
+        ax.tick_params(axis='x', length=4, width=1.2, labelsize=9, colors=pal['ink'], color=pal['ink'])
+    else:
+        T(rx, 0.40, 'WHO IS COMMENTING', fontsize=12, fontweight='bold', va='center', ha='left', color=muted, family=disp)
+        big = T(rx, 0.325, pct_str(ent['primary_n'], ent['total']).replace('<', '').replace('>', ''),
+                fontsize=40, fontweight='bold', va='center', ha='left', family=disp)
+        label_x = rx + big.get_window_extent(renderer).width / W + 0.014  # follows the number's real width
+        T(label_x, 0.325, shorten(cfg.get('entity_primary_label', ent['primary']), 26), fontsize=13,
+          va='center', ha='left', color=muted)
+        y0 = 0.245
+        rows = list(ent['shown']) + ([(f"+{ent['other_types']} more types", ent['other_n'])] if ent['other_n'] else [])
+        rmax = max((n for _, n in rows), default=1)
+        step = min(0.05, 0.19 / max(len(rows), 1))
+        for i, (name, n) in enumerate(rows):
+            y = y0 - i * step
+            fig.add_artist(Rectangle((rx, y - 0.016), rw * 0.62 * n / rmax + 0.002, 0.032, transform=fig.transFigure,
+                                     fc=pal['neutral'], ec='none'))
+            fit(rx + 0.004, y, name, rw - 0.05, fontsize=9.5, va='center')
+            T(rx + rw, y, f'{n:,}', fontsize=10, fontweight='bold', va='center', ha='right')
+
 
     out_dir.mkdir(parents=True, exist_ok=True)
     written = []
@@ -611,7 +661,9 @@ def build(df, meta, cfg, pal, out_dir, args):
     data = dict(rule_id=rule_id, date_range=dates, total=total, oppose=n_op, support=n_su, neither=n_un,
                 meter=meter, pct_oppose=round(100 * n_op / total, 1) if total else 0,
                 pct_support=round(100 * n_su / total, 1) if total else 0, topics=topics, entities=ent, cloud_words=cloud_words,
-                voices_used_for_clouds=int(len(v)), palette=pal)
+                voices_used_for_clouds=int(len(v)), palette=pal,
+                panel=panel,
+                timeline=None if tl is None else [dict(date=f'{i:%Y-%m-%d}', **{k.lower(): int(r[k]) for k in tl.columns}) for i, r in tl.iterrows()])
     jp = out_dir / f'{args.name}.json'
     jp.write_text(json.dumps(data, indent=2, default=str), encoding='utf-8')
     return written + [jp], data
@@ -636,6 +688,11 @@ def main(argv=None):
     ap.add_argument('--color', action='append', default=[], metavar='ROLE=#HEX', help=f'roles: {", ".join(ROLES)}')
     ap.add_argument('--meter', choices=['oppose', 'support'], default=None,
                     help='which share the gauge shows (default: oppose, or infographic.meter in the config)')
+    ap.add_argument('--panel', choices=['timeline', 'entities'], default=None,
+                    help='bottom-right panel: comments over time (default) or the entity-type summary')
+    ap.add_argument('--timeline-date-field', default=None,
+                    help="date column for the timeline (default: received_date, i.e. when people submitted; "
+                         "'date' is when the agency posted, which happens in batches)")
     ap.add_argument('--font', help="body text: an installed font name or a .ttf/.otf path (default: DejaVu Sans)")
     ap.add_argument('--display-font', help='the big labels: comment total, meter %% and label, title, section '
                     'headers, entity %%. Default: same as --font')
