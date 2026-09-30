@@ -10,6 +10,7 @@ Usage: python pipeline.py --csv comments.csv [--sample N] [--model gemini-2.0-fl
 
 import argparse
 import collections
+import hashlib
 import json
 import os
 import csv
@@ -986,7 +987,8 @@ def detect_campaigns(comments: List[Dict[str, Any]], threshold: float = 0.45, mi
 
     # Build lookup: comment index -> campaign info
     idx_to_campaign = {}
-    for campaign_id, cluster in enumerate(campaigns):
+    seen_ids = {}
+    for cluster in campaigns:
         # Label the campaign by the most common substantive member text — the
         # attachment when the body is just a "see attached" stub (see
         # _campaign_label_text), so it isn't shown as "See attached file(s)".
@@ -995,6 +997,27 @@ def detect_campaigns(comments: List[Dict[str, Any]], threshold: float = 0.45, mi
         for idx in cluster:
             text_counts[_campaign_label_text(comments[idx])] += 1
         canonical_text = text_counts.most_common(1)[0][0] if text_counts else ''
+
+        # campaign_id is derived from the canonical text itself, not from
+        # position in this run's size-sorted list. A plain enumerate() index
+        # meant "campaign 13" pointed at a DIFFERENT cluster every time the
+        # docket grew and sort order shifted — harmless for the report (which
+        # re-derives its own by-size campaign_rank fresh every generate_report.py
+        # run and never persists a raw campaign_id across runs), but it broke
+        # every other use of the number: the --export-csv `campaign_id` column
+        # is meaningless to compare across two days' exports, and "campaign 13"
+        # meant something different in every conversation about this pipeline.
+        # Hashing the (normalized) canonical text instead makes the ID a
+        # property of the campaign's content, so it only changes if the
+        # majority-vote canonical text itself changes. Truncated to 48 bits
+        # (12 hex digits) so it round-trips through JS's 53-bit-safe integers
+        # in generate_report.py's embedded JSON.
+        campaign_id = int(hashlib.sha1(normalize(canonical_text).encode('utf-8')).hexdigest()[:12], 16)
+        if campaign_id in seen_ids and seen_ids[campaign_id] != canonical_text:
+            logger.warning(f"campaign_id hash collision between two different canonical "
+                            f"texts (1-in-281-trillion event) — this run's numbering may "
+                            f"be unstable until the campaigns' texts diverge further")
+        seen_ids[campaign_id] = canonical_text
 
         for idx in cluster:
             idx_to_campaign[idx] = {
