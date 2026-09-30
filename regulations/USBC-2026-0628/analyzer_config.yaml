@@ -354,21 +354,29 @@ fields:
     prompt: "Brief explanation (1-2 sentences) of the classification selections."
     show: [modal]
 
-  # Report-time (no LLM): extract CFR citations from the comment text. This
-  # docket spans TWO parts, so the pattern captures both §60.NNN and §70.NNN
+  # Report-time (no LLM): extract CFR citations from the comment text.
+  # This docket spans TWO parts, so the pattern captures both §60.NNN and §70.NNN
   # (e.g. 60.1, 70.10). \b keeps it from matching digits inside a longer number
-  # (so "1960.5" is not treated as "60.5"). The second alternative catches a
-  # bare "Part 60"/"Part 70" reference with no specific section -- checked
-  # against the real corpus: 38 comments cite a Part this way with zero
-  # section-number citation anywhere else in the text, so without this they
-  # got no citation credit at all despite clearly engaging with that part
-  # ("Part 60 (residence). The rule would exclude undocumented..."). The
-  # negative lookahead keeps "Part 60.4" from double-counting as both "Part
-  # 60" and "60.4" -- it's just the one section citation.
+  # (so "1960.5" is not treated as "60.5"). Also matches a bare "Part 60"/"Part
+  # 70" reference (no subsection number), extracting just the bare number (e.g.
+  # "60") rather than the literal "Part 60"/"part 60" text -- checked against
+  # the real corpus: 39 of 14,906 comments cite a part this way ("so Part 70's
+  # ban on race and ethnicity questions...") and got NO section tag at all
+  # before this, even though they explicitly name a part of the rule. This
+  # field is matched case-insensitively, and about half of those 39 write
+  # "part" lowercase, so extracting the literal text would show "Part 60" and
+  # "part 60" as two different filter values for the same thing; the number
+  # alone can't have that problem. The negative lookahead keeps "Part 60.4"
+  # matching once as "60.4", not also as bare "60".
+  #
+  # Supersedes an earlier same-day fix (1b2921e) that caught the same gap but
+  # extracted the literal "Part 60"/"part 60" text, which produced exactly the
+  # case-split described above once real data hit it -- caught by re-deriving
+  # this independently and comparing against a live-rendered report.
   - name: sections_referenced
     source: regex
     type: multi_value
-    pattern: '\b(?:60|70)\.\d{1,2}\b|\bPart\s+(?:60|70)\b(?!\.\d)'
+    pattern: '(?<=Part )(?:60|70)\b(?!\.\d)|\b(?:60|70)\.\d{1,2}\b'
     label: "CFR Section"
     show: [section, filter]
 
