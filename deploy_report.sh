@@ -4,7 +4,7 @@
 #
 # Publishes ONLY the runtime files the report actually serves:
 #   index.html, comment_rows/ + comment_detail/ (both sharded), and
-#   read-the-rule.html / accuracy.html / comment.html (if built).
+#   read-the-rule.html / accuracy.html / comment.html / campaign-audit.html (if built).
 # It never uploads source.csv, the parquet, the attachment cache, or any of
 # the other regenerable/private files that live in the regulation directory.
 #
@@ -121,6 +121,11 @@ cp -R "$REG/comment_rows" "$STAGE/comment_rows"
 # and those links are the ones sent to people outside the project, who have no
 # way to know the page simply was not published.
 [ -f "$REG/comment.html" ] && cp "$REG/comment.html" "$STAGE/"
+# The campaign-audit page. report_template.html links to it under "Known
+# Campaigns" whenever named_campaigns is configured and audit_named_campaigns.py
+# has run, so omitting it here is the exact same trap read-the-rule and
+# accuracy fell into above -- a link that publishes to a 404.
+[ -f "$REG/campaign-audit.html" ] && cp "$REG/campaign-audit.html" "$STAGE/"
 
 # A real 404 page. Cloudflare Pages serves index.html for any unmatched path
 # when no 404.html is present, so a typo'd URL returned the entire report with

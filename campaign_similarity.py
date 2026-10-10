@@ -24,14 +24,18 @@ def normalize_campaign_text(text: str) -> str:
     return re.sub(r'\s+', ' ', text).strip()
 
 
-def make_campaign_minhash(text: str, num_perm: int = NUM_PERM):
+def make_campaign_minhash(text: str, num_perm: int = NUM_PERM, min_chars: int = 100):
     """MinHash of a text's 5-gram word shingles, matching detect_campaigns()'s
-    signature exactly. Returns None for text too short to shingle (fewer than
-    5 words) — the same cutoff detect_campaigns() uses to skip a comment."""
+    eligibility exactly: None for text too short to shingle (fewer than 5
+    words) OR shorter than `min_chars` normalized characters (config:
+    campaigns.min_chars) — the same two cutoffs detect_campaigns() uses to
+    skip a comment, so anything scored here was actually eligible to have
+    been clustered."""
     from datasketch import MinHash
 
-    words = normalize_campaign_text(text).split()
-    if len(words) < 5:
+    normalized = normalize_campaign_text(text)
+    words = normalized.split()
+    if len(words) < 5 or len(normalized) < min_chars:
         return None
     shingles = set(tuple(words[j:j + 5]) for j in range(len(words) - 4))
     m = MinHash(num_perm=num_perm)
