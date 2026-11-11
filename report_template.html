@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ metadata.regulation_name }} - Comment Analysis Report</title>
+    <meta name="description" content="{{ metadata.brief_description | e }}">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{ metadata.regulation_name | e }} - Comment Analysis Report">
+    <meta property="og:description" content="{{ metadata.brief_description | e }}">
+    <meta name="twitter:card" content="summary">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='{{ colors.accent | replace('#', '%23') }}'/%3E%3Ctext x='16' y='23' font-family='sans-serif' font-size='20' font-weight='700' text-anchor='middle' fill='white'%3EC%3C/text%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -192,7 +198,7 @@
         .stance-tag {
             padding: 2px 9px;
             border-radius: 999px;
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 500;
             display: inline-block;
             margin: 1px 2px;
@@ -210,7 +216,7 @@
         .clickable-row { cursor: pointer; }
 
         /* Stance badge (Support / Oppose / Mixed) — same tokens everywhere */
-        .stance-badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 0.68rem; font-weight: 600; vertical-align: middle; }
+        .stance-badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; vertical-align: middle; }
         .stance-support { background: color-mix(in srgb, var(--color-support) 16%, transparent); color: var(--color-support); }
         .stance-oppose { background: color-mix(in srgb, var(--color-oppose) 14%, transparent); color: var(--color-oppose); }
         .stance-mixed { background: color-mix(in srgb, var(--color-mixed) 16%, transparent); color: var(--color-mixed); }
@@ -350,6 +356,10 @@
             box-shadow: var(--shadow-md); background: var(--color-code-bg); color: var(--color-surface);
         }
         .app-toast.show { opacity: 1; transform: translateY(0); }
+
+        /* The comments table is wider than a phone: scroll it inside its own box
+           instead of stretching the whole page sideways. */
+        .dataTables_wrapper { overflow-x: auto; }
 
         @media (max-width: 768px) {
             .report-header h1 { font-size: 1.6rem; }
@@ -1179,7 +1189,7 @@
               filter: { name: 'Submitted Date', type: 'daterange',
                         value: function (c) { return c.received_date; } } },
             { key: 'submitter', title: 'Submitter',
-              cell: function (c) { return submitterCell(c.submitter, c.submitter_inferred) + (c.organization ? ' <span class="text-muted" style="font-size:11px;">(' + escapeHtml(c.organization) + ')</span>' : ''); },
+              cell: function (c) { return submitterCell(c.submitter, c.submitter_inferred) + (c.organization ? ' <span class="text-muted" style="font-size:12px;">(' + escapeHtml(c.organization) + ')</span>' : ''); },
               // Text, not multiselect: there is very nearly one distinct submitter
               // per comment, so enumerating every value would build a list as long
               // as the table itself.

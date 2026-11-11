@@ -120,6 +120,8 @@
             .report-header h1 { font-size: 1.6rem; }
             .row-head { grid-template-columns: 1fr; }
             .verdict { justify-content: flex-start; }
+            /* Wide tables scroll inside their own box instead of widening the page. */
+            table.t { display: block; overflow-x: auto; }
         }
     </style>
 </head>
