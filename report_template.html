@@ -133,6 +133,7 @@
             color: var(--color-text-muted);
             margin-top: 0.3rem;
         }
+        .stat-note { font-size: 0.72rem; color: var(--color-text-muted); margin-top: 0.35rem; }
         .stat-group-label {
             font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
             color: var(--color-text-muted); margin: 0.5rem 0 0.5rem;
@@ -403,6 +404,9 @@
             <div class="stat-card">
                 <div class="stat-number">{{ "{:,}".format(briefing.total_comments) }}</div>
                 <div class="stat-label">Total Comments</div>
+                {% if briefing.comments_received %}
+                <div class="stat-note" title="regulations.gov publishes only some of the comments it receives. Every figure on this page is out of the published comments.">{{ "{:,}".format(briefing.comments_received.count) }} submitted{% if briefing.comments_received.as_of %} (as of {{ briefing.comments_received.as_of }}){% endif %}</div>
+                {% endif %}
             </div>
             <div class="stat-card clickable" onclick="document.getElementById('campaignsSection').scrollIntoView({behavior:'smooth'})">
                 <div class="stat-number">{{ "{:,}".format(briefing.campaign_comments_count) }}</div>

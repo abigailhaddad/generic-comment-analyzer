@@ -10,7 +10,9 @@ Usage: python pipeline.py --csv comments.csv [--sample N] [--model gemini-2.0-fl
 
 import argparse
 import collections
+import hashlib
 import json
+import math
 import os
 import csv
 import re
@@ -39,6 +41,7 @@ import threading
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 
 # Import the generic comment analyzer
+import comments_received
 from comment_analyzer import CommentAnalyzer, LLMCredentialsError
 
 # Simple logging setup
@@ -503,8 +506,9 @@ def validate_analysis(analysis: dict, comment_text: str, submitter: str = '', or
         analysis['political_affiliation'] = ''
         analysis['political_affiliation_quote'] = ''
 
-    # Validate state is a real US state/DC abbreviation
-    VALID_STATES = {'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'}
+    # Validate state is a real US state, DC or territory abbreviation
+    VALID_STATES = {'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC',
+                    'PR','GU','VI','AS'}  # territories: residents are commenters too
     state = analysis.get('state_identified', '')
     if state and state not in VALID_STATES:
         logger.warning(f"Invalid state '{state}', clearing")
@@ -920,12 +924,96 @@ def _campaign_label_text(comment: Dict[str, Any]) -> str:
     return body or att
 
 
-def detect_campaigns(comments: List[Dict[str, Any]], threshold: float = 0.45, min_campaign_size: int = 5, min_chars: int = 100) -> List[Dict[str, Any]]:
+def _resolve_cluster_overlaps(comments: List[Dict[str, Any]], clusters: List[List[int]],
+                              minhashes: Dict[int, Any], lsa_k: int = 200,
+                              jaccard_tie: float = 0.05) -> Dict[int, int]:
+    """Opt-in helper for detect_campaigns(): {comment index -> index into `clusters`}
+    for every comment the raw MinHash clustering put in several clusters.
+
+    The word-for-word measure that defines a campaign decides first: a comment goes
+    to the cluster whose canonical text it matches best by 5-gram Jaccard. Only
+    when two or more clusters are within `jaccard_tie` of the best is latent-
+    semantic similarity (lsa_similarity.py) asked to break the tie, by closeness to
+    each cluster's centre; if that cannot decide either (comment too poorly
+    represented, exact tie, or too little text to fit a subspace) the last tied
+    cluster wins, which is the default rule restricted to the genuine candidates.
+
+    LSA is deliberately not the first judge: measured against the Jaccard it was
+    about as likely to pick a clearly worse-matching cluster as a better one.
+    """
+    from collections import Counter, defaultdict
+    if not clusters:
+        return {}
+    clusters_of = defaultdict(list)
+    for ci, c in enumerate(clusters):
+        for i in c:
+            clusters_of[i].append(ci)
+    ambiguous = [i for i, cs in clusters_of.items() if len(cs) > 1]
+    if not ambiguous:
+        return {}
+
+    from campaign_similarity import make_campaign_minhash
+    canon_mh = []
+    for c in clusters:
+        # Same canonical rule as detect_campaigns, but over members in index order so a
+        # tie between equally common texts always resolves the same way (cluster order
+        # out of the LSH query is not stable between runs).
+        counts = Counter(_campaign_label_text(comments[i]) for i in sorted(c))
+        canon_mh.append(make_campaign_minhash(counts.most_common(1)[0][0]) if counts else None)
+
+    owner: Dict[int, int] = {}
+    near: Dict[int, List[int]] = {}
+    for i in ambiguous:
+        jac = {ci: (minhashes[i].jaccard(canon_mh[ci]) if canon_mh[ci] is not None else 0.0)
+               for ci in clusters_of[i]}
+        best = max(jac.values())
+        tied = [ci for ci in clusters_of[i] if jac[ci] >= best - jaccard_tie]
+        if len(tied) == 1:
+            owner[i] = tied[0]
+        else:
+            near[i] = tied
+    by_jaccard, n_ties = len(owner), len(near)
+
+    by_lsa = 0
+    if near:
+        decided = {}
+        try:
+            import lsa_similarity as lsa
+            members = sorted({i for c in clusters for i in c})
+            row = {i: r for r, i in enumerate(members)}
+            U, q = lsa.embed_texts([comments[i].get('text', '') or '' for i in members], k=lsa_k)
+            picked = lsa.resolve_overlaps(U, q, [[row[i] for i in c] for c in clusters],
+                                          candidates={row[i]: cs for i, cs in near.items()})
+            decided = {members[r]: ci for r, ci in picked.items()}
+        except ValueError as e:
+            logger.warning(f"LSA tie-break skipped (could not fit a latent-semantic subspace: {e}); "
+                           f"near-ties keep the last-cluster-wins rule")
+        by_lsa = len(decided)
+        for i, cs in near.items():
+            owner[i] = decided.get(i, max(cs))
+    logger.info(f"Overlap resolution: {len(ambiguous)} multi-cluster comment(s): {by_jaccard} decided by word-for-word "
+                f"similarity, {n_ties} near-ties ({by_lsa} broken by LSA, {n_ties - by_lsa} left to last-cluster-wins)")
+    return owner
+
+
+def detect_campaigns(comments: List[Dict[str, Any]], threshold: float = 0.45, min_campaign_size: int = 5, min_chars: int = 100,
+                     resolve_overlaps: bool = False, lsa_k: int = 200) -> List[Dict[str, Any]]:
     """Detect form letter campaigns using MinHash LSH on 5-gram Jaccard similarity.
 
     Assigns campaign_id and campaign_size to each comment. Comments not in any
     campaign get campaign_id=None. `min_chars` is the minimum normalized-text
     length for a comment to be eligible for a campaign (config: campaigns.min_chars).
+
+    By default a comment that falls in more than one raw cluster is given to
+    whichever cluster is processed last (the smaller one, since clusters are sorted
+    by size), and every member's `campaign_size` is the raw cluster's length, which
+    counts members that ended up elsewhere. `resolve_overlaps` (config:
+    campaigns.resolve_overlaps, default off) instead gives such a comment to the
+    cluster whose canonical text it matches best word-for-word, uses latent-semantic
+    similarity (lsa_similarity.py, `lsa_k` dimensions) only to break near-ties, and
+    sets `campaign_size` to the number of comments the campaign really ends up
+    with. campaign_id is unchanged either way: it is still derived from the
+    cluster's canonical text. See _resolve_cluster_overlaps().
     """
     from datasketch import MinHash, MinHashLSH
 
@@ -984,9 +1072,15 @@ def detect_campaigns(comments: List[Dict[str, Any]], threshold: float = 0.45, mi
     campaigns.sort(key=len, reverse=True)
     logger.info(f"Found {len(campaigns)} campaigns with {min_campaign_size}+ members")
 
+    # Opt-in: comment index -> index (in `campaigns`) of the cluster it should
+    # belong to, for comments the raw clustering put in more than one. Empty by
+    # default, which leaves every line below behaving exactly as it always has.
+    overlap_owner = _resolve_cluster_overlaps(comments, campaigns, minhashes, lsa_k) if resolve_overlaps else {}
+
     # Build lookup: comment index -> campaign info
     idx_to_campaign = {}
-    for campaign_id, cluster in enumerate(campaigns):
+    seen_ids = {}
+    for ci, cluster in enumerate(campaigns):
         # Label the campaign by the most common substantive member text — the
         # attachment when the body is just a "see attached" stub (see
         # _campaign_label_text), so it isn't shown as "See attached file(s)".
@@ -996,12 +1090,47 @@ def detect_campaigns(comments: List[Dict[str, Any]], threshold: float = 0.45, mi
             text_counts[_campaign_label_text(comments[idx])] += 1
         canonical_text = text_counts.most_common(1)[0][0] if text_counts else ''
 
+        # campaign_id is derived from the canonical text itself, not from
+        # position in this run's size-sorted list. A plain enumerate() index
+        # meant "campaign 13" pointed at a DIFFERENT cluster every time the
+        # docket grew and sort order shifted — harmless for the report (which
+        # re-derives its own by-size campaign_rank fresh every generate_report.py
+        # run and never persists a raw campaign_id across runs), but it broke
+        # every other use of the number: the --export-csv `campaign_id` column
+        # is meaningless to compare across two days' exports, and "campaign 13"
+        # meant something different in every conversation about this pipeline.
+        # Hashing the (normalized) canonical text instead makes the ID a
+        # property of the campaign's content, so it only changes if the
+        # majority-vote canonical text itself changes. Truncated to 48 bits
+        # (12 hex digits) so it round-trips through JS's 53-bit-safe integers
+        # in generate_report.py's embedded JSON.
+        campaign_id = int(hashlib.sha1(normalize(canonical_text).encode('utf-8')).hexdigest()[:12], 16)
+        if campaign_id in seen_ids and seen_ids[campaign_id] != canonical_text:
+            logger.warning(f"campaign_id hash collision between two different canonical "
+                            f"texts (1-in-281-trillion event) — this run's numbering may "
+                            f"be unstable until the campaigns' texts diverge further")
+        seen_ids[campaign_id] = canonical_text
+
         for idx in cluster:
+            if overlap_owner.get(idx, ci) != ci:
+                continue   # resolved to a different cluster (opt-in only)
             idx_to_campaign[idx] = {
                 'campaign_id': campaign_id,
                 'campaign_size': len(cluster),
                 'campaign_canonical': canonical_text,
             }
+
+    if resolve_overlaps:
+        # len(cluster) counts members that ended up in another cluster, so the
+        # raw figure overstates a campaign; store what it actually holds.
+        final_sizes = collections.Counter(info['campaign_id'] for info in idx_to_campaign.values())
+        for info in idx_to_campaign.values():
+            info['campaign_size'] = final_sizes[info['campaign_id']]
+        small = sum(1 for n in final_sizes.values() if n < min_campaign_size)
+        logger.info(f"Overlap resolution: {len(overlap_owner)} multi-cluster comment(s) placed by LSA similarity; "
+                    f"{len(final_sizes)} campaigns remain")
+        if small:
+            logger.warning(f"{small} campaign(s) now hold fewer than {min_campaign_size} comments after overlap resolution")
 
     # Apply to comments
     total_in_campaigns = 0
@@ -1019,6 +1148,201 @@ def detect_campaigns(comments: List[Dict[str, Any]], threshold: float = 0.45, mi
     logger.info(f"Tagged {total_in_campaigns} comments across {len(campaigns)} campaigns")
     logger.info(f"Remaining unique comments: {len(comments) - total_in_campaigns}")
 
+    return comments
+
+
+def sweep_orphans_into_campaigns(comments: List[Dict[str, Any]],
+                                  threshold: float = 0.75, min_chars: int = 100,
+                                  min_canon_shingles: int = 30) -> List[Dict[str, Any]]:
+    """Second pass: fold a comment detect_campaigns() missed into a campaign it
+    ALREADY found, when the comment shares enough of that campaign's template
+    ANYWHERE in its text — even though the whole comment doesn't match closely
+    enough for detect_campaigns() itself to have caught it.
+
+    detect_campaigns() measures whole-document Jaccard similarity, which dilutes
+    as a comment adds more of the writer's own reasoning around the shared
+    template: the more someone personalizes a form letter, the LESS likely they
+    are to be counted as part of it, which is backwards from what a campaign
+    detector should do. Confirmed on USBC-2026-0628: one campaign family showed
+    208 members across 9 variants, but 151 more comments used the exact same
+    "My name is X, I am a citizen of the United States..." template and were
+    sitting uncounted, every one of them longer than the shortest already-
+    detected member.
+
+    Measured with an overlap coefficient (shared 5-gram shingles over the
+    SMALLER side's shingle count) instead of Jaccard, over the WHOLE text, so a
+    long personalized comment is not penalized for its own extra content. An
+    earlier version of this restricted the comparison to each text's opening,
+    on the assumption personalization comes after the shared template. Checked
+    that assumption against real data and it was wrong in both directions: it
+    missed a comment (USBC-2026-0628-0073) that opened with its own preamble
+    ("Thank you for the opportunity to comment...") before an otherwise 99%
+    verbatim copy of a campaign's template, and it produced false positives —
+    three genuinely independent letters (USBC-2026-0628-7341/-3726/-6245, each
+    with its own distinct reasoning and structure) got swept into a campaign
+    they don't belong to on nothing but a shared formal salutation ("To the
+    U.S. Census Bureau, I am writing to comment on the proposed rule... (Docket
+    No....)") that independent writers converge on for reasons that have
+    nothing to do with coordination. Whole-text comparison gets both right:
+    0.99 for the first (real match, wherever the shared text sits) and
+    0.14-0.32 for the three false positives (correctly below threshold once
+    the rest of each letter, which shares nothing, is actually counted).
+
+    Whole-text overlap alone is still not enough, though: it's vulnerable to a
+    SHORT canonical, because the overlap coefficient divides by the SMALLER
+    side's shingle count — if that's the campaign's own tiny shingle set, a
+    single shared phrase can cover all or most of it regardless of the rest of
+    an unrelated, much longer letter. Found on all three regulations once this
+    was checked against real text, not just scores: USBC-2026-0628 campaign
+    "I am unequivocally opposed to the proposed rule: [official title]" (24
+    words, mostly the docket's own rule name) swept in 42 unrelated letters
+    including two comment-period-extension requests that aren't even opposition
+    stances. Worse on DOJ-OAG-2026-0001: a campaign whose ENTIRE canonical was
+    the six-word slogan "No one is above the law" scored a PERFECT 1.000
+    against an unrelated 18,277-character organizational comment letter that
+    happened to include that common phrase once — because with only 2 shingles
+    of "canonical" to match, matching that phrase IS matching the whole
+    campaign. Two such slogan-campaigns alone swept in 1,098 unrelated comments
+    on DOJ. This can't be fixed by raising the threshold; a campaign built
+    entirely from a common phrase hits 1.0 no matter how high the bar is.
+
+    Fixed two ways, both validated against hand-read comment text (not just
+    scores) on all three regulations:
+      1. Shared shingles are weighted by inverse document frequency (rarer
+         across the pool of orphans + campaign canonicals counts for more), so
+         a campaign built partly from boilerplate that's common docket-wide
+         (like the proposed rule's own official title) doesn't get free credit
+         for it — this is what the original USBC/OMB investigation called
+         "whole-text overlap," refined to not reward shared *common* text.
+      2. A campaign is only eligible as a sweep target if its canonical has at
+         least `min_canon_shingles` shingles (default 30, ~34 words) — because
+         IDF-weighting can't save a campaign whose ENTIRE identity is a short,
+         common phrase (fix #1 downweights the shared phrase, but if that
+         phrase is ~all the campaign has, the weighted overlap is still ~100%
+         of the campaign's own weight). The floor is not tuned to any one
+         regulation: every hand-confirmed FALSE positive campaign across all
+         three regs had well under 30 shingles (2-23), and every hand-confirmed
+         TRUE campaign had 34+; there was no case in between to split on.
+    Net effect measured on real text: USBC-2026-0628 swept drops 256->201 (the
+    citizen-template fix keeps 139 of its 143 recovered members; the 4 lost
+    were right at the old threshold and are the kind of "hard to find" miss
+    preferred over a false positive); DOJ-OAG-2026-0001 drops 1,660->660 with
+    the slogan false positives at 0; omb-financial-assistance drops 3,627->2,909
+    (a marginal NASA-opposition campaign with generic-phrase bycatch is
+    excluded by the floor; the two largest legitimate campaigns, 1,619 and 437
+    members, are untouched and clean at their lowest scores).
+
+    Deliberately additive only: it can never create a new campaign or move a
+    comment that is already in one, so it cannot change anything
+    detect_campaigns() itself decided — only add orphans to a campaign that
+    already exists. That keeps this safe to run on every regulation without
+    re-validating every existing campaign's membership, not just the one this
+    was built for.
+    """
+
+    def normalize(text):
+        text = re.sub(r'[^a-z0-9 ]', '', (text or '').lower())
+        return re.sub(r'\s+', ' ', text).strip()
+
+    def all_shingles(text):
+        words = normalize(text).split()
+        if len(words) < 5:
+            return None
+        return {tuple(words[j:j + 5]) for j in range(len(words) - 4)}
+
+    # One representative shingle set per campaign already found, from its
+    # canonical text (the same text the report already labels the campaign
+    # by) — excluding campaigns whose canonical is too short/generic to be a
+    # safe sweep target (see docstring point 2).
+    campaign_shingles = {}
+    campaign_canonical = {}
+    for c in comments:
+        cid = c.get('campaign_id')
+        if cid is None or cid in campaign_shingles:
+            continue
+        canonical = c.get('campaign_canonical') or ''
+        shingles = all_shingles(canonical)
+        if shingles and len(shingles) >= min_canon_shingles:
+            campaign_shingles[cid] = shingles
+            campaign_canonical[cid] = canonical
+
+    orphans = []
+    for c in comments:
+        if c.get('campaign_id') is not None:
+            continue
+        text = c.get('text', '') or ''
+        if len(normalize(text)) < min_chars:
+            continue
+        shingles = all_shingles(text)
+        if shingles:
+            orphans.append((c, shingles))
+
+    # Document frequency over the pool actually being matched (orphans +
+    # campaign canonicals), so a shingle common to this docket — e.g. its own
+    # official rule title — is downweighted without needing per-regulation
+    # tuning (see docstring point 1).
+    doc_freq = collections.Counter()
+    for _, shingles in orphans:
+        for s in shingles:
+            doc_freq[s] += 1
+    for shingles in campaign_shingles.values():
+        for s in shingles:
+            doc_freq[s] += 1
+
+    n_docs = len(orphans) + len(campaign_shingles)
+
+    def idf(shingle):
+        return math.log((n_docs + 1) / (doc_freq[shingle] + 1)) + 1.0
+
+    campaign_idf = {}
+    campaign_weight = {}
+    for cid, shingles in campaign_shingles.items():
+        weights = {s: idf(s) for s in shingles}
+        campaign_idf[cid] = weights
+        campaign_weight[cid] = sum(weights.values())
+
+    # Inverted index (shingle -> campaigns containing it) so each orphan is
+    # only scored against campaigns it could plausibly match, not all of them
+    # — this is what keeps a 100k+-orphan regulation like omb-financial-
+    # assistance tractable.
+    inverted_index: Dict[Any, List[Any]] = {}
+    for cid, shingles in campaign_shingles.items():
+        for s in shingles:
+            inverted_index.setdefault(s, []).append(cid)
+
+    swept = 0
+    for c, shingles in orphans:
+        candidate_cids = set()
+        for s in shingles:
+            candidate_cids.update(inverted_index.get(s, ()))
+        if not candidate_cids:
+            continue
+        orphan_weight = sum(idf(s) for s in shingles)
+        best_cid, best_score = None, 0.0
+        for cid in candidate_cids:
+            camp_shingles = campaign_shingles[cid]
+            shared = shingles & camp_shingles
+            shared_weight = sum(campaign_idf[cid][s] for s in shared)
+            denom = min(orphan_weight, campaign_weight[cid])
+            if denom <= 0:
+                continue
+            score = shared_weight / denom
+            if score > best_score:
+                best_cid, best_score = cid, score
+        if best_cid is not None and best_score >= threshold:
+            c['campaign_id'] = best_cid
+            c['campaign_canonical'] = campaign_canonical[best_cid]
+            swept += 1
+
+    if swept:
+        sizes = collections.Counter(c.get('campaign_id') for c in comments if c.get('campaign_id') is not None)
+        for c in comments:
+            if c.get('campaign_id') is not None:
+                c['campaign_size'] = sizes[c['campaign_id']]
+
+    logger.info(f"Swept {swept} personalized/orphaned comment(s) into an existing "
+                f"campaign by IDF-weighted whole-text overlap (threshold={threshold}, "
+                f"min_canon_shingles={min_canon_shingles})")
     return comments
 
 
@@ -1118,6 +1442,71 @@ def cluster_families(comments: List[Dict[str, Any]], threshold: float = 0.3) -> 
     return comments
 
 
+def cluster_letters(comments: List[Dict[str, Any]], threshold: float = 0.9, lsa_k: int = 200) -> List[Dict[str, Any]]:
+    """Opt-in (config: campaigns.letters): group campaigns that are really the same
+    letter, by latent-semantic similarity, and tag every member with `letter_id` and
+    `letter_label` (None for comments outside a campaign).
+
+    MinHash splits one letter into several campaigns whenever its variants differ
+    enough word-for-word (a different opening, a personalised paragraph), which can
+    leave many campaigns that are near-twins of a bigger one. This measures each
+    campaign's centre in a TF-IDF + SVD subspace (lsa_similarity.py,
+    quality-weighted so poorly-represented comments count for less) and merges
+    centres whose cosine is at least `threshold` by AVERAGE linkage, so a chain
+    A~B~C cannot pull an unrelated A and C together the way cluster_families()'s
+    union-find does.
+
+    It only reads campaign_id / campaign_canonical and adds two fields: it never
+    changes campaign or family membership. letter_id is the campaign_id of the
+    letter's largest campaign (ties: the smaller id), like family_id.
+    """
+    from collections import Counter
+    import numpy as np
+
+    for c in comments:
+        c['letter_id'] = None
+        c['letter_label'] = None
+    members = [i for i, c in enumerate(comments) if c.get('campaign_id') is not None]
+    if not members:
+        return comments
+
+    import lsa_similarity as lsa
+    try:
+        U, q = lsa.embed_texts([comments[i].get('text', '') or '' for i in members], k=lsa_k)
+    except ValueError as e:
+        logger.warning(f"Letter grouping skipped (could not fit a latent-semantic subspace: {e})")
+        return comments
+
+    cids = np.array([comments[i]['campaign_id'] for i in members], dtype=object)
+    centres = lsa.group_centroids(U, cids, weights=q)
+    order = list(centres)
+    labels = lsa.group_by_similarity(np.stack([centres[c] for c in order]), threshold)
+    group_of = dict(zip(order, labels.tolist()))
+
+    size = Counter(cids.tolist())
+    rep = {}
+    for cid in order:
+        g = group_of[cid]
+        if g not in rep or (size[cid], -cid) > (size[rep[g]], -rep[g]):
+            rep[g] = cid
+    canonical = {}
+    for i in members:
+        canonical.setdefault(comments[i]['campaign_id'], comments[i].get('campaign_canonical') or '')
+    letter_label = {}
+    for g, cid in rep.items():
+        words = lsa.normalize_text(canonical.get(cid, '')).split()
+        letter_label[g] = ' '.join(words[:8]) if words else f'campaign-{cid}'
+
+    for i in members:
+        g = group_of[comments[i]['campaign_id']]
+        comments[i]['letter_id'] = rep[g]
+        comments[i]['letter_label'] = letter_label[g]
+
+    logger.info(f"Grouped {len(order)} campaigns into {len(rep)} distinct letters "
+                f"(centre cosine >= {threshold}, k={lsa_k})")
+    return comments
+
+
 def save_results(analyzed_comments: List[Dict[str, Any]], output_file: str, force: bool = False):
     """Save analyzed comments to Parquet file.
 
@@ -1148,7 +1537,14 @@ def save_results(analyzed_comments: List[Dict[str, Any]], output_file: str, forc
                 f"{len(df)} rows — this looks like an accidental shrink. Backed up "
                 f"the existing file to {bak}. Re-run with --force if you really mean it.")
 
-    df.to_parquet(output_file, index=False)
+    # The number submitted rides along in the file's metadata (columns and rows are
+    # untouched). Read the previous file's value first: it is what survives a run
+    # whose refresh failed.
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    received = comments_received.load(Path('.'), output_file)
+    pq.write_table(comments_received.embed(pa.Table.from_pandas(df, preserve_index=False), received),
+                   output_file, compression='snappy')
     logger.info(f"✅ Saved results to {output_file}")
 
 
@@ -1416,6 +1812,9 @@ def main():
         logger.info(f"Working in regulation directory: {reg_dir}")
     if args.csv is None:
         args.csv = 'source.csv'
+    # Every run asks regulations.gov how many comments were submitted (published
+    # ones are all we analyze). A failure only keeps the previous value.
+    comments_received.refresh(Path('.'), csv_path=args.csv)
     # Sample runs are throwaway smoke tests — never let them write over the
     # canonical full-corpus outputs (full_run.parquet / index.html /
     # comment_detail.json). Namespace their output and skip the report.
@@ -1552,10 +1951,28 @@ def main():
         logger.info("=== STEP 6: Campaign Detection ===")
         campaign_cfg = (load_yaml_config() or {}).get('campaigns') or {}
         analyzed_comments = detect_campaigns(
-            analyzed_comments, min_chars=campaign_cfg.get('min_chars', 100))
+            analyzed_comments, min_chars=campaign_cfg.get('min_chars', 100),
+            resolve_overlaps=campaign_cfg.get('resolve_overlaps', False),
+            lsa_k=campaign_cfg.get('lsa_k', 200))
+
+        # Step 6a: Sweep personalized comments the primary pass missed into a
+        # campaign it already found (config: campaigns.sweep_orphans, default on).
+        if campaign_cfg.get('sweep_orphans', True):
+            analyzed_comments = sweep_orphans_into_campaigns(
+                analyzed_comments,
+                threshold=campaign_cfg.get('sweep_threshold', 0.75),
+                min_chars=campaign_cfg.get('min_chars', 100),
+                min_canon_shingles=campaign_cfg.get('sweep_min_canon_shingles', 30))
 
         # Step 6b: Cluster campaigns into letter families
         analyzed_comments = cluster_families(analyzed_comments)
+
+        # Step 6c (opt-in, config: campaigns.letters): merge campaigns that are
+        # the same letter by latent-semantic similarity. Adds letter_id/letter_label.
+        if campaign_cfg.get('letters', False):
+            analyzed_comments = cluster_letters(
+                analyzed_comments, threshold=campaign_cfg.get('letters_threshold', 0.9),
+                lsa_k=campaign_cfg.get('lsa_k', 200))
 
         # Step 7: Save final results
         logger.info("=== STEP 7: Saving Final Results ===")
@@ -1632,7 +2049,7 @@ def main():
                 comments = load_results_parquet(args.output)
 
                 logger.info(f"Generating HTML report: {html_output}")
-                generate_html(comments, {}, {}, html_output)
+                generate_html(comments, {}, {}, html_output, parquet_source=args.output)
 
                 logger.info(f"✅ HTML report generated: {html_output}")
 

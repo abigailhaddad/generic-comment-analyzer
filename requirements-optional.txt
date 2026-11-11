@@ -1,0 +1,6 @@
+# Optional extras - not needed by pipeline.py or generate_report.py.
+# Install with:  pip install -r requirements-optional.txt
+#
+# umap-learn: 2-D layout for the campaign similarity map (TF-IDF -> SVD -> UMAP).
+# Pulls in numba, llvmlite, pynndescent, scikit-learn, joblib, threadpoolctl and cloudpickle.
+umap-learn==0.5.12

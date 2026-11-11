@@ -29,6 +29,9 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from pathlib import Path
+
+import comments_received
 
 API = 'https://api.regulations.gov/v4'
 
@@ -374,6 +377,9 @@ def main():
                     help='walk the whole docket instead of only what was posted since the '
                          'newest row already held. Needed to bootstrap an empty CSV, or to '
                          'pick up comments backfilled with an older posted date.')
+    ap.add_argument('--received-only', action='store_true',
+                    help='only refresh comments_received.json (the number submitted, as '
+                         'opposed to published), then stop')
     args = ap.parse_args()
 
     # Read .env next to this script, as pipeline.py does, so a local run picks up
@@ -406,6 +412,12 @@ def main():
                 if posted > newest_posted:
                     newest_posted = posted
     print(f'{docket}: {len(known):,} comments already in {args.csv}')
+
+    # One cheap call, ahead of the listing so a rate-limited run still refreshes it.
+    if not args.dry_run:
+        comments_received.refresh(Path('.'), key, args.csv)
+    if args.received_only:
+        return
 
     # Only list what could possibly be new. Back up a day from the newest row we
     # already hold, so anything posted the same day can't slip through a

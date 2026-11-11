@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appendix — {{ regulation_name }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-bg: {{ colors.bg }};
+            --color-surface: {{ colors.surface }};
+            --color-text: {{ colors.text }};
+            --color-text-muted: {{ colors.text_muted }};
+            --color-accent: {{ colors.accent }};
+            --color-border: {{ colors.border }};
+            --color-error: {{ colors.error }};
+            --font-heading: 'DM Sans', sans-serif;
+            --font-body: 'Source Sans 3', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --card-radius: 0.5rem;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        body { font-family: var(--font-body); background: var(--color-bg); color: var(--color-text); line-height: 1.65; font-size: 1.0rem; margin: 0; }
+        h1, h2, h3 { font-family: var(--font-heading); letter-spacing: -0.01em; }
+        h2 { margin: 2.75rem 0 0.35rem; font-size: 1.35rem; }
+        a { color: var(--color-accent); }
+        .site-container { max-width: 980px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+        .report-header { padding: 2.25rem 0 0.75rem; }
+        .report-header h1 { margin: 0 0 0.35rem; font-size: 1.75rem; }
+        .subtitle { color: var(--color-text-muted); max-width: 720px; margin: 0 0 0.5rem; }
+        .banner { background: var(--color-surface); border-left: 3px solid var(--color-accent); padding: 0.55rem 0.85rem; border-radius: 0.35rem; font-size: 0.9rem; margin: 0.75rem 0; }
+        .muted { color: var(--color-text-muted); }
+        .small { font-size: 0.85rem; }
+        .warn { color: var(--color-error); font-size: 0.9rem; margin: 0.5rem 0; }
+        nav.toc ul { padding-left: 1.2rem; margin: 0.4rem 0 0; }
+        .answer p { margin: 0.6rem 0; max-width: 760px; }
+        .stat-row { display: flex; flex-wrap: wrap; gap: 1.25rem; margin: 0.75rem 0; font-size: 0.9rem; }
+        .stat-row b { font-family: var(--font-heading); }
+        pre.instruction { white-space: pre-wrap; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 0.4rem; padding: 0.7rem 0.9rem; font-size: 0.85rem; }
+        details { margin: 0.5rem 0; }
+        summary { cursor: pointer; font-size: 0.9rem; color: var(--color-text-muted); }
+        table.t { border-collapse: collapse; width: 100%; background: var(--color-bg); border: 1px solid var(--color-border); font-size: 0.87rem; margin: 0.6rem 0; }
+        table.t th, table.t td { padding: 0.45rem 0.65rem; text-align: left; border-bottom: 1px solid var(--color-border); vertical-align: top; }
+        table.t th { font-family: var(--font-heading); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--color-text-muted); background: var(--color-surface); }
+        table.t td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .quote { border-left: 3px solid var(--color-border); padding: 0.1rem 0.7rem; margin: 0.35rem 0; font-size: 0.86rem; color: var(--color-text-muted); }
+        .quote code, .ids { font-family: var(--font-mono); font-size: 0.74rem; }
+        .group-summary { margin: 0.2rem 0 0.3rem; font-size: 0.86rem; }
+        .footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--color-border); color: var(--color-text-muted); font-size: 0.85rem; }
+
+        /* stat tiles */
+        .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.75rem; margin: 1rem 0; }
+        .tile { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--card-radius); padding: 0.75rem 0.95rem; text-decoration: none; color: inherit; }
+        a.tile:hover { border-color: var(--color-accent); }
+        .tile .t-label { font-size: 0.8rem; color: var(--color-text-muted); }
+        .tile .t-value { font-family: var(--font-heading); font-size: 1.75rem; font-weight: 600; line-height: 1.2; }
+        .tile .t-note { font-size: 0.8rem; color: var(--color-text-muted); }
+
+        /* charts: thin bars, 2px surface gap between segments, 4px rounded data end, square at the baseline */
+        figure.chart { margin: 1.5rem 0; padding: 1rem 1.1rem; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--card-radius); }
+        figure.chart figcaption strong { font-family: var(--font-heading); font-size: 0.98rem; }
+        figure.chart figcaption .cap { display: block; font-size: 0.83rem; color: var(--color-text-muted); margin-top: 0.15rem; }
+        .legend { display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem; margin: 0.7rem 0 0.2rem; font-size: 0.83rem; color: var(--color-text-secondary, var(--color-text)); }
+        .legend .sw { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 0.4rem; vertical-align: -1px; }
+        .bars { margin-top: 0.6rem; }
+        .bar-row { display: grid; grid-template-columns: minmax(7rem, 14rem) 1fr; align-items: center; gap: 0.75rem; padding: 0.22rem 0; }
+        .bar-label { font-size: 0.84rem; overflow-wrap: anywhere; line-height: 1.25; }
+        .bar-track { display: flex; align-items: center; gap: 0.5rem; min-width: 0; border-bottom: 1px solid var(--color-border); }
+        .bar-stack { display: flex; gap: 2px; height: 16px; }
+        .seg { display: flex; align-items: center; justify-content: center; min-width: 2px; height: 16px; font-size: 0.7rem; line-height: 1; white-space: nowrap; flex-basis: 0; outline-offset: 1px; }
+        .seg:last-child { border-radius: 0 4px 4px 0; }
+        .seg:hover, .seg:focus-visible { filter: brightness(1.12); outline: 2px solid var(--color-text); }
+        .bar-value { font-size: 0.8rem; color: var(--color-text-muted); white-space: nowrap; }
+        .table-scroll { overflow-x: auto; max-width: 100%; }
+        .table-scroll table.t { min-width: 32rem; }
+        details.table-view { margin-top: 0.7rem; }
+        details.table-view table.t { margin: 0.4rem 0 0; }
+        .tip { position: fixed; z-index: 10; pointer-events: none; background: var(--color-text); color: var(--color-bg); border-radius: 0.35rem; padding: 0.35rem 0.6rem; font-size: 0.8rem; max-width: 22rem; box-shadow: 0 2px 8px rgba(0,0,0,0.25); }
+        .tip strong { display: block; font-family: var(--font-heading); font-size: 0.92rem; }
+        @media (max-width: 600px) { .bar-row { grid-template-columns: 1fr; gap: 0.15rem; } }
+
+        /* state map: a schematic tile cartogram, not real geography -- see US_STATE_GRID in appendix_charts.py.
+           Each tile is an abbreviation header over two colored halves (oppose / support), each with its own count,
+           so both positions are always visible without a hover. */
+        .state-grid { display: grid; gap: 3px; margin: 1rem 0; max-width: 50rem; }
+        .state-tile { border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; min-height: 2.9rem; }
+        .state-tile .abbr { text-align: center; font-family: var(--font-heading); font-weight: 600; font-size: 0.68rem;
+                             padding: 1px 0; background: var(--color-surface); color: var(--color-text); }
+        .state-tile .split { flex: 1; display: flex; }
+        .state-tile .half { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 0.62rem; font-weight: 600; }
+        .state-tile.empty .split { background: #e8e2d8; color: #9a8f80; font-size: 0.6rem; }
+        @media (max-width: 600px) { .state-grid { max-width: 100%; } .state-tile { font-size: 0.6rem; min-height: 2.5rem; } }
+    </style>
+</head>
+<body>
+<div class="site-container">
+    <header class="report-header">
+        <h1>Appendix — {{ regulation_name }}</h1>
+        <p class="subtitle">One-off questions asked of the comments, answered from the analyzed data. Generated on request, locally; this page is not part of the published report.</p>
+        <p class="small muted">Generated {{ generated }} from {{ "{:,}".format(parquet.rows) }} analyzed comments (data file last modified {{ parquet.modified }}).{% if comments_received %} regulations.gov also reports {{ "{:,}".format(comments_received.count) }} comments submitted{% if comments_received.as_of %} (as of {{ comments_received.as_of }}){% endif %}; only published comments are analyzed, and every count here is out of those.{% endif %}</p>
+    </header>
+
+    <div class="banner small">
+        Counts are weighted to real comments: a form-letter campaign is read once and counted for every member, so a campaign's members are assumed to share the content of its canonical text. "Texts" are distinct comments or campaigns. Answers come from an LLM reading the passages; every quote shown was checked to appear verbatim in the source, but groupings and summaries are judgments, so spot-check anything that matters.
+    </div>
+
+    <nav aria-label="Questions">
+        <div class="tiles">
+            {% for g in glance %}
+            <a class="tile" href="#{{ g.id }}"><div class="t-label">{{ g.title }}</div><div class="t-value">{{ g.value }}</div><div class="t-note">relevant comments &middot; {{ g.note }}</div></a>
+            {% endfor %}
+        </div>
+    </nav>
+
+    {% for q in questions %}
+    <section id="{{ q.id }}">
+        <h2>{{ q.title }}</h2>
+        {% if q.pilot %}<p class="warn">Pilot run: only a random sample of the matching texts was read, so counts are partial.</p>{% endif %}
+        {% if q.stats.failed_calls %}<p class="warn">{{ q.stats.failed_calls }} call(s) failed and are missing from this answer. Re-run to retry them.</p>{% endif %}
+        {% if q.stats.synthesis_failed %}<p class="warn">The write-up step failed; the grouped evidence below is complete but has no narrative.</p>{% endif %}
+
+        {% if q.kind != 'state_map' %}<details><summary>Instruction used</summary><pre class="instruction">{{ q.instruction }}</pre></details>{% endif %}
+
+        <div class="answer">{% for p in q.answer %}<p>{{ p }}</p>{% endfor %}</div>
+
+        <div class="tiles">
+            {% for t in q.visuals.tiles %}
+            <div class="tile"><div class="t-label">{{ t.label }}</div><div class="t-value">{{ t.value }}</div><div class="t-note">{{ t.note }}</div></div>
+            {% endfor %}
+        </div>
+
+        {% if q.kind == 'state_map' and q.visuals.state_map %}
+        {% set m = q.visuals.state_map %}
+        <div class="legend">{% for l in m.legend %}<span><i class="sw" style="background: {{ l.color }}"></i>{{ l.name }}</span>{% endfor %}</div>
+        <div class="state-grid" style="grid-template-columns: repeat({{ m.cols }}, minmax(2.6rem, 1fr)); grid-template-rows: repeat({{ m.rows }}, minmax(2.9rem, auto));"
+             role="img" aria-label="Support and oppose counts by state. Values are listed in the table view below.">
+            {% for c in m.cells %}
+            <div class="state-tile{% if c.empty %} empty{% endif %}" tabindex="0" style="grid-row: {{ c.row }}; grid-column: {{ c.col }}" data-value="{{ c.tip }}" data-label="">
+                <span class="abbr">{{ c.abbr }}</span>
+                <div class="split">
+                    {% if c.empty %}<span class="half">&mdash;</span>
+                    {% else %}
+                    <span class="half" style="background: {{ c.oppose_color }}; color: {{ c.oppose_text_color }}">{{ c.oppose_text }}</span>
+                    <span class="half" style="background: {{ c.support_color }}; color: {{ c.support_text_color }}">{{ c.support_text }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <details class="table-view"><summary>Table view</summary>
+            <div class="table-scroll"><table class="t"><thead><tr>{% for h in m.table.headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+            <tbody>{% for row in m.table.rows %}<tr>{% for cell in row %}<td{% if loop.index > 1 %} class="num"{% endif %}>{{ cell }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div>
+        </details>
+        <p class="small"><a href="appendix_{{ q.id }}.csv">Download this table as CSV</a></p>
+        {% endif %}
+
+        {% for c in q.visuals.charts %}
+        <figure class="chart" id="{{ c.id }}">
+            <figcaption><strong>{{ c.title }}</strong><span class="cap">{{ c.caption }}</span></figcaption>
+            {% if c.legend %}<div class="legend">{% for l in c.legend %}<span><i class="sw" style="background: {{ l.color }}"></i>{{ l.name }}</span>{% endfor %}</div>{% endif %}
+            <div class="bars" role="img" aria-label="{{ c.title }}. Values are listed in the table view below.">
+                {% for r in c.rows %}
+                <div class="bar-row">
+                    <div class="bar-label">{{ r.label }}</div>
+                    <div class="bar-track">
+                        <div class="bar-stack" style="width: {{ r.width }}%">
+                            {% for s in r.segments %}<span class="seg" tabindex="0" style="background: {{ s.color }}; color: {{ s.text_color }}; flex-grow: {{ s.value }}" data-value="{{ s.tip_value }}" data-label="{{ s.tip_label }}">{% if s.show_text %}{{ s.text }}{% endif %}</span>{% endfor %}
+                        </div>
+                        <span class="bar-value">{{ r.total_text }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <details class="table-view"><summary>Table view</summary>
+                <div class="table-scroll"><table class="t"><thead><tr>{% for h in c.table.headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+                <tbody>{% for row in c.table.rows %}<tr>{% for cell in row %}<td{% if loop.index > 1 and cell[:1] in '0123456789' %} class="num"{% endif %}>{{ cell }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div>
+            </details>
+        </figure>
+        {% endfor %}
+
+        {% if q.groups %}
+        <div class="table-scroll"><table class="t">
+            <thead><tr><th>{{ 'Name' if q.kind == 'list' else 'Group' }}</th><th>Category</th><th>Texts</th><th>Comments</th><th>Position</th><th>Examples</th></tr></thead>
+            <tbody>
+            {% for g in q.groups %}
+            <tr>
+                <td>
+                    <strong>{{ g.label }}</strong>
+                    {% if g.summary %}<div class="group-summary">{{ g.summary }}</div>{% endif %}
+                    {% if g.quotes %}<details><summary>Evidence</summary>
+                        {% for x in g.quotes %}<div class="quote">&ldquo;{{ x.quote }}&rdquo; <a class="ids" href="https://www.regulations.gov/comment/{{ x.id }}">{{ x.id }}</a></div>{% endfor %}
+                    </details>{% endif %}
+                </td>
+                <td>{{ g.category }}</td>
+                <td class="num">{{ "{:,}".format(g.texts) }}</td>
+                <td class="num">{{ "{:,}".format(g.comments) }}</td>
+                <td class="small">{% for k, v in g.stance.items() %}{{ k }} {{ "{:,}".format(v) }}{% if not loop.last %} &middot; {% endif %}{% endfor %}</td>
+                <td class="ids">{% for i in g.example_ids[:3] %}<a href="https://www.regulations.gov/comment/{{ i }}">{{ i }}</a>{% if not loop.last %}<br>{% endif %}{% endfor %}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table></div>
+        <p class="small"><a href="appendix_{{ q.id }}.csv">Download this table as CSV</a></p>
+        {% endif %}
+
+        {% if q.salvage and q.salvage.source != 'off' %}
+        <details class="small"><summary>How the pipeline's existing analysis was used</summary>
+            <p class="small">
+                {% if q.salvage.source == 'pending' %}No reuse plan was available for this run.
+                {% elif q.salvage.source == 'failed' %}The reuse plan could not be made for this run, so only the question's own filters were used.{% else %}
+                Source: {{ q.salvage.source }}.
+                {% if q.salvage.tags %}Comments the pipeline had already tagged {% for t in q.salvage.tags %}&ldquo;{{ t }}&rdquo;{% if not loop.last %}, {% endif %}{% endfor %} were treated as candidates. {% endif %}
+                {% if q.salvage.flags %}Flags used as candidates: {{ q.salvage.flags | join(', ') }}. {% endif %}
+                {% if q.salvage.entity_types %}Commenter types used as candidates: {{ q.salvage.entity_types | join(', ') }}. {% endif %}
+                {% if q.salvage.hints_used %}Stored fields shown to the model beside each passage: {{ q.salvage.hints_used | join(', ') }}. {% endif %}
+                {% if q.salvage.reasoning %}Why: {{ q.salvage.reasoning }}{% endif %}
+                {% if q.salvage.unselective %}Ignored as non-selective (each matched most of the texts, so it would not have narrowed anything): {% for d in q.salvage.unselective %}&ldquo;{{ d.name }}&rdquo; ({{ "{:.0%}".format(d.share) }}){% if not loop.last %}, {% endif %}{% endfor %}. {% endif %}
+                {% if q.salvage.overlap %}<br>Against the keyword filter: {{ "{:,}".format(q.salvage.overlap.both_units) }} texts matched both; the pipeline's signals added {{ "{:,}".format(q.salvage.overlap.salvage_only_units) }} that keywords missed, and keywords added {{ "{:,}".format(q.salvage.overlap.keyword_only_units) }} that the signals missed.{% endif %}
+                {% endif %}
+                Stored values only choose what gets read and give the model context; every answer comes from the model reading the text.
+            </p>
+        </details>
+        {% endif %}
+
+        {% if q.kind == 'state_map' %}
+        <p class="small muted">Method: a direct read of `state_identified` and the stance already stored for each comment by the main pipeline. No model calls, no chunking.</p>
+        {% else %}
+        <p class="small muted">Method: {{ q.models[0] }} read {{ "{:,}".format(q.stats.chunks) }} passage(s) from {{ "{:,}".format(q.stats.units_sent) }} text(s); {{ "{:,}".format(q.stats.items_kept) }} item(s) kept, {{ "{:,}".format(q.stats.items_dropped_unverified_quote) }} dropped because their quote was not found in the text; merged and written up with {{ q.models[1] }}.</p>
+        {% endif %}
+    </section>
+    {% endfor %}
+
+    <div class="footer">Appendix generated locally by appendix.py. Not published.</div>
+</div>
+<script>
+/* Hover/focus readout for chart segments. Text comes from data attributes and is inserted with textContent only. */
+(function () {
+    var tip = document.createElement('div');
+    tip.className = 'tip';
+    tip.hidden = true;
+    var v = document.createElement('strong'), l = document.createElement('span');
+    tip.appendChild(v); tip.appendChild(l);
+    document.body.appendChild(tip);
+    function show(el, x, y) {
+        v.textContent = el.getAttribute('data-value');
+        l.textContent = el.getAttribute('data-label');
+        tip.hidden = false;
+        var w = tip.offsetWidth, h = tip.offsetHeight;
+        tip.style.left = Math.max(8, Math.min(x + 14, window.innerWidth - w - 8)) + 'px';
+        tip.style.top = Math.max(8, Math.min(y + 14, window.innerHeight - h - 8)) + 'px';
+    }
+    function hide() { tip.hidden = true; }
+    document.querySelectorAll('.seg').forEach(function (el) {
+        el.addEventListener('pointermove', function (e) { show(el, e.clientX, e.clientY); });
+        el.addEventListener('pointerleave', hide);
+        el.addEventListener('focus', function () { var r = el.getBoundingClientRect(); show(el, r.left, r.bottom); });
+        el.addEventListener('blur', hide);
+    });
+})();
+</script>
+</body>
+</html>

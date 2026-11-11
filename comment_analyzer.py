@@ -75,7 +75,7 @@ class CommentAnalysisResult(BaseModel):
     )
     state_identified: str = Field(
         default="",
-        description="US state the submitter is from, if identifiable. Extract from any clue: city/state mentioned in text, submitter name/address, organization location, bar membership state, etc. Use the two-letter abbreviation (e.g. 'CA', 'TX', 'NY'). Leave empty if no state can be determined."
+        description="US state, DC or territory the submitter is from, if identifiable. Extract from any clue: city/state mentioned in text, submitter name/address, organization location, bar membership state, etc. Use the two-letter abbreviation (e.g. 'CA', 'TX', 'NY'; territories: 'PR', 'GU', 'VI', 'AS'). Use the commenter's own location, never the address of the agency the comment is addressed to. Leave empty if no state can be determined."
     )
     state_quote: str = Field(
         default="",

@@ -22,6 +22,8 @@ import yaml
 import pandas as pd
 from jinja2 import Environment, FileSystemLoader
 
+import comments_received
+
 _SMALL_WORDS = {'the', 'of', 'a', 'an', 'and', 'or', 'to', 'in', 'on', 'for'}
 
 
@@ -1350,8 +1352,9 @@ def compute_rule_page(comments, rule_sections, patterns, sample_n=8):
     return sections, other
 
 
-def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_analysis: Dict[str, Dict[str, Any]], output_file: str, model_used: str = None):
-    """Generate HTML report using Jinja2 template."""
+def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_analysis: Dict[str, Dict[str, Any]], output_file: str, model_used: str = None, parquet_source: str = None):
+    """Generate HTML report using Jinja2 template. `parquet_source` is the parquet the
+    comments came from, which may carry the number of comments submitted."""
     template_dir = Path(__file__).parent
     env = Environment(loader=FileSystemLoader(str(template_dir)), autoescape=False)
     template = env.get_template('report_template.html')
@@ -1506,6 +1509,7 @@ def generate_html(comments: List[Dict[str, Any]], stats: Dict[str, Any], field_a
     show_entity_cards = 'cards' in field_meta.get('entity_type', {}).get('show', [])
     value_sections, regex_value_patterns = compute_value_sections(comments, fields)
     briefing = compute_briefing(comments)
+    briefing['comments_received'] = comments_received.load(Path('.'), parquet_source)
     briefing['flag_sections'] = compute_flag_sections(comments, flags_cfg)
     briefing['named_campaigns_list'] = compute_named_campaigns(comments, load_named_campaigns_roster())
     flag_meta = [{'key': s['key'], 'label': s['label']} for s in briefing['flag_sections']]
@@ -1863,7 +1867,8 @@ def main():
 
     print("Computing briefing stats...")
     print(f"Generating HTML report: {args.output}")
-    generate_html(comments, {}, field_analysis, args.output, model_used=args.model)
+    generate_html(comments, {}, field_analysis, args.output, model_used=args.model,
+                  parquet_source=args.parquet if os.path.exists(args.parquet) else None)
 
     print(f"Report generated: {args.output}")
     print(f"{len(comments):,} comments analyzed")

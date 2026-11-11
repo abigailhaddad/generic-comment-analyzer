@@ -63,6 +63,7 @@ comment.html
 test_*.html
 test_report.html
 posting_lag.html
+*.png
 
 # Local backlog view for OMB-2026-0034 (which receipt dates have nothing posted
 # yet). Not part of the published report and not deployed.
@@ -110,3 +111,9 @@ regulations/*/discovery/
 regulations/*/old_yaml/
 regulations/*/preview/
 regulations/*/old_data/
+
+# On-request appendix (appendix.py): its question file, cache, results, page and
+# CSVs are all local-only. They hold commenter text and the repo is public.
+regulations/*/appendix_*
+regulations/*/appendix.html
+
