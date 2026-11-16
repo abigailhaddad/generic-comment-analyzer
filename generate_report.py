@@ -1784,7 +1784,7 @@ def export_comments_csv(comments: List[Dict[str, Any]], output_path: str, source
             for opt in fld['options']:
                 option_cols.append((f"{fld['name']}__{_export_slug(opt)}", fld['name'], opt))
 
-    derived = (['analyzer_id', 'position']
+    derived = (['analyzer_id', 'regulations_gov_url', 'position']
                + analysis_keys
                + [c[0] for c in option_cols]
                + [f'{name}_values' for name in regex_patterns]
@@ -1807,6 +1807,8 @@ def export_comments_csv(comments: List[Dict[str, Any]], output_path: str, source
             status = c.get('attachment_status') or {}
             row = dict(src)
             row['analyzer_id'] = c.get('id', '')
+            # A split-out attachment row's id carries "#<tracking number>"; the page is the base id's.
+            row['regulations_gov_url'] = 'https://www.regulations.gov/comment/' + (c.get('id', '') or '').split('#', 1)[0]
             row['position'] = comment_position(c)
             for k in analysis_keys:
                 row[k] = _export_value(analysis.get(k))

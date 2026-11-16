@@ -1174,9 +1174,23 @@
         // their field's `show` (`column`) from the config; structural columns
         // (id/date/submitter/campaign/attachment) are always present. `filter`
         // attaches a +Add-filter dimension (gated by the field's `filter` show).
+        // The comment's page on regulations.gov. A split-out attachment row carries a
+        // "#<tracking number>" suffix on its id; the page is the one for the base id.
+        function commentUrl(c) {
+            return 'https://www.regulations.gov/comment/' + encodeURIComponent(String(c.id).split('#')[0]);
+        }
+
         const COLUMN_SPECS = [
             { key: 'id', title: 'ID',
               cell: function (c) { return '<a href="https://www.regulations.gov/comment/' + c.id + '" target="_blank" onclick="event.stopPropagation();">' + c.id.split('-').pop() + '</a>'; } },
+            // The link in the ID column is lost when the table is downloaded (the CSV
+            // keeps cell text only), so the URL is its own column, written out in full.
+            { key: 'url', title: 'Regulations.gov URL', orderable: false,
+              cell: function (c) {
+                  var url = commentUrl(c);
+                  return '<a href="' + url + '" target="_blank" onclick="event.stopPropagation();" title="' + url + '" style="display:inline-block; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle;">' + url.replace(/^https:\/\//, '') + '</a>';
+              },
+              csv: commentUrl },
             // The column is the SUBMITTED date. "Date" alone was ambiguous, and it
             // showed the posted date — which on a closed docket runs weeks past the
             // comment deadline and reads as nonsense to anyone taking it for when
@@ -1663,7 +1677,7 @@
                 const d = this.data();
                 const row = [];
                 for (let i = 0; i < headers.length; i++) {
-                    let val = COLUMNS[i].cell(d).toString().replace(/<[^>]*>/g, '').trim();
+                    let val = COLUMNS[i].csv ? COLUMNS[i].csv(d) : COLUMNS[i].cell(d).toString().replace(/<[^>]*>/g, '').trim();
                     if (val.indexOf(',') !== -1 || val.indexOf('"') !== -1 || val.indexOf('\n') !== -1) {
                         val = '"' + val.replace(/"/g, '""') + '"';
                     }
